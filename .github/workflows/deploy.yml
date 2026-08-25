@@ -1,0 +1,30 @@
+name: Deploy To Ubuntu Server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            export APP_DIR=${{ secrets.APP_DIR }}
+            export BRANCH=main
+            export PM2_APP_NAME=project-analytics
+            if [ -z "$APP_DIR" ]; then
+              export APP_DIR=/opt/project-issue-analytics
+            fi
+            cd "$APP_DIR"
+            chmod +x scripts/deploy.sh
+            ./scripts/deploy.sh

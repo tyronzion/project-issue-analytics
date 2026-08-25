@@ -35,3 +35,40 @@ This app can automatically pull issues from Jira on startup, so you don't need t
 Notes:
 - Jira credentials are used server-side only (in Vite dev middleware), not exposed to browser code.
 - If Jira is not configured or unavailable, the app falls back to the bundled workbook datasource.
+
+## Auto Deploy On Push (GitHub Actions + SSH)
+
+This project includes:
+- [scripts/deploy.sh](scripts/deploy.sh) (server deploy script)
+- [.github/workflows/deploy.yml](.github/workflows/deploy.yml) (deploy on push to main)
+
+### 1. One-time setup on Ubuntu server
+
+Run these commands on the server:
+
+```bash
+cd /opt/project-issue-analytics
+chmod +x scripts/deploy.sh
+npm ci
+pm2 start "npm run dev -- --host 0.0.0.0 --port 3000" --name project-analytics
+pm2 save
+```
+
+### 2. Add GitHub Actions secrets in repository settings
+
+Go to: Settings -> Secrets and variables -> Actions -> New repository secret
+
+Add these secrets:
+- `SERVER_HOST` = `10.6.99.208`
+- `SERVER_USER` = `csdatasec`
+- `SERVER_PORT` = `22`
+- `SERVER_SSH_KEY` = private SSH key content for that server user
+- `APP_DIR` = `/opt/project-issue-analytics`
+
+### 3. Push to main
+
+Every push to `main` will run deploy automatically.
+
+### 4. Manual trigger (optional)
+
+You can also run deploy manually from GitHub Actions using `workflow_dispatch`.

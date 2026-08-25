@@ -14,10 +14,10 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
+          host: 10.6.99.208
+          username: csdatasec
           key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT }}
+          port: 22
           script: |
             export APP_DIR=${{ secrets.APP_DIR }}
             export BRANCH=main

@@ -8,23 +8,18 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: 10.6.99.208
-          username: csdatasec
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          script: |
-            export APP_DIR=${{ secrets.APP_DIR }}
-            export BRANCH=main
-            export PM2_APP_NAME=project-analytics
-            if [ -z "$APP_DIR" ]; then
-              export APP_DIR=/opt/project-issue-analytics
-            fi
-            cd "$APP_DIR"
-            chmod +x scripts/deploy.sh
-            ./scripts/deploy.sh
+      - name: Deploy on self-hosted runner
+        env:
+          APP_DIR: ${{ secrets.APP_DIR }}
+          BRANCH: main
+          PM2_APP_NAME: project-analytics
+        run: |
+          if [ -z "$APP_DIR" ]; then
+            export APP_DIR=/opt/project-issue-analytics
+          fi
+          cd "$APP_DIR"
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh

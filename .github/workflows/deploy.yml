@@ -18,8 +18,24 @@ jobs:
           PM2_APP_NAME: project-analytics
         run: |
           if [ -z "$APP_DIR" ]; then
-            export APP_DIR=/opt/project-issue-analytics
+            APP_DIR="/opt/project-issue-analytics"
           fi
+
+          CANDIDATE_A="$APP_DIR"
+          CANDIDATE_B="$APP_DIR/project-issue-analytics"
+
+          if [ -f "$CANDIDATE_A/scripts/deploy.sh" ]; then
+            APP_DIR="$CANDIDATE_A"
+          elif [ -f "$CANDIDATE_B/scripts/deploy.sh" ]; then
+            APP_DIR="$CANDIDATE_B"
+          else
+            echo "[deploy] Could not find scripts/deploy.sh in:"
+            echo "  - $CANDIDATE_A"
+            echo "  - $CANDIDATE_B"
+            exit 1
+          fi
+
+          export APP_DIR
           cd "$APP_DIR"
-          chmod +x scripts/deploy.sh
-          ./scripts/deploy.sh
+          chmod +x "$APP_DIR/scripts/deploy.sh"
+          "$APP_DIR/scripts/deploy.sh"

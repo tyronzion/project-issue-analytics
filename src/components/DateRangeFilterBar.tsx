@@ -33,6 +33,7 @@ export const DateRangeFilterBar: React.FC<DateRangeFilterBarProps> = ({
     { id: 'today', label: 'Today' },
     { id: 'this_week', label: 'This Week' },
     { id: 'this_month', label: 'This Month' },
+    { id: 'last_7_days', label: 'Last 7 Days' },
     { id: 'last_30_days', label: 'Last 30 Days' },
     { id: 'last_90_days', label: 'Last 90 Days' },
     { id: 'this_year', label: 'This Year' },

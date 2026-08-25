@@ -1,6 +1,6 @@
 {
-  "name": "Project Issue Analytics & Formula Engine",
-  "description": "QA & Project issue tracking dashboard with customizable formulas, date filtering, platform keyword separation ([IOS]/[AOS]), data merging, and Excel import/export.",
+  "name": "Security Issues Analytics & Formula Engine",
+  "description": "Security issues analytics dashboard with customizable formulas, date filtering, platform keyword separation ([IOS]/[AOS]), data merging, and Excel import/export.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

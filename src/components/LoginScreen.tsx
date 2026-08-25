@@ -28,7 +28,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
       <form className="login-panel" onSubmit={handleSubmit}>
         <img src={cloudstaffLogo} alt="Cloudstaff" className="login-logo" />
         <div>
-          <h1>Project Issue Analytics</h1>
+          <h1>Security Issues Analytics</h1>
           <p>Sign in to access the issue workspace.</p>
         </div>
 

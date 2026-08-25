@@ -52,8 +52,20 @@ interface MetricsDashboardProps {
 type SortField =
   | 'projectName'
   | 'totalFound'
+  | 'foundLow'
+  | 'foundMedium'
+  | 'foundHigh'
+  | 'foundCritical'
   | 'resolved'
+  | 'resolvedLow'
+  | 'resolvedMedium'
+  | 'resolvedHigh'
+  | 'resolvedCritical'
   | 'outstanding'
+  | 'outstandingLow'
+  | 'outstandingMedium'
+  | 'outstandingHigh'
+  | 'outstandingCritical'
   | 'riskAccepted'
   | 'securityOverdue'
   | 'resolutionRate'
@@ -145,12 +157,45 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
   };
 
   // Filter and sort summaries
+  const getSortValue = (summary: ProjectSummary, field: SortField): string | number => {
+    switch (field) {
+      case 'projectName':
+        return summary.projectName;
+      case 'foundLow':
+        return summary.foundBySeverity.low;
+      case 'foundMedium':
+        return summary.foundBySeverity.medium;
+      case 'foundHigh':
+        return summary.foundBySeverity.high;
+      case 'foundCritical':
+        return summary.foundBySeverity.critical;
+      case 'resolvedLow':
+        return summary.resolvedBySeverity.low;
+      case 'resolvedMedium':
+        return summary.resolvedBySeverity.medium;
+      case 'resolvedHigh':
+        return summary.resolvedBySeverity.high;
+      case 'resolvedCritical':
+        return summary.resolvedBySeverity.critical;
+      case 'outstandingLow':
+        return summary.outstandingBySeverity.low;
+      case 'outstandingMedium':
+        return summary.outstandingBySeverity.medium;
+      case 'outstandingHigh':
+        return summary.outstandingBySeverity.high;
+      case 'outstandingCritical':
+        return summary.outstandingBySeverity.critical;
+      default:
+        return summary[field] as string | number;
+    }
+  };
+
   const filteredSummaries = useMemo(() => {
     return summaries
       .filter(s => s.projectName.toLowerCase().includes(searchQuery.toLowerCase()))
       .sort((a, b) => {
-        const valA = a[sortField];
-        const valB = b[sortField];
+        const valA = getSortValue(a, sortField);
+        const valB = getSortValue(b, sortField);
         if (typeof valA === 'string') {
           return sortAsc
             ? (valA as string).localeCompare(valB as string)
@@ -224,6 +269,13 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
       setSortField(field);
       setSortAsc(false);
     }
+  };
+
+  const renderSortIndicator = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-3 h-3 opacity-70" />;
+    }
+    return sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
   };
 
   const toggleProjectExpanded = (projectName: string) => {
@@ -812,10 +864,30 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                         <ArrowUpDown className="w-3 h-3" />
                       </button>
                     </th>
-                    <th className="py-2 px-2 text-right text-slate-400">L</th>
-                    <th className="py-2 px-2 text-right text-blue-300">M</th>
-                    <th className="py-2 px-2 text-right text-amber-300">H</th>
-                    <th className="py-2 px-2 text-right text-red-300">C</th>
+                    <th className="py-2 px-2 text-right text-slate-400">
+                      <button onClick={() => handleSort('foundLow')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>L</span>
+                        {renderSortIndicator('foundLow')}
+                      </button>
+                    </th>
+                    <th className="py-2 px-2 text-right text-blue-300">
+                      <button onClick={() => handleSort('foundMedium')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>M</span>
+                        {renderSortIndicator('foundMedium')}
+                      </button>
+                    </th>
+                    <th className="py-2 px-2 text-right text-amber-300">
+                      <button onClick={() => handleSort('foundHigh')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>H</span>
+                        {renderSortIndicator('foundHigh')}
+                      </button>
+                    </th>
+                    <th className="py-2 px-2 text-right text-red-300">
+                      <button onClick={() => handleSort('foundCritical')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>C</span>
+                        {renderSortIndicator('foundCritical')}
+                      </button>
+                    </th>
 
                     <th className="py-2 px-4 text-right text-emerald-400">
                       <button
@@ -827,10 +899,30 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                         <ArrowUpDown className="w-3 h-3" />
                       </button>
                     </th>
-                    <th className="py-2 px-2 text-right text-slate-400">L</th>
-                    <th className="py-2 px-2 text-right text-blue-300">M</th>
-                    <th className="py-2 px-2 text-right text-amber-300">H</th>
-                    <th className="py-2 px-2 text-right text-red-300">C</th>
+                    <th className="py-2 px-2 text-right text-slate-400">
+                      <button onClick={() => handleSort('resolvedLow')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>L</span>
+                        {renderSortIndicator('resolvedLow')}
+                      </button>
+                    </th>
+                    <th className="py-2 px-2 text-right text-blue-300">
+                      <button onClick={() => handleSort('resolvedMedium')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>M</span>
+                        {renderSortIndicator('resolvedMedium')}
+                      </button>
+                    </th>
+                    <th className="py-2 px-2 text-right text-amber-300">
+                      <button onClick={() => handleSort('resolvedHigh')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>H</span>
+                        {renderSortIndicator('resolvedHigh')}
+                      </button>
+                    </th>
+                    <th className="py-2 px-2 text-right text-red-300">
+                      <button onClick={() => handleSort('resolvedCritical')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>C</span>
+                        {renderSortIndicator('resolvedCritical')}
+                      </button>
+                    </th>
 
                     <th className="py-2 px-4 text-right text-amber-400">
                       <button
@@ -842,10 +934,30 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                         <ArrowUpDown className="w-3 h-3" />
                       </button>
                     </th>
-                    <th className="py-2 px-2 text-right text-slate-400">L</th>
-                    <th className="py-2 px-2 text-right text-blue-300">M</th>
-                    <th className="py-2 px-2 text-right text-amber-300">H</th>
-                    <th className="py-2 px-2 text-right text-red-300">C</th>
+                    <th className="py-2 px-2 text-right text-slate-400">
+                      <button onClick={() => handleSort('outstandingLow')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>L</span>
+                        {renderSortIndicator('outstandingLow')}
+                      </button>
+                    </th>
+                    <th className="py-2 px-2 text-right text-blue-300">
+                      <button onClick={() => handleSort('outstandingMedium')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>M</span>
+                        {renderSortIndicator('outstandingMedium')}
+                      </button>
+                    </th>
+                    <th className="py-2 px-2 text-right text-amber-300">
+                      <button onClick={() => handleSort('outstandingHigh')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>H</span>
+                        {renderSortIndicator('outstandingHigh')}
+                      </button>
+                    </th>
+                    <th className="py-2 px-2 text-right text-red-300">
+                      <button onClick={() => handleSort('outstandingCritical')} className="w-full inline-flex items-center justify-end gap-1 hover:text-white transition">
+                        <span>C</span>
+                        {renderSortIndicator('outstandingCritical')}
+                      </button>
+                    </th>
                   </tr>
                 </>
               ) : (
@@ -1093,16 +1205,8 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                       <td className={`${rowPaddingClass} px-4 text-right font-mono font-semibold text-purple-300`}>{proj.riskAccepted}</td>
                       <td className={`${rowPaddingClass} px-4 text-right font-mono font-semibold text-red-400`}>{proj.securityOverdue}</td>
 
-                      <td className={`${rowPaddingClass} px-4`}>
-                        <div className="flex items-center space-x-2 justify-center">
-                          <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                            <div
-                              className="bg-emerald-500 h-full rounded-full"
-                              style={{ width: `${Math.min(100, Math.max(0, proj.resolutionRate))}%` }}
-                            />
-                          </div>
-                          <span className="font-mono text-[11px] text-slate-300 w-10 text-right">{proj.resolutionRate.toFixed(0)}%</span>
-                        </div>
+                      <td className={`${rowPaddingClass} px-4 text-center`}>
+                        <span className="font-mono text-[11px] text-slate-300 whitespace-nowrap">Progress {proj.resolutionRate.toFixed(0)}%</span>
                       </td>
 
                       {viewPrefs.showAllTime && (
@@ -1207,7 +1311,9 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                   )}
                   <td className="py-3.5 px-4 text-right font-mono font-bold text-purple-300">{totals.riskAccepted}</td>
                   <td className="py-3.5 px-4 text-right font-mono font-bold text-red-400">{totals.securityOverdue}</td>
-                  <td className="py-3.5 px-4 text-center font-mono text-emerald-400">{overallResolutionRate.toFixed(1)}%</td>
+                  <td className="py-3.5 px-4 text-center">
+                    <span className="font-mono text-emerald-400 text-[11px] whitespace-nowrap">Progress {overallResolutionRate.toFixed(1)}%</span>
+                  </td>
                   {viewPrefs.showAllTime && <td className="py-3.5 px-4 text-right font-mono text-slate-400">{totals.allTime}</td>}
                   {viewPrefs.showActions && <td className="py-3.5 px-4 text-center text-slate-500">-</td>}
                 </tr>

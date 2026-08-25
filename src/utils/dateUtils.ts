@@ -106,6 +106,10 @@ export function getPresetDateRange(preset: string): { startDate: string; endDate
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
       return { startDate: format(firstDay), endDate: todayStr };
     }
+    case 'last_7_days': {
+      const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return { startDate: format(past), endDate: todayStr };
+    }
     case 'last_30_days': {
       const past = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       return { startDate: format(past), endDate: todayStr };

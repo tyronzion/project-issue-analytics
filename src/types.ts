@@ -61,7 +61,7 @@ export interface FormulaConfig {
 }
 
 export interface DateFilter {
-  preset: 'all' | 'today' | 'this_week' | 'this_month' | 'last_30_days' | 'last_90_days' | 'this_year' | 'custom';
+  preset: 'all' | 'today' | 'this_week' | 'this_month' | 'last_7_days' | 'last_30_days' | 'last_90_days' | 'this_year' | 'custom';
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
 }

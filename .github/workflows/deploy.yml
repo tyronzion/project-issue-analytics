@@ -37,5 +37,4 @@ jobs:
 
           export APP_DIR
           cd "$APP_DIR"
-          chmod +x "$APP_DIR/scripts/deploy.sh"
-          "$APP_DIR/scripts/deploy.sh"
+          bash "$APP_DIR/scripts/deploy.sh"

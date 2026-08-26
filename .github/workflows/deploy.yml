@@ -38,6 +38,21 @@ jobs:
           export APP_DIR
           cd "$APP_DIR"
 
+          echo "[deploy] Validating git write permissions"
+          if [ ! -w "$APP_DIR/.git" ]; then
+            echo "[deploy] .git is not writable by runner user $(id -un)"
+            if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+              echo "[deploy] Attempting automatic ownership fix with sudo"
+              sudo chown -R "$(id -un):$(id -gn)" "$APP_DIR/.git"
+            fi
+          fi
+
+          if [ ! -w "$APP_DIR/.git" ]; then
+            echo "[deploy] ERROR: Runner user $(id -un) cannot write to $APP_DIR/.git"
+            echo "[deploy] Run on server: sudo chown -R $(id -un):$(id -gn) $APP_DIR"
+            exit 1
+          fi
+
           echo "[deploy] Ensuring scripts/deploy.sh matches repository"
           git config --global --add safe.directory "$APP_DIR"
           git fetch origin "$BRANCH"

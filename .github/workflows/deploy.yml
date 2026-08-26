@@ -39,6 +39,7 @@ jobs:
           cd "$APP_DIR"
 
           echo "[deploy] Ensuring scripts/deploy.sh matches repository"
+          git config --global --add safe.directory "$APP_DIR"
           git fetch origin "$BRANCH"
           git checkout "origin/$BRANCH" -- scripts/deploy.sh
 

@@ -4,6 +4,46 @@ set -Eeuo pipefail
 APP_DIR="${APP_DIR:-/opt/project-issue-analytics}"
 BRANCH="${BRANCH:-main}"
 APP_PORT="${APP_PORT:-3000}"
+START_TS="$(date +%s)"
+CURRENT_STAGE="initializing"
+PULL_RESULT="not_started"
+GIT_BEFORE="unknown"
+GIT_AFTER="unknown"
+
+print_summary() {
+  local exit_code="$?"
+  local end_ts duration outcome
+
+  end_ts="$(date +%s)"
+  duration="$((end_ts - START_TS))"
+
+  if [ "$exit_code" -eq 0 ]; then
+    outcome="SUCCESS"
+  else
+    outcome="FAILED"
+  fi
+
+  echo
+  echo "[deploy][summary] outcome=${outcome} exit_code=${exit_code} duration=${duration}s"
+  echo "[deploy][summary] stage=${CURRENT_STAGE} branch=${BRANCH}"
+
+  case "${PULL_RESULT}" in
+    updated)
+      echo "[deploy][summary] pull=SUCCESS (changes applied ${GIT_BEFORE} -> ${GIT_AFTER})"
+      ;;
+    no_changes)
+      echo "[deploy][summary] pull=NO_CHANGES (already at ${GIT_AFTER})"
+      ;;
+    failed)
+      echo "[deploy][summary] pull=FAILED"
+      ;;
+    *)
+      echo "[deploy][summary] pull=${PULL_RESULT}"
+      ;;
+  esac
+}
+
+trap print_summary EXIT
 
 resolve_app_dir() {
   local candidate_a="${APP_DIR}"
@@ -42,19 +82,30 @@ git config --global --unset-all https.proxy || true
 git config --global --add safe.directory "${APP_DIR}" || true
 
 if [ ! -w "${APP_DIR}/.git" ]; then
+  CURRENT_STAGE="permission_check"
   echo "[deploy] ERROR: Runner user cannot write to ${APP_DIR}/.git"
   echo "[deploy] Run on server: sudo chown -R $(id -un):$(id -gn) ${APP_DIR}"
   exit 1
 fi
 
+CURRENT_STAGE="git_sync"
 echo "[deploy] Fetching latest code"
+GIT_BEFORE="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 git fetch origin "${BRANCH}"
 git checkout "${BRANCH}"
 
 # Force repository to exactly match origin/main so changed files fully replace old ones.
 git reset --hard "origin/${BRANCH}"
 git clean -fd
+GIT_AFTER="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 
+if [ "${GIT_BEFORE}" = "${GIT_AFTER}" ]; then
+  PULL_RESULT="no_changes"
+else
+  PULL_RESULT="updated"
+fi
+
+CURRENT_STAGE="dependency_install"
 echo "[deploy] Installing dependencies"
 if [ -f package-lock.json ]; then
   npm ci
@@ -62,12 +113,14 @@ else
   npm install
 fi
 
+CURRENT_STAGE="validation"
 echo "[deploy] Running checks"
 if ! npm run lint; then
   echo "[deploy] ERROR: lint/type-check failed. Auto-fix is not safe in deploy script."
   exit 1
 fi
 
+CURRENT_STAGE="restart_app"
 echo "[deploy] Restarting app with npm run dev (without PM2)"
 
 # Stop any process currently listening on the target app port.
@@ -93,5 +146,6 @@ if ! pgrep -f "npm run dev -- --host 0.0.0.0 --port ${APP_PORT}" >/dev/null 2>&1
   exit 1
 fi
 
+CURRENT_STAGE="completed"
 echo "[deploy] Deployment successful"
 echo "[deploy] App logs: ${APP_DIR}/app.log"

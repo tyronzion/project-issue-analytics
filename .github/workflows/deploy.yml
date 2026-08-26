@@ -38,6 +38,12 @@ jobs:
           export APP_DIR
           cd "$APP_DIR"
 
+          # Clear broken proxy placeholders that can break git fetch on self-hosted runners.
+          if [ "${HTTP_PROXY:-}" = "YOUR_PROXY_HOST:PORT" ] || [ "${HTTPS_PROXY:-}" = "YOUR_PROXY_HOST:PORT" ] || [ "${http_proxy:-}" = "YOUR_PROXY_HOST:PORT" ] || [ "${https_proxy:-}" = "YOUR_PROXY_HOST:PORT" ]; then
+            echo "[deploy] Clearing invalid proxy placeholder values"
+            unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY all_proxy NO_PROXY no_proxy
+          fi
+
           echo "[deploy] Validating git write permissions"
           if [ ! -w "$APP_DIR/.git" ]; then
             echo "[deploy] .git is not writable by runner user $(id -un)"
@@ -55,6 +61,8 @@ jobs:
 
           echo "[deploy] Ensuring scripts/deploy.sh matches repository"
           git config --global --add safe.directory "$APP_DIR"
+          git config --global --unset-all http.proxy || true
+          git config --global --unset-all https.proxy || true
           git fetch origin "$BRANCH"
           git checkout "origin/$BRANCH" -- scripts/deploy.sh
 

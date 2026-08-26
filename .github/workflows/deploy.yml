@@ -37,4 +37,9 @@ jobs:
 
           export APP_DIR
           cd "$APP_DIR"
+
+          echo "[deploy] Ensuring scripts/deploy.sh matches repository"
+          git fetch origin "$BRANCH"
+          git checkout "origin/$BRANCH" -- scripts/deploy.sh
+
           bash "$APP_DIR/scripts/deploy.sh"

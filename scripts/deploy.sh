@@ -3,7 +3,6 @@ set -Eeuo pipefail
 
 APP_DIR="${APP_DIR:-/opt/project-issue-analytics}"
 BRANCH="${BRANCH:-main}"
-PM2_APP_NAME="${PM2_APP_NAME:-project-analytics}"
 APP_PORT="${APP_PORT:-3000}"
 
 resolve_app_dir() {
@@ -69,14 +68,30 @@ if ! npm run lint; then
   exit 1
 fi
 
-echo "[deploy] Restarting app via PM2 using npm run dev"
-if pm2 describe "${PM2_APP_NAME}" >/dev/null 2>&1; then
-  pm2 restart "${PM2_APP_NAME}" --update-env
-else
-  pm2 start "npm run dev -- --host 0.0.0.0 --port ${APP_PORT}" --name "${PM2_APP_NAME}"
+echo "[deploy] Restarting app with npm run dev (without PM2)"
+
+# Stop any process currently listening on the target app port.
+if command -v lsof >/dev/null 2>&1; then
+  ACTIVE_PIDS="$(lsof -tiTCP:${APP_PORT} -sTCP:LISTEN || true)"
+  if [ -n "${ACTIVE_PIDS}" ]; then
+    echo "[deploy] Stopping existing process on port ${APP_PORT}: ${ACTIVE_PIDS}"
+    kill ${ACTIVE_PIDS} || true
+  fi
 fi
 
-pm2 save
+# Extra cleanup for previous npm/vite dev processes.
+pkill -f "npm run dev -- --host 0.0.0.0 --port ${APP_PORT}" || true
+pkill -f "vite --port ${APP_PORT}" || true
+
+nohup npm run dev -- --host 0.0.0.0 --port "${APP_PORT}" > "${APP_DIR}/app.log" 2>&1 &
+
+# Validate that a process is running after restart.
+if ! pgrep -f "npm run dev -- --host 0.0.0.0 --port ${APP_PORT}" >/dev/null 2>&1 && \
+   ! pgrep -f "vite --port ${APP_PORT}" >/dev/null 2>&1; then
+  echo "[deploy] ERROR: npm run dev failed to start. Last 40 lines from app.log:"
+  tail -n 40 "${APP_DIR}/app.log" || true
+  exit 1
+fi
 
 echo "[deploy] Deployment successful"
-pm2 status "${PM2_APP_NAME}" || true
+echo "[deploy] App logs: ${APP_DIR}/app.log"

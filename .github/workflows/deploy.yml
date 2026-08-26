@@ -15,7 +15,6 @@ jobs:
         env:
           APP_DIR: ${{ secrets.APP_DIR }}
           BRANCH: main
-          PM2_APP_NAME: project-analytics
         run: |
           if [ -z "$APP_DIR" ]; then
             APP_DIR="/opt/project-issue-analytics"

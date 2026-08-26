@@ -19,6 +19,23 @@ View your app in AI Studio: https://ai.studio/apps/2f6e33a0-f681-4ab9-8603-9a956
 3. Run the app:
    `npm run dev`
 
+## Durable Data Persistence (Docker + Postgres)
+
+This app can persist issue data to PostgreSQL so data survives app restarts, browser refreshes, and server reboot.
+
+1. Copy [.env.example](.env.example) values for:
+   - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+   - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
+2. Start PostgreSQL via Docker:
+   `docker compose up -d postgres`
+3. Start the app:
+   `npm run dev`
+
+Notes:
+- The app auto-creates the `app_state` table on first run.
+- Data is stored in Docker volume `project_analytics_postgres_data`, so container restarts do not delete it.
+- If DB is unavailable, the app gracefully falls back to local browser storage.
+
 ## Auto-sync Jira Filter (No Manual Import)
 
 This app can automatically pull issues from Jira on startup, so you don't need to manually upload Excel files each time.

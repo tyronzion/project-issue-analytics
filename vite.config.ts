@@ -2,7 +2,8 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { Pool } from 'pg';
+import {defineConfig, loadEnv} from 'vite';
 
 interface JiraApiConfig {
   baseUrl: string;
@@ -18,6 +19,98 @@ interface JiraApiConfig {
 const DEFAULT_JIRA_SEVERITY_FIELD = 'customfield_10072';
 const DEFAULT_JIRA_SECURITY_DUE_DATE_FIELD = 'customfield_10102';
 const DEFAULT_JIRA_SECURITY_TYPE_FIELD = 'customfield_10086';
+const APP_STATE_ROW_ID = 'default';
+
+let persistencePool: Pool | null = null;
+let persistenceInitPromise: Promise<void> | null = null;
+
+function getPersistencePool(): Pool | null {
+  const connectionString = String(process.env.DATABASE_URL || '').trim();
+  const host = String(process.env.DB_HOST || '').trim();
+  const port = Number(process.env.DB_PORT || 5432);
+  const user = String(process.env.DB_USER || '').trim();
+  const password = String(process.env.DB_PASSWORD || '').trim();
+  const database = String(process.env.DB_NAME || '').trim();
+
+  const hasConnectionString = Boolean(connectionString);
+  const hasDiscreteConfig = Boolean(host && user && database);
+  if (!hasConnectionString && !hasDiscreteConfig) {
+    return null;
+  }
+
+  if (persistencePool) {
+    return persistencePool;
+  }
+
+  persistencePool = new Pool(
+    hasConnectionString
+      ? { connectionString }
+      : {
+          host,
+          port,
+          user,
+          password,
+          database,
+        }
+  );
+
+  return persistencePool;
+}
+
+async function ensurePersistenceTable(): Promise<void> {
+  const pool = getPersistencePool();
+  if (!pool) return;
+
+  if (!persistenceInitPromise) {
+    persistenceInitPromise = (async () => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS app_state (
+          id TEXT PRIMARY KEY,
+          issues JSONB NOT NULL DEFAULT '[]'::jsonb,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+
+      await pool.query(
+        `INSERT INTO app_state (id, issues)
+         VALUES ($1, '[]'::jsonb)
+         ON CONFLICT (id) DO NOTHING`,
+        [APP_STATE_ROW_ID]
+      );
+    })();
+  }
+
+  await persistenceInitPromise;
+}
+
+async function loadPersistedIssues(): Promise<any[] | null> {
+  const pool = getPersistencePool();
+  if (!pool) return null;
+
+  await ensurePersistenceTable();
+  const result = await pool.query('SELECT issues FROM app_state WHERE id = $1 LIMIT 1', [APP_STATE_ROW_ID]);
+  const row = result.rows[0];
+  if (!row) return [];
+
+  const issues = row.issues;
+  return Array.isArray(issues) ? issues : [];
+}
+
+async function savePersistedIssues(issues: any[]): Promise<void> {
+  const pool = getPersistencePool();
+  if (!pool) {
+    throw new Error('Database is not configured. Set DATABASE_URL or DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME.');
+  }
+
+  await ensurePersistenceTable();
+  await pool.query(
+    `UPDATE app_state
+     SET issues = $2::jsonb,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [APP_STATE_ROW_ID, JSON.stringify(Array.isArray(issues) ? issues : [])]
+  );
+}
 
 function normalizeJiraConfig(config: Partial<JiraApiConfig>): JiraApiConfig {
   const rawBaseUrl = String(config.baseUrl || '').trim();
@@ -276,6 +369,50 @@ function jiraDatasourcePlugin() {
   return {
     name: 'jira-datasource-plugin',
     configureServer(server: any) {
+      server.middlewares.use('/api/state/issues', async (_req: any, res: any) => {
+        try {
+          const req = _req;
+          const method = String(req?.method || 'GET').toUpperCase();
+
+          if (method === 'GET') {
+            const issues = await loadPersistedIssues();
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              source: 'postgres',
+              configured: issues !== null,
+              issues: issues || [],
+            }));
+            return;
+          }
+
+          if (method === 'POST') {
+            const payload = await readJsonBody(req);
+            const issues = Array.isArray(payload?.issues) ? payload.issues : [];
+            await savePersistedIssues(issues);
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              source: 'postgres',
+              saved: issues.length,
+            }));
+            return;
+          }
+
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Method not allowed' }));
+        } catch (error: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            source: 'postgres',
+            error: String(error?.message || error),
+          }));
+        }
+      });
+
       server.middlewares.use('/api/jira/issues', async (_req: any, res: any) => {
         try {
           const req = _req;
@@ -300,7 +437,11 @@ function jiraDatasourcePlugin() {
   };
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  // Make .env/.env.local variables available to server middleware via process.env.
+  const env = loadEnv(mode, process.cwd(), '');
+  Object.assign(process.env, env);
+
   const certificateDirectory = path.resolve(__dirname, 'certificates');
   const certificatePath = path.join(certificateDirectory, '10.6.64.2.crt');
   const privateKeyPath = path.join(certificateDirectory, '10.6.64.2.key');

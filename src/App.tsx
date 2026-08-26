@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Layers,
   PieChart,
@@ -28,6 +28,7 @@ import {
 import { computeProjectSummaries } from './utils/metricsEngine';
 import { exportToExcel } from './utils/excelParser';
 import { parseExcelOrCsvFile, mapObjectsToIssueRecords } from './utils/excelParser';
+import { loadRemoteIssues, saveRemoteIssues } from './utils/remotePersistence';
 
 import { Navbar } from './components/Navbar';
 import { DateRangeFilterBar } from './components/DateRangeFilterBar';
@@ -82,6 +83,9 @@ export default function App() {
   const [selectedSeverityFilter, setSelectedSeverityFilter] = useState<string>('');
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [isJiraSyncing, setIsJiraSyncing] = useState(false);
+  const [isRemoteHydrated, setIsRemoteHydrated] = useState(false);
+  const [isRemotePersistenceConfigured, setIsRemotePersistenceConfigured] = useState(false);
+  const remoteSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Modal visibility states
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -97,12 +101,60 @@ export default function App() {
     saveSettings(settings);
   }, [settings]);
 
+  // 2.1 Load remotely persisted issues from Postgres, then allow fallback bootstrap.
+  useEffect(() => {
+    let isCancelled = false;
+
+    const hydrateRemoteIssues = async () => {
+      try {
+        const { issues: remoteIssues, configured } = await loadRemoteIssues();
+        if (isCancelled) return;
+        setIsRemotePersistenceConfigured(configured);
+
+        if (configured && Array.isArray(remoteIssues) && remoteIssues.length > 0) {
+          setIssues(remoteIssues);
+        }
+      } catch (error) {
+        console.warn('Remote database is unavailable. Falling back to local storage/data bootstrap.', error);
+      } finally {
+        if (!isCancelled) {
+          setIsRemoteHydrated(true);
+        }
+      }
+    };
+
+    hydrateRemoteIssues();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   // 3. Persist dataset on changes if autoSaveData is enabled
   useEffect(() => {
-    if (settings.autoSaveData) {
-      savePersistedData(issues);
+    if (!settings.autoSaveData) return;
+
+    savePersistedData(issues);
+
+    if (!isRemoteHydrated || !isRemotePersistenceConfigured) return;
+
+    if (remoteSaveTimeoutRef.current) {
+      clearTimeout(remoteSaveTimeoutRef.current);
     }
-  }, [issues, settings.autoSaveData]);
+
+    remoteSaveTimeoutRef.current = setTimeout(() => {
+      saveRemoteIssues(issues).catch(error => {
+        console.warn('Failed to persist issues to remote database:', error);
+      });
+    }, 600);
+
+    return () => {
+      if (remoteSaveTimeoutRef.current) {
+        clearTimeout(remoteSaveTimeoutRef.current);
+        remoteSaveTimeoutRef.current = null;
+      }
+    };
+  }, [issues, settings.autoSaveData, isRemoteHydrated, isRemotePersistenceConfigured]);
 
   // Cancelled records are excluded from the permanent local dataset.
   useEffect(() => {
@@ -117,6 +169,7 @@ export default function App() {
     let isCancelled = false;
 
     const bootstrapDefaultData = async () => {
+      if (!isRemoteHydrated) return;
       if (issues.length > 0) return;
       setIsDataLoading(true);
       try {

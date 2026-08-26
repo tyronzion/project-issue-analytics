@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 APP_DIR="${APP_DIR:-/opt/project-issue-analytics}"
 BRANCH="${BRANCH:-main}"
-APP_PORT="${APP_PORT:-3000}"
+APP_PORT="${APP_PORT:-80}"
 START_TS="$(date +%s)"
 CURRENT_STAGE="initializing"
 PULL_RESULT="not_started"

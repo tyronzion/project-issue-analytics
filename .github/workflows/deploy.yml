@@ -15,6 +15,7 @@ jobs:
         env:
           APP_DIR: ${{ secrets.APP_DIR }}
           BRANCH: main
+          APP_PORT: 80
         run: |
           if [ -z "$APP_DIR" ]; then
             APP_DIR="/opt/project-issue-analytics"

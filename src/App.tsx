@@ -44,6 +44,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { TargetProjectListModal } from './components/TargetProjectListModal';
 import { ClearDataModal } from './components/ClearDataModal';
 import { LoginScreen } from './components/LoginScreen';
+import { getTabFromPath, getPathForTab, getTitleForTab } from './utils/routes';
 import { JiraIntegrationPage, JiraCredentials } from './components/JiraIntegrationPage';
 
 const AUTH_SESSION_KEY = 'project_issue_analytics_authenticated_v1';
@@ -76,7 +77,9 @@ export default function App() {
     return [];
   });
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(
+    () => getTabFromPath(window.location.pathname) ?? 'dashboard'
+  );
   const [drilldownProject, setDrilldownProject] = useState<string>('');
   const [drilldownPlatform, setDrilldownPlatform] = useState<string>('ALL');
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('');
@@ -95,6 +98,27 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTargetListOpen, setIsTargetListOpen] = useState(false);
   const [isClearDataOpen, setIsClearDataOpen] = useState(false);
+
+  // 1.1 Keep the URL in sync with the active tab so each page has its own link.
+  useEffect(() => {
+    const currentTab = getTabFromPath(window.location.pathname);
+    const targetPath = getPathForTab(activeTab);
+    if (currentTab === undefined) {
+      // Unknown path: show the default page under its canonical URL.
+      window.history.replaceState(null, '', targetPath + window.location.search);
+    } else if (currentTab !== activeTab) {
+      window.history.pushState(null, '', targetPath);
+    }
+    document.title = `${getTitleForTab(activeTab)} · Security Issues Analytics`;
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setActiveTab(getTabFromPath(window.location.pathname) ?? 'dashboard');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // 2. Persist settings on changes
   useEffect(() => {

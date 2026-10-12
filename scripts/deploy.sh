@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP_DIR="${APP_DIR:-/opt/project-issue-analytics}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="${APP_DIR:-}"
 BRANCH="${BRANCH:-main}"
 APP_PORT="${APP_PORT:-80}"
 START_TS="$(date +%s)"
@@ -9,6 +10,10 @@ CURRENT_STAGE="initializing"
 PULL_RESULT="not_started"
 GIT_BEFORE="unknown"
 GIT_AFTER="unknown"
+FAILED_COMMAND=""
+FAILED_LINE=""
+
+trap 'FAILED_COMMAND="${BASH_COMMAND}"; FAILED_LINE="${LINENO}"' ERR
 
 print_summary() {
   local exit_code="$?"
@@ -26,6 +31,9 @@ print_summary() {
   echo
   echo "[deploy][summary] outcome=${outcome} exit_code=${exit_code} duration=${duration}s"
   echo "[deploy][summary] stage=${CURRENT_STAGE} branch=${BRANCH}"
+  if [ "$exit_code" -ne 0 ] && [ -n "${FAILED_COMMAND}" ]; then
+    echo "[deploy][summary] failed_command=\"${FAILED_COMMAND}\" line=${FAILED_LINE}"
+  fi
 
   case "${PULL_RESULT}" in
     updated)
@@ -46,25 +54,28 @@ print_summary() {
 trap print_summary EXIT
 
 resolve_app_dir() {
-  local candidate_a="${APP_DIR}"
-  local candidate_b="${APP_DIR}/project-issue-analytics"
-
-  if [ -d "${candidate_a}/.git" ]; then
-    echo "${candidate_a}"
-    return
+  local candidates=()
+  if [ -n "${APP_DIR}" ]; then
+    candidates+=("${APP_DIR}" "${APP_DIR}/project-issue-analytics")
   fi
+  # Default to the repository this script lives in, then the legacy /opt location.
+  candidates+=("$(dirname "${SCRIPT_DIR}")" "/opt/project-issue-analytics" "/opt/project-issue-analytics/project-issue-analytics")
 
-  if [ -d "${candidate_b}/.git" ]; then
-    echo "${candidate_b}"
-    return
-  fi
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [ -d "${candidate}/.git" ]; then
+      echo "${candidate}"
+      return 0
+    fi
+  done
 
-  echo "[deploy] ERROR: Could not find repository in:"
-  echo "  - ${candidate_a}"
-  echo "  - ${candidate_b}"
-  exit 1
+  # stderr, so the message is not swallowed by the command substitution.
+  echo "[deploy] ERROR: Could not find repository in:" >&2
+  printf '  - %s\n' "${candidates[@]}" >&2
+  return 1
 }
 
+CURRENT_STAGE="resolve_app_dir"
 APP_DIR="$(resolve_app_dir)"
 cd "${APP_DIR}"
 
@@ -121,7 +132,13 @@ if ! npm run lint; then
 fi
 
 CURRENT_STAGE="restart_app"
-echo "[deploy] Restarting app with npm run dev (without PM2)"
+echo "[deploy] Restarting app with npm run dev (without PM2) on port ${APP_PORT}"
+
+if [ "${APP_PORT}" -lt 1024 ] && [ "$(id -u)" -ne 0 ]; then
+  echo "[deploy] WARNING: port ${APP_PORT} is privileged and $(id -un) is not root."
+  echo "[deploy]          If startup fails with EACCES, run: sudo setcap 'cap_net_bind_service=+ep' \"\$(readlink -f \"\$(command -v node)\")\""
+  echo "[deploy]          or deploy on a higher port: APP_PORT=8080 ./deploy.sh"
+fi
 
 # Stop any process currently listening on the target app port.
 if command -v lsof >/dev/null 2>&1; then
@@ -134,16 +151,28 @@ fi
 
 # Extra cleanup for previous npm/vite dev processes.
 pkill -f "npm run dev -- --host 0.0.0.0 --port ${APP_PORT} --strictPort" || true
+pkill -f "vite --port=${APP_PORT}" || true
 pkill -f "vite --port ${APP_PORT}" || true
 
-nohup npm run dev -- --host 0.0.0.0 --port "${APP_PORT}" --strictPort > "${APP_DIR}/app.log" 2>&1 &
+# scripts/start-dev.sh reads the port from APP_PORT (it ignores CLI flags).
+APP_PORT="${APP_PORT}" nohup npm run dev > "${APP_DIR}/app.log" 2>&1 &
+DEV_PID=$!
 
-# Give the process a moment to either bind successfully or fail.
-sleep 2
+# Wait up to 20s for the dev server to bind the port, failing fast if it exits.
+STARTED=false
+for _ in $(seq 1 20); do
+  if ! kill -0 "${DEV_PID}" 2>/dev/null; then
+    break
+  fi
+  if grep -q "Local:" "${APP_DIR}/app.log" 2>/dev/null || \
+     { command -v lsof >/dev/null 2>&1 && [ -n "$(lsof -tiTCP:${APP_PORT} -sTCP:LISTEN 2>/dev/null || true)" ]; }; then
+    STARTED=true
+    break
+  fi
+  sleep 1
+done
 
-# Validate that a process is running after restart.
-if ! pgrep -f "npm run dev -- --host 0.0.0.0 --port ${APP_PORT} --strictPort" >/dev/null 2>&1 && \
-   ! pgrep -f "vite --port ${APP_PORT}" >/dev/null 2>&1; then
+if [ "${STARTED}" != true ]; then
   echo "[deploy] ERROR: npm run dev failed to start. Last 40 lines from app.log:"
   tail -n 40 "${APP_DIR}/app.log" || true
   exit 1

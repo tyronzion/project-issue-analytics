@@ -16,6 +16,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { isIssueSecurityOverdue, getNormalizedSeverity, isDependabotsIssue } from '../utils/metricsEngine';
+import { exportRowsToCsv } from '../utils/excelParser';
 import { SeverityLevel } from '../types';
 
 const SEVERITY_LEVELS: {
@@ -64,7 +65,6 @@ interface IssuesTableViewProps {
   selectedProject?: string;
   selectedPlatform?: string;
   onClearProjectFilter: () => void;
-  onExportCsv: () => void;
   onOpenClearData?: () => void;
 }
 
@@ -75,7 +75,6 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
   selectedProject = '',
   selectedPlatform = 'ALL',
   onClearProjectFilter,
-  onExportCsv,
   onOpenClearData,
 }) => {
   const [search, setSearch] = useState('');
@@ -199,6 +198,30 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
 
     return { levels, unrated, rated, weighted, riskScore };
   }, [filtered, formulaConfig]);
+
+  // Export exactly what the table shows: every row matching the active filters (all pages).
+  const handleExportCsv = () => {
+    const rows = filtered.map(issue => {
+      const severity = getNormalizedSeverity(issue);
+      return {
+        'Issue Key': issue.id,
+        'Project': issue.project,
+        'Summary': issue.summary,
+        'Platform Tag': issue.platformTag || 'GENERAL',
+        'Created Date': issue.created || issue.createdRaw || '',
+        'Status Changed': issue.statusCategoryChange || issue.statusCategoryChangeRaw || '',
+        'Status': issue.status,
+        'Assignee': issue.assignee || 'Unassigned',
+        'Severity': severity ? severity.charAt(0).toUpperCase() + severity.slice(1) : 'Unrated',
+        'Priority': issue.priority || '',
+        'Issue Type': issue.issueType || '',
+        'Security Due Date': issue.securityDueDate || issue.securityDueDateRaw || '',
+        'Overdue': isIssueSecurityOverdue(issue, formulaConfig, dateFilter) ? 'Yes' : 'No',
+        'Dependabots': isDependabotsIssue(issue) ? 'Yes' : 'No',
+      };
+    });
+    exportRowsToCsv(rows, `Issues_Filtered_${new Date().toISOString().split('T')[0]}.csv`);
+  };
 
   const getStatusBadge = (status: string) => {
     const category = getStatusCategory(status);
@@ -366,11 +389,13 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
             )}
 
             <button
-              onClick={onExportCsv}
-              className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition"
+              onClick={handleExportCsv}
+              disabled={filtered.length === 0}
+              title={`Export the ${filtered.length} issues matching the current filters`}
+              className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
+              <span>Export CSV ({filtered.length})</span>
             </button>
           </div>
         </div>

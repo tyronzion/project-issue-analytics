@@ -511,24 +511,6 @@ export default function App() {
   };
 
   // Handler: Export CSV
-  const handleExportCsv = () => {
-    const includeSeverity = window.confirm(
-      'Export CSV with severity columns?\n\nClick OK for WITH severity (Low/Medium/High/Critical).\nClick Cancel for TOTALS only.'
-    );
-
-    let dateRangeText = 'All Time';
-    if (settings.dateFilter.startDate || settings.dateFilter.endDate) {
-      dateRangeText = `${settings.dateFilter.startDate || 'Beginning'} to ${settings.dateFilter.endDate || 'Present'}`;
-    }
-    exportToExcel(
-      summaries,
-      filteredIssues,
-      dateRangeText,
-      `Project_Issues_Filtered_${new Date().toISOString().split('T')[0]}.csv`,
-      includeSeverity
-    );
-  };
-
   // Handler: Reset Data to Empty Dataset
   const handleResetDataToSample = () => {
     setIssues([]);
@@ -873,7 +855,6 @@ export default function App() {
               setDrilldownProject('');
               setDrilldownPlatform('ALL');
             }}
-            onExportCsv={handleExportCsv}
             onOpenClearData={() => setIsClearDataOpen(true)}
           />
         )}
@@ -1041,7 +1022,6 @@ export default function App() {
                 setDrilldownProject('');
                 setDrilldownPlatform('ALL');
               }}
-              onExportCsv={handleExportCsv}
               onOpenClearData={() => setIsClearDataOpen(true)}
             />
           </div>

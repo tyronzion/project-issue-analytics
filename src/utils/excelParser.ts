@@ -200,6 +200,12 @@ export function mergeIssueDatasets(
   };
 }
 
+export function exportRowsToCsv(rows: Record<string, string | number>[], fileName: string): void {
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'Issues');
+  XLSX.writeFile(workbook, fileName, { bookType: 'csv' });
+}
+
 export function exportToExcel(
   summaries: ProjectSummary[],
   filteredIssues: IssueRecord[],

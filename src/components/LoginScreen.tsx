@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { CircleAlert, LockKeyhole, LogIn, UserRound } from 'lucide-react';
 import cloudstaffLogo from '../assets/cloudstaff-logo.svg';
+import { isValidAppLogin } from '../utils/appLogin';
 
 interface LoginScreenProps {
   onAuthenticated: () => void;
 }
 
-const DEFAULT_USERNAME = 'csdatasec';
-const DEFAULT_PASSWORD = 'CSd4t4s3c!';
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => {
   const [username, setUsername] = useState('');
@@ -16,9 +15,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const isValid =
-      username.trim().toLowerCase() === DEFAULT_USERNAME.toLowerCase() &&
-      password.trim() === DEFAULT_PASSWORD;
+    const isValid = isValidAppLogin(username, password);
     setHasError(!isValid);
     if (isValid) onAuthenticated();
   };

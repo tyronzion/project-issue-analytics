@@ -123,12 +123,62 @@ function wireDateRange(storageKey, onChange) {
   press($('#period'), $(`#period button[data-v="${ui.period}"]`));
 }
 
+// Refresh with live progress. The server reports { running, percent, step, ok, error, … } at api/progress;
+// this polls it quickly while a refresh runs (manual or the automatic one) and slowly otherwise.
 function wireRefresh(reload) {
   const btn = $('#refreshBtn'), label = btn.innerHTML;
+  btn.insertAdjacentHTML('beforebegin', `
+    <div id="refreshProgress" class="rprog" hidden>
+      <div class="rprog-bar" role="progressbar" aria-label="Refresh progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+      <span class="rprog-text" aria-live="polite"></span>
+    </div>`);
+  const box = $('#refreshProgress'), bar = box.querySelector('.rprog-bar'), text = box.querySelector('.rprog-text');
+  const dur = (ms) => { const s = Math.max(1, Math.round(ms / 1000)); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`; };
+  let wasRunning = false, timer = null, hideTimer = null;
+
+  function show(p) {
+    clearTimeout(hideTimer);
+    box.hidden = false;
+    box.classList.toggle('done', !p.running && p.ok === true);
+    box.classList.toggle('failed', !p.running && p.ok === false);
+    bar.firstElementChild.style.width = `${p.percent}%`;
+    bar.setAttribute('aria-valuenow', p.percent);
+    if (p.running) {
+      text.textContent = `${p.percent}% · ${p.step}${p.trigger === 'auto' ? ' (auto refresh)' : ''}`;
+      text.title = text.textContent;
+      btn.disabled = true;
+      btn.textContent = `Refreshing ${p.percent}%`;
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = label;
+      if (p.ok) {
+        text.textContent = `✓ Refreshed · ${(p.tickets ?? 0).toLocaleString()} tickets in ${dur(p.finishedAt - p.startedAt)}`;
+        hideTimer = setTimeout(() => { box.hidden = true; }, 8000);
+      } else {
+        text.textContent = `✕ Refresh failed: ${p.error}`;
+      }
+    }
+  }
+
+  async function poll() {
+    clearTimeout(timer);
+    let p = null;
+    try { p = await (await fetch('api/progress')).json(); } catch {}
+    if (p) {
+      if (p.running) show(p);
+      else if (wasRunning) { show(p); await reload(); }
+      wasRunning = p.running;
+    }
+    timer = setTimeout(poll, p?.running ? 700 : 4000);
+  }
+
   btn.addEventListener('click', async () => {
-    btn.disabled = true; btn.textContent = 'Refreshing…';
-    try { await fetch('api/refresh', { method: 'POST' }); await reload(); } finally { btn.disabled = false; btn.innerHTML = label; }
+    btn.disabled = true; btn.textContent = 'Refreshing 0%';
+    try { show(await (await fetch('api/refresh', { method: 'POST' })).json()); } catch {}
+    wasRunning = true;
+    poll();
   });
+  poll();
 }
 
 // Highlights the sidebar link of the section in view.

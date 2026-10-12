@@ -3,7 +3,8 @@
 export class AuthError extends Error {}
 
 // includeArchived: also return archived tickets (UberTicket's "Include archived" filter sends _includeArchived=1).
-export async function fetchTemplateTickets({ api, token, templateIds, lookbackDays, maxPages, includeArchived = true, log = () => {} }) {
+// onPage(page, rowsSoFar) is called after each page, for progress reporting.
+export async function fetchTemplateTickets({ api, token, templateIds, lookbackDays, maxPages, includeArchived = true, log = () => {}, onPage = () => {} }) {
   const cutoff = Date.now() - lookbackDays * 86_400_000;
   const all = [];
   const seen = new Set();
@@ -20,6 +21,7 @@ export async function fetchTemplateTickets({ api, token, templateIds, lookbackDa
     const rows = Array.isArray(body.data) ? body.data : body.data?.data ?? [];
     for (const r of rows) if (!seen.has(r.id)) { seen.add(r.id); all.push(r); }
     log(`page ${page}: ${rows.length} tickets`);
+    onPage(page, all.length);
 
     const limit = Number(body.limit) || rows.length;
     if (rows.length === 0 || rows.length < limit) break;

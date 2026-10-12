@@ -190,3 +190,15 @@
   #pwRow[hidden], #userRow[hidden] { display: none; }
   #userRow { display: grid; gap: 6px; }
   #settingsUser, #settingsPw { width: 100%; padding: 9px 11px; border: 1px solid var(--cs-border); border-radius: 8px; }
+
+  /* Refresh progress (top bar) */
+  .rprog { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--cs-muted); max-width: 420px; }
+  .rprog[hidden] { display: none; }
+  .rprog-bar { width: 120px; height: 8px; border-radius: 999px; background: var(--cs-blue-100); overflow: hidden; flex: none; }
+  .rprog-bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--cs-primary); transition: width .4s ease; }
+  .rprog-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .rprog.done .rprog-bar i { background: var(--good); }
+  .rprog.done .rprog-text { color: var(--cs-text); }
+  .rprog.failed .rprog-bar i { background: var(--critical); }
+  .rprog.failed .rprog-text { color: #b42318; white-space: normal; }
+  #refreshBtn:disabled { opacity: 0.85; cursor: progress; font-variant-numeric: tabular-nums; }

@@ -110,11 +110,14 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
   let activityCache = {};
   try { activityCache = JSON.parse(await readFile(cacheFile, 'utf8')); } catch {}
 
-  async function addActivity(rows) {
+  async function addActivity(rows, onProgress = () => {}) {
     const stale = rows.filter((r) => activityCache[r.id]?.updated_at !== r.updated_at);
     if (stale.length) log(`reading activity log for ${stale.length} tickets…`);
+    let done = 0;
+    onProgress(0, stale.length);
     await mapLimit(stale, 4, async (r) => {
       activityCache[r.id] = { updated_at: r.updated_at, ...(await fetchActivitySummary({ api: config.api, token, ticketId: r.id })) };
+      onProgress(++done, stale.length);
     });
     if (stale.length) {
       await mkdir(path.dirname(cacheFile), { recursive: true });
@@ -126,9 +129,29 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
     }
   }
 
-  async function refresh() {
-    if (state.loading) return;
+  // Refresh progress, shown live on the pages (GET /api/progress).
+  // Percent = work done / expected work, counting one unit per ticket-list page and per activity log
+  // read (both are one API request). Expected work comes from the previous run, kept on disk so the
+  // estimate also holds after a restart; the percent never goes backwards and ends at 100.
+  const pagesFile = path.join(dataDir, 'pages.json');
+  let last = { pages: {}, logs: 0 };
+  try { last = { ...last, ...JSON.parse(await readFile(pagesFile, 'utf8')) }; } catch {}
+  const progress = { running: false, trigger: null, percent: 0, step: '', startedAt: null, finishedAt: null, ok: null, error: null, tickets: null };
+  const setProgress = (patch) => {
+    const next = patch.percent == null ? progress.percent : Math.max(0, Math.min(100, Math.round(patch.percent)));
+    Object.assign(progress, patch, { percent: patch.running === true ? next : Math.max(progress.percent, next) });
+  };
+
+  let running = null;
+  // Starts a refresh, or joins the one already running. trigger: 'manual' | 'auto' | 'token'.
+  function refresh(trigger = 'auto') {
+    if (!running) running = runRefresh(trigger).finally(() => { running = null; });
+    return running;
+  }
+
+  async function runRefresh(trigger) {
     state.loading = true;
+    setProgress({ running: true, trigger, percent: 0, step: 'Starting…', startedAt: Date.now(), finishedAt: null, ok: null, error: null, tickets: null });
     try {
       if (config.demo) {
         state.raw = demoTickets(config.templates);
@@ -138,23 +161,53 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
         throw new AuthError('No UberTicket token saved yet. Open Settings and paste one.');
       } else {
         const common = { api: config.api, token, maxPages: config.maxPages, includeArchived: config.includeArchived };
-        const raw = await fetchTemplateTickets({ ...common, templateIds: config.templates.map((t) => t.id), lookbackDays: config.lookbackDays });
-        const assess = {};
-        for (const m of config.assessments) {
-          assess[m.key] = await fetchTemplateTickets({ ...common, templateIds: [m.templateId], lookbackDays: m.lookbackDays });
+        const lists = [
+          { key: 'dpsa', label: 'DPSA', templateIds: config.templates.map((t) => t.id), lookbackDays: config.lookbackDays },
+          ...config.assessments.map((m) => ({ key: m.key, label: m.short, templateIds: [m.templateId], lookbackDays: m.lookbackDays })),
+        ];
+        const fetched = {};
+        const pages = {};
+        let pagesDone = 0;
+        // Expected units: pages per list from last time (at least 3 if unknown) + last run's log reads.
+        const expectedPages = (key) => Math.max(last.pages[key] ?? 3, pages[key] ?? 0);
+        const expectedTotal = () => lists.reduce((n, l) => n + expectedPages(l.key), 0) + Math.max(1, last.logs);
+        for (const l of lists) {
+          setProgress({ percent: (100 * pagesDone) / expectedTotal(), step: `Loading ${l.label} tickets…` });
+          fetched[l.key] = await fetchTemplateTickets({
+            ...common, templateIds: l.templateIds, lookbackDays: l.lookbackDays,
+            onPage: (page, count) => {
+              pages[l.key] = page;
+              pagesDone++;
+              setProgress({ percent: (100 * pagesDone) / expectedTotal(), step: `Loading ${l.label} tickets · page ${page} of ~${expectedPages(l.key)} · ${count} so far` });
+            },
+          });
         }
+        const raw = fetched.dpsa;
+        const assess = Object.fromEntries(config.assessments.map((m) => [m.key, fetched[m.key]]));
         // Submitted / resolved times (MTTR, SLA) come from each ticket's activity log.
-        await addActivity([...raw, ...Object.values(assess).flat()]);
+        let logsTotal = 0;
+        await addActivity([...raw, ...Object.values(assess).flat()], (done, total) => {
+          logsTotal = total;
+          setProgress(total
+            ? { percent: (100 * (pagesDone + done)) / (pagesDone + total), step: `Reading activity logs · ${done} / ${total}` }
+            : { percent: 99, step: 'Activity logs up to date' });
+        });
+        last = { pages, logs: logsTotal };
+        await mkdir(dataDir, { recursive: true });
+        await writeFile(pagesFile, JSON.stringify(last));
         state.raw = raw;
         state.assess = assess;
       }
       state.fetchedAt = Date.now();
       state.error = state.errorKind = null;
       log(`loaded ${state.raw.length} DPSA, ${config.assessments.map((m) => `${state.assess[m.key]?.length ?? 0} ${m.short}`).join(', ')} tickets`);
+      const tickets = state.raw.length + Object.values(state.assess).reduce((n, a) => n + (a?.length ?? 0), 0);
+      setProgress({ running: false, percent: 100, step: 'Done', finishedAt: Date.now(), ok: true, tickets });
     } catch (err) {
       state.error = err.message;
       state.errorKind = err instanceof AuthError ? 'auth' : 'fetch';
       log(`refresh failed: ${err.message}`);
+      setProgress({ running: false, step: 'Failed', finishedAt: Date.now(), ok: false, error: err.message });
     } finally {
       state.loading = false;
     }
@@ -210,10 +263,12 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
     });
   });
 
-  app.post('/api/refresh', async (_req, res) => {
-    await refresh();
-    res.json({ ok: !state.error, error: state.error });
+  // Starts a refresh (or joins the running one) and returns right away; follow it with GET /api/progress.
+  app.post('/api/refresh', (_req, res) => {
+    refresh('manual');
+    res.status(202).json(progress);
   });
+  app.get('/api/progress', (_req, res) => res.json(progress));
 
   // Token settings. The token itself is never sent back to the browser; only whether one is set and when it expires.
   // Changing the token from another machine (e.g. when this runs on a shared server) needs
@@ -263,7 +318,7 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
     token = next;
     tokenSavedAt = await tokenStore.save(token);
     await removePlainTokenFromEnvFile();
-    await refresh();
+    await refresh('token');
     res.json(tokenStatus());
   });
 
@@ -288,8 +343,8 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
       if (env.PH_HOLIDAYS !== '0' && !config.business.holidayYears.includes(year)) {
         log(`No Philippine holidays listed for ${year} yet: add them to phHolidays.js (or HOLIDAYS in .env.local).`);
       }
-      refresh();
-      timer = setInterval(refresh, config.refreshMs);
+      refresh('auto');
+      timer = setInterval(() => refresh('auto'), config.refreshMs);
     },
     stop() { clearInterval(timer); },
   };

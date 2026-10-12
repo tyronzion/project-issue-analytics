@@ -9,6 +9,9 @@ export const TAB_ROUTES: { tab: ActiveTab; path: string; title: string }[] = [
   { tab: 'issues', path: '/issues', title: 'All Issues' },
   { tab: 'projects', path: '/projects', title: 'Projects & Aliases' },
   { tab: 'formulas', path: '/formulas', title: 'Formulas' },
+  { tab: 'dpsa', path: '/dpsa', title: 'DPSA Monitoring' },
+  { tab: 'full-assessment', path: '/full-assessment', title: 'Full Assessment' },
+  { tab: 'roe', path: '/rules-of-engagement', title: 'Rules of Engagement' },
 ];
 
 // Extra paths that should open an existing tab.
@@ -17,6 +20,9 @@ const PATH_ALIASES: Record<string, ActiveTab> = {
   '/metrics': 'dashboard',
   '/seal': 'seal',
   '/all-issues': 'issues',
+  '/fullassessment': 'full-assessment',
+  '/rulesofengagement': 'roe',
+  '/roe': 'roe',
 };
 
 function normalizePath(pathname: string): string {

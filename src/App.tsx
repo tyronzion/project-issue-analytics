@@ -7,6 +7,9 @@ import {
   FolderKanban,
   Calculator,
   Bot,
+  Gauge,
+  ScanSearch,
+  ClipboardCheck,
 } from 'lucide-react';
 import { 
   IssueRecord, 
@@ -46,6 +49,7 @@ import { ClearDataModal } from './components/ClearDataModal';
 import { LoginScreen } from './components/LoginScreen';
 import { getTabFromPath, getPathForTab, getTitleForTab } from './utils/routes';
 import { JiraIntegrationPage, JiraCredentials } from './components/JiraIntegrationPage';
+import { MonitorFrame, isMonitorTab } from './components/MonitorFrame';
 
 const AUTH_SESSION_KEY = 'project_issue_analytics_authenticated_v1';
 const AUTO_SYNC_INTERVAL_MS = 15 * 60 * 1000;
@@ -685,8 +689,8 @@ export default function App() {
         customProjectListCount={settings.customProjectList?.length || 0}
       />
 
-      {/* Date Range Filter Bar */}
-      <DateRangeFilterBar
+      {/* Date Range Filter Bar (the UberTicket monitoring tabs have their own filters) */}
+      {!isMonitorTab(activeTab) && <DateRangeFilterBar
         dateFilter={settings.dateFilter}
         onChange={handleDateFilterChange}
         projectOptions={projectFilterOptions}
@@ -697,7 +701,7 @@ export default function App() {
         isDataLoading={isDataLoading}
         totalFilteredCount={filteredIssues.length}
         totalAllCount={severityFilteredIssues.length}
-      />
+      />}
 
       {/* Main Content Workspace */}
       <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -807,6 +811,27 @@ export default function App() {
                 <Calculator className="w-4 h-4" />
                 <span>Formula Rules</span>
               </button>
+
+              <p className="px-3 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">UberTicket Monitoring</p>
+              {([
+                ['dpsa', 'DPSA Monitoring', Gauge],
+                ['full-assessment', 'Full Assessment', ScanSearch],
+                ['roe', 'Rules of Engagement', ClipboardCheck],
+              ] as const).map(([tab, label, Icon]) => (
+                <button
+                  key={tab}
+                  id={`tab-${tab}-btn`}
+                  onClick={() => setActiveTab(tab)}
+                  className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    activeTab === tab
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-900/20'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{label}</span>
+                </button>
+              ))}
 
             </div>
           </aside>
@@ -1033,6 +1058,8 @@ export default function App() {
             isSyncing={isJiraSyncing}
           />
         )}
+
+        {isMonitorTab(activeTab) && <MonitorFrame tab={activeTab} />}
           </main>
         </div>
       </div>

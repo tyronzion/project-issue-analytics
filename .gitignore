@@ -7,3 +7,6 @@ coverage/
 .env*
 !.env.example
 certificates/
+
+# UberTicket monitor: encrypted token, encryption key and cache (never commit)
+monitor/data/

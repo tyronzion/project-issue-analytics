@@ -114,4 +114,6 @@ export interface AppSettings {
   useCustomProjectListOnly: boolean; // When true, only show the projects specified in customProjectList
 }
 
-export type ActiveTab = 'dashboard' | 'seal' | 'charts' | 'issues' | 'formulas' | 'projects' | 'dependabots' | 'jira';
+export type ActiveTab = 'dashboard' | 'seal' | 'charts' | 'issues' | 'formulas' | 'projects' | 'dependabots' | 'jira'
+  // UberTicket monitoring tabs (pages served by the monitor plugin at /monitor/*)
+  | 'dpsa' | 'full-assessment' | 'roe';

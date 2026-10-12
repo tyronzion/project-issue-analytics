@@ -246,7 +246,7 @@ function renderOpen() {
   $('#openTable').innerHTML = rows.length ? `<table><thead><tr><th>Ticket</th><th>Product</th><th>Priority</th><th>Assignee</th><th>Submitted</th><th>Start → End Time</th><th>SLA due</th><th class="num">Time left</th><th>SLA</th></tr></thead><tbody>${
     rows.map((t) => {
       const left = (t.dueAt - now) / DAYMS;
-      return `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}</div></td><td>${esc(t.product)}<div class="muted">${sub(t)}</div></td><td>${prio(t.priority)}</td><td>${esc(t.assignee)}</td><td>${fmtDate(t.createdAt)}</td><td>${fmtDay(t.startDate)} →<br>${t.endDate == null ? '<span class="muted">not set</span>' : fmtDay(t.endDate)}</td><td>${fmtDay(t.dueAt)}<div class="muted">${t.sla} business days</div></td><td class="num ${left < 0 ? 'neg' : ''}">${left < 0 ? `${Math.abs(left).toFixed(1)} d over` : `${left.toFixed(1)} d`}</td><td>${status(...RISK[t.risk])}</td></tr>`;
+      return `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}${t.archived ? ' · archived' : ''}</div></td><td>${esc(t.product)}<div class="muted">${sub(t)}</div></td><td>${prio(t.priority)}</td><td>${esc(t.assignee)}</td><td>${fmtDate(t.createdAt)}</td><td>${fmtDay(t.startDate)} →<br>${t.endDate == null ? '<span class="muted">not set</span>' : fmtDay(t.endDate)}</td><td>${fmtDay(t.dueAt)}<div class="muted">${t.sla} business days</div></td><td class="num ${left < 0 ? 'neg' : ''}">${left < 0 ? `${Math.abs(left).toFixed(1)} d over` : `${left.toFixed(1)} d`}</td><td>${status(...RISK[t.risk])}</td></tr>`;
     }).join('')
   }</tbody></table>` : `<div class="empty">${status('good', 'No open tickets')}</div>`;
 }
@@ -300,7 +300,7 @@ function renderNonCompliant(T) {
   $('#ncTitle').innerHTML = `Non-Compliant Tickets <span class="count">(${rows.length} of ${live.length})</span>`;
   $('#ncNote').textContent = `Submitted ${rangeLabel()} · resolved over, or still open past, the priority SLA`;
   $('#ncTable').innerHTML = rows.length ? `<table><thead><tr><th>Ticket</th><th>Product</th><th>Priority</th><th>Assignee</th><th>Submitted</th><th>Resolved</th><th class="num">Resolve / SLA</th><th>Why it's not compliant</th></tr></thead><tbody>${
-    rows.map(({ t, v }) => `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}</div></td><td>${esc(t.product)}<div class="muted">${sub(t)}</div></td><td>${prio(t.priority)}</td><td>${esc(t.assignee)}</td><td>${fmtDate(t.createdAt)}</td><td>${t.resolvedAt ? fmtDate(t.resolvedAt) : '<span class="muted">open</span>'}</td><td class="num ${t.state === 'resolved' && !t.slaMet ? 'neg' : ''}">${t.state === 'resolved' ? days(t.resolveDays) : '—'}<div class="muted">SLA ${t.sla} d</div></td><td>${v.map((x) => status(...x)).join('<br>')}</td></tr>`).join('')
+    rows.map(({ t, v }) => `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}${t.archived ? ' · archived' : ''}</div></td><td>${esc(t.product)}<div class="muted">${sub(t)}</div></td><td>${prio(t.priority)}</td><td>${esc(t.assignee)}</td><td>${fmtDate(t.createdAt)}</td><td>${t.resolvedAt ? fmtDate(t.resolvedAt) : '<span class="muted">open</span>'}</td><td class="num ${t.state === 'resolved' && !t.slaMet ? 'neg' : ''}">${t.state === 'resolved' ? days(t.resolveDays) : '—'}<div class="muted">SLA ${t.sla} d</div></td><td>${v.map((x) => status(...x)).join('<br>')}</td></tr>`).join('')
   }</tbody></table>` : `<div class="empty">${status('good', 'Every ticket in this range is compliant')}</div>`;
 }
 
@@ -312,7 +312,7 @@ function renderAll(T) {
   rows = [...rows].sort((a, b) => { const x = a[col], y = b[col]; return (x == null) - (y == null) || (x < y ? -1 : x > y ? 1 : 0) * dir; });
   const slaCell = (t) => t.state === 'rejected' ? status('none', 'Rejected') : t.state === 'open' ? status(...RISK[t.risk]) : t.slaMet ? status('good', 'Met') : status('critical', 'Over SLA');
   $('#allTable').innerHTML = rows.length ? `<table><thead><tr>${COLS.map(([k, n, num]) => `<th data-k="${k}" class="${num ? 'num' : ''}">${n}${col === k ? (dir > 0 ? ' ↑' : ' ↓') : ''}</th>`).join('')}</tr></thead><tbody>${
-    rows.map((t) => `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}</div></td><td>${esc(t.product)}<div class="muted">${sub(t)}</div></td><td>${prio(t.priority)}</td><td>${esc(t.assignee)}</td><td>${fmtDate(t.createdAt)}</td><td>${fmtDay(t.startDate)}</td><td>${fmtDay(t.endDate)}</td><td>${t.resolvedAt ? fmtDate(t.resolvedAt) : '<span class="muted">—</span>'}</td><td class="num">${t.state === 'resolved' ? days(t.resolveDays) : '—'}<div class="muted">SLA ${t.sla} d</div></td><td>${slaCell(t)}</td></tr>`).join('')
+    rows.map((t) => `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}${t.archived ? ' · archived' : ''}</div></td><td>${esc(t.product)}<div class="muted">${sub(t)}</div></td><td>${prio(t.priority)}</td><td>${esc(t.assignee)}</td><td>${fmtDate(t.createdAt)}</td><td>${fmtDay(t.startDate)}</td><td>${fmtDay(t.endDate)}</td><td>${t.resolvedAt ? fmtDate(t.resolvedAt) : '<span class="muted">—</span>'}</td><td class="num">${t.state === 'resolved' ? days(t.resolveDays) : '—'}<div class="muted">SLA ${t.sla} d</div></td><td>${slaCell(t)}</td></tr>`).join('')
   }</tbody></table>` : `<div class="empty">No assessments match</div>`;
   $('#allTable thead')?.addEventListener('click', (e) => {
     const k = e.target.closest('th')?.dataset.k; if (!k) return;

@@ -231,7 +231,7 @@ function renderNonCompliant(T) {
   $('#ncTitle').innerHTML = `Non-Compliant Tickets <span class="count">(${rows.length} of ${live.length})</span>`;
   $('#ncNote').textContent = `Submitted ${rangeLabel()} · resolved after, or open past, ${data.targets.mttrDays} business days`;
   $('#ncTable').innerHTML = rows.length ? `<table><thead><tr><th>Ticket</th><th>Environment</th><th>Application</th><th>Assignee</th><th>Submitted</th><th>Resolved</th><th class="num">MTTR</th><th>Why it's not compliant</th></tr></thead><tbody>${
-    rows.map(({ t, v }) => `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}</div></td><td>${envTag(t.env)}</td><td>${esc(t.app)} <span class="muted">${esc(t.version)}</span></td><td>${who(t)}</td><td>${fmtDate(t.createdAt)}</td><td>${t.resolvedAt ? fmtDate(t.resolvedAt) : '<span class="muted">open</span>'}</td><td class="num ${t.resMet ? '' : 'neg'}">${t.state === 'resolved' ? fmtDays(t.mttrDays) : `${fmtDays(t.mttrDays)}<div class="muted">so far</div>`}</td><td>${v.map((x) => status(...x)).join('<br>')}</td></tr>`).join('')
+    rows.map(({ t, v }) => `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}${t.archived ? ' · archived' : ''}</div></td><td>${envTag(t.env)}</td><td>${esc(t.app)} <span class="muted">${esc(t.version)}</span></td><td>${who(t)}</td><td>${fmtDate(t.createdAt)}</td><td>${t.resolvedAt ? fmtDate(t.resolvedAt) : '<span class="muted">open</span>'}</td><td class="num ${t.resMet ? '' : 'neg'}">${t.state === 'resolved' ? fmtDays(t.mttrDays) : `${fmtDays(t.mttrDays)}<div class="muted">so far</div>`}</td><td>${v.map((x) => status(...x)).join('<br>')}</td></tr>`).join('')
   }</tbody></table>` : `<div class="empty">${status('good', 'Every ticket in this range is compliant')}</div>`;
 }
 
@@ -242,7 +242,7 @@ function renderOpen(T) {
   $('#openNote').textContent = 'All open tickets, regardless of date range. Ages are business time so far.';
   $('#openCount').textContent = `(${open.length} open)`;
   $('#openTable').innerHTML = open.length ? `<table><thead><tr><th>Ticket</th><th>Environment</th><th>Application</th><th>Assignee</th><th>Submitted</th><th class="num">Age (business)</th><th>MTTR</th></tr></thead><tbody>${
-    open.map((t) => `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}</div></td><td>${envTag(t.env)}</td><td>${esc(t.app)} <span class="muted">${esc(t.version)}</span></td><td>${who(t)}</td><td>${fmtDate(t.createdAt)}</td><td class="num">${fmtDays(t.mttrDays)}</td><td>${status(...RISK[t.risk])}</td></tr>`).join('')
+    open.map((t) => `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}${t.archived ? ' · archived' : ''}</div></td><td>${envTag(t.env)}</td><td>${esc(t.app)} <span class="muted">${esc(t.version)}</span></td><td>${who(t)}</td><td>${fmtDate(t.createdAt)}</td><td class="num">${fmtDays(t.mttrDays)}</td><td>${status(...RISK[t.risk])}</td></tr>`).join('')
   }</tbody></table>` : `<div class="empty">${status('good', 'No open tickets')}</div>`;
 }
 
@@ -381,7 +381,7 @@ function renderAll(T) {
   const [col, dir] = ui.sort.all;
   rows = [...rows].sort((a, b) => { const x = a[col], y = b[col]; return (x == null) - (y == null) || (x < y ? -1 : x > y ? 1 : 0) * dir; });
   $('#allTable').innerHTML = rows.length ? `<table><thead><tr>${COLS.map(([k, n, num]) => `<th data-k="${k}" class="${num ? 'num' : ''}">${n}${col === k ? (dir > 0 ? ' ↑' : ' ↓') : ''}</th>`).join('')}</tr></thead><tbody>${
-    rows.map((t) => `<tr><td>${tlink(t)}${t.parentKey ? `<div class="muted">from ${esc(t.parentKey)}</div>` : ''}</td><td>${envTag(t.env)}</td><td>${esc(t.app)} <span class="muted">${esc(t.version)}</span></td><td>${who(t)}</td><td>${esc(t.submitter)}</td><td>${fmtDate(t.createdAt)}</td><td>${t.resolvedAt ? fmtDate(t.resolvedAt) : '<span class="muted">—</span>'}</td><td class="num">${t.state === 'resolved' ? fmtDays(t.mttrDays) : '—'}</td><td>${slaCell(t)}<div class="muted">${esc(t.status)}${t.reopened ? ' · reopened' : ''}</div></td></tr>`).join('')
+    rows.map((t) => `<tr><td>${tlink(t)}${t.parentKey ? `<div class="muted">from ${esc(t.parentKey)}</div>` : ''}</td><td>${envTag(t.env)}</td><td>${esc(t.app)} <span class="muted">${esc(t.version)}</span></td><td>${who(t)}</td><td>${esc(t.submitter)}</td><td>${fmtDate(t.createdAt)}</td><td>${t.resolvedAt ? fmtDate(t.resolvedAt) : '<span class="muted">—</span>'}</td><td class="num">${t.state === 'resolved' ? fmtDays(t.mttrDays) : '—'}</td><td>${slaCell(t)}<div class="muted">${esc(t.status)}${t.reopened ? ' · reopened' : ''}${t.archived ? ' · archived' : ''}</div></td></tr>`).join('')
   }</tbody></table>` : `<div class="empty">No tickets match</div>`;
   $('#allTable thead')?.addEventListener('click', (e) => {
     const k = e.target.closest('th')?.dataset.k; if (!k) return;

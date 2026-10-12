@@ -2,7 +2,8 @@
 
 export class AuthError extends Error {}
 
-export async function fetchTemplateTickets({ api, token, templateIds, lookbackDays, maxPages, log = () => {} }) {
+// includeArchived: also return archived tickets (UberTicket's "Include archived" filter sends _includeArchived=1).
+export async function fetchTemplateTickets({ api, token, templateIds, lookbackDays, maxPages, includeArchived = true, log = () => {} }) {
   const cutoff = Date.now() - lookbackDays * 86_400_000;
   const all = [];
   const seen = new Set();
@@ -13,7 +14,7 @@ export async function fetchTemplateTickets({ api, token, templateIds, lookbackDa
       _keyword: '', _category: '', _assignees: '', _submitters: '', _approvals: '',
       _templates: templateIds.join(','),
       _tags: '', _labels: '', _submittedRange: '', _includeSubject: '', _includeWorkflow: '',
-      _includeArchived: '', _assignee_me: '', _hasAdvanceFilter: 'true',
+      _includeArchived: includeArchived ? '1' : '', _assignee_me: '', _hasAdvanceFilter: 'true',
     });
     const body = await getJson(`${api}/tickets?${qs}`, token);
     const rows = Array.isArray(body.data) ? body.data : body.data?.data ?? [];

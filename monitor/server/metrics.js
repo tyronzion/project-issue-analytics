@@ -42,6 +42,7 @@ export function normalizeTicket(raw, { calendar, envByTemplate, targets, now = D
     createdAt: created,
     resolvedAt: resolved,
     reopened: !!raw.reopened_at,
+    archived: !!raw.is_archived,
     timesFrom: raw.activity_submitted_at ? 'activity log' : 'ticket fields',
     mttrDays,
     resMet,

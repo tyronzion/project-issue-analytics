@@ -15,7 +15,7 @@ import {
   AlertTriangle,
   Trash2
 } from 'lucide-react';
-import { isIssueSecurityOverdue, getNormalizedSeverity } from '../utils/metricsEngine';
+import { isIssueSecurityOverdue, getNormalizedSeverity, isDependabotsIssue } from '../utils/metricsEngine';
 import { SeverityLevel } from '../types';
 
 const SEVERITY_LEVELS: {
@@ -82,6 +82,7 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
   const [projectFilter, setProjectFilter] = useState(selectedProject);
   const [platformFilter, setPlatformFilter] = useState(selectedPlatform);
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sourceFilter, setSourceFilter] = useState<'ALL' | 'DEPENDABOTS' | 'NON_DEPENDABOTS'>('ALL');
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
@@ -140,6 +141,10 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
         if (platformFilter === 'GENERAL' && issue.platformTag !== 'GENERAL') return false;
       }
 
+      // Source
+      if (sourceFilter === 'DEPENDABOTS' && !isDependabotsIssue(issue)) return false;
+      if (sourceFilter === 'NON_DEPENDABOTS' && isDependabotsIssue(issue)) return false;
+
       // Status
       if (statusFilter === 'SECURITY_OVERDUE') {
         if (!isIssueSecurityOverdue(issue, formulaConfig, dateFilter)) return false;
@@ -149,7 +154,7 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
 
       return true;
     });
-  }, [issues, search, projectFilter, platformFilter, statusFilter, formulaConfig, dateFilter]);
+  }, [issues, search, projectFilter, platformFilter, sourceFilter, statusFilter, formulaConfig, dateFilter]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const paginatedIssues = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -371,7 +376,7 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
         </div>
 
         {/* Filter Toolbar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 pt-2">
           {/* Search Box */}
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -417,6 +422,20 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
             <option value="IOS">Apple [IOS] Keyword Only</option>
             <option value="AOS">Android [AOS] Keyword Only</option>
             <option value="GENERAL">General / Non-Mobile Tagged</option>
+          </select>
+
+          {/* Dependabots Source Filter */}
+          <select
+            value={sourceFilter}
+            onChange={e => {
+              setSourceFilter(e.target.value as typeof sourceFilter);
+              setPage(1);
+            }}
+            className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+          >
+            <option value="ALL">All Sources (incl. Dependabots)</option>
+            <option value="DEPENDABOTS">Dependabots Only</option>
+            <option value="NON_DEPENDABOTS">Without Dependabots</option>
           </select>
 
           {/* Status Filter */}

@@ -25,7 +25,7 @@ import {
   loadJiraIntegrationProfile,
   saveJiraIntegrationProfile,
 } from './utils/storage';
-import { computeProjectSummaries } from './utils/metricsEngine';
+import { computeProjectSummaries, isDependabotsIssue } from './utils/metricsEngine';
 import { exportToExcel } from './utils/excelParser';
 import { parseExcelOrCsvFile, mapObjectsToIssueRecords } from './utils/excelParser';
 import { loadRemoteIssues, saveRemoteIssues } from './utils/remotePersistence';
@@ -304,7 +304,7 @@ export default function App() {
 
   // Dependabots-only view: reuse all formulas but only include issues tagged [github-dependabots]
   const dependabotsSourceIssues = useMemo(() => {
-    return severityFilteredIssues.filter(issue => (issue.summary || '').toLowerCase().includes('[github-dependabots]'));
+    return severityFilteredIssues.filter(isDependabotsIssue);
   }, [severityFilteredIssues]);
 
   const { summaries: dependabotsSummaries, filteredIssues: dependabotsFilteredIssues } = useMemo(() => {

@@ -62,6 +62,12 @@ function incrementSeverityCount(target: SeverityBreakdown, issue: IssueRecord): 
   target[level] += 1;
 }
 
+export const DEPENDABOTS_TAG = '[github-dependabots]';
+
+export function isDependabotsIssue(issue: IssueRecord): boolean {
+  return (issue.summary || '').toLowerCase().includes(DEPENDABOTS_TAG);
+}
+
 export function isIssueFoundInRange(issue: IssueRecord, dateFilter: DateFilter): boolean {
   if (!issue.created) return false;
   return isDateInRange(issue.created, dateFilter.startDate, dateFilter.endDate);

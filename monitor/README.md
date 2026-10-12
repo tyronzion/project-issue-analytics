@@ -33,6 +33,8 @@ last 24 hours). The token is stored **encrypted** with AES-256-GCM in `data/toke
 (both readable only by your macOS user, both git-ignored). It is never shown again or sent anywhere except UberTicket.
 This protects it in config files, logs and copies of the project, but anyone who can read both files as your user can decrypt it.
 A token left in `.env.local` as `UBERTICKET_TOKEN=` is moved into encrypted storage on the next start.
+**Archived tickets are included** in all three monitors (the same as ticking *Include archived* in UberTicket) and are labelled "archived" in the tables; set `INCLUDE_ARCHIVED=0` to leave them out.
+
 The server only listens on `127.0.0.1` and only *reads* from UberTicket (`GET /v1/tickets` and `GET /v1/tickets/{id}/activities`).
 
 ## How the numbers are calculated

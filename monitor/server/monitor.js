@@ -35,6 +35,8 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
     refreshMs: Number(env.REFRESH_MINUTES || 5) * 60_000,
     lookbackDays: Number(env.LOOKBACK_DAYS || 180),
     maxPages: Number(env.MAX_PAGES || 200),
+    // Archived tickets are monitored too (INCLUDE_ARCHIVED=0 leaves them out).
+    includeArchived: env.INCLUDE_ARCHIVED !== '0',
     // Assessment monitors: same page and rules (priority SLA, times tested), one per UberTicket template.
     assessments: [
       {
@@ -135,7 +137,7 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
       } else if (!token) {
         throw new AuthError('No UberTicket token saved yet. Open Settings and paste one.');
       } else {
-        const common = { api: config.api, token, maxPages: config.maxPages };
+        const common = { api: config.api, token, maxPages: config.maxPages, includeArchived: config.includeArchived };
         const raw = await fetchTemplateTickets({ ...common, templateIds: config.templates.map((t) => t.id), lookbackDays: config.lookbackDays });
         const assess = {};
         for (const m of config.assessments) {

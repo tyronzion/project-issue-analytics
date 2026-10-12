@@ -93,6 +93,7 @@ export function normalizeFull(raw, { calendar, slaDays, offsetHours, fields = FU
     key: `UB-${raw.serial}`,
     serial: raw.serial,
     url: `https://uberticket.cloudstaff.com/admin/tickets/${raw.id}/view`,
+    archived: !!raw.is_archived,
     status,
     state,
     priority,

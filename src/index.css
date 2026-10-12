@@ -446,6 +446,160 @@ body {
 	color: var(--cs-primary);
 }
 
+.severity-scorecard {
+	padding: 16px 18px;
+	border: 1px solid var(--cs-border);
+	border-radius: 8px;
+	background: #ffffff;
+	box-shadow: 0 2px 8px rgba(17, 35, 71, 0.05);
+}
+
+.severity-scorecard-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 14px;
+}
+
+.severity-scorecard-header h3 {
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--cs-text);
+}
+
+.severity-scorecard-header p {
+	margin-top: 4px;
+	font-size: 11px;
+	color: var(--cs-muted);
+}
+
+.severity-risk-score {
+	text-align: right;
+}
+
+.severity-risk-score span,
+.severity-risk-score small {
+	display: block;
+	font-size: 11px;
+	color: var(--cs-muted);
+}
+
+.severity-risk-score strong {
+	font-family: 'Space Grotesk', 'Manrope', sans-serif;
+	font-size: 30px;
+	font-weight: 700;
+	line-height: 1.1;
+	color: var(--cs-primary);
+}
+
+.severity-risk-score strong small {
+	display: inline;
+	font-size: 13px;
+	margin-left: 2px;
+}
+
+.severity-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.severity-card {
+	padding: 12px 14px;
+	border: 1px solid var(--cs-border);
+	border-top-width: 4px;
+	border-radius: 8px;
+	background: #fbfdff;
+}
+
+.severity-card-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.severity-card-top span {
+	font-size: 13px;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.severity-card-top em {
+	font-style: normal;
+	font-size: 10px;
+	color: var(--cs-muted);
+}
+
+.severity-card > strong {
+	display: block;
+	margin-top: 6px;
+	font-family: 'Space Grotesk', 'Manrope', sans-serif;
+	font-size: 32px;
+	font-weight: 700;
+	line-height: 1;
+	color: var(--cs-text);
+}
+
+.severity-definition {
+	margin-top: 8px;
+	min-height: 44px;
+	font-size: 11px;
+	line-height: 1.35;
+	color: var(--cs-muted);
+}
+
+.severity-bar {
+	height: 6px;
+	margin: 10px 0;
+	border-radius: 999px;
+	background: #e8eef7;
+	overflow: hidden;
+}
+
+.severity-bar > div {
+	height: 100%;
+	border-radius: 999px;
+}
+
+.severity-card dl {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 6px 10px;
+}
+
+.severity-card dt {
+	font-size: 10px;
+	color: var(--cs-muted);
+}
+
+.severity-card dd {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--cs-text);
+}
+
+@media (max-width: 900px) {
+	.severity-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 560px) {
+	.severity-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.severity-scorecard-header {
+		flex-direction: column;
+	}
+
+	.severity-risk-score {
+		text-align: left;
+	}
+}
+
 @media (max-width: 900px) {
 	.dashboard-totals-grid {
 		grid-template-columns: repeat(2, minmax(0, 1fr));

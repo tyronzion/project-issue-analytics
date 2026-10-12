@@ -15,7 +15,47 @@ import {
   AlertTriangle,
   Trash2
 } from 'lucide-react';
-import { isIssueSecurityOverdue } from '../utils/metricsEngine';
+import { isIssueSecurityOverdue, getNormalizedSeverity } from '../utils/metricsEngine';
+import { SeverityLevel } from '../types';
+
+const SEVERITY_LEVELS: {
+  key: SeverityLevel;
+  label: string;
+  weight: number;
+  definition: string;
+  accent: string;
+}[] = [
+  {
+    key: 'critical',
+    label: 'Critical',
+    weight: 10,
+    definition: 'Severe impact or exploitable flaw; blocks release. Matches Critical, Blocker, Urgent, Sev1/S1, P0.',
+    accent: '#b91c1c',
+  },
+  {
+    key: 'high',
+    label: 'High',
+    weight: 5,
+    definition: 'Major function broken or significant risk; fix next. Matches High, Major, Sev2/S2, P1.',
+    accent: '#ea580c',
+  },
+  {
+    key: 'medium',
+    label: 'Medium',
+    weight: 2,
+    definition: 'Partial impact with a workaround available. Matches Medium, Moderate, Normal, Sev3/S3, P2.',
+    accent: '#ca8a04',
+  },
+  {
+    key: 'low',
+    label: 'Low',
+    weight: 1,
+    definition: 'Minor or cosmetic; little to no risk. Matches Low, Minor, Trivial, Sev4/S4, P3, P4.',
+    accent: '#2563eb',
+  },
+];
+
+const SEVERITY_WEIGHT_MAX = 10;
 
 interface IssuesTableViewProps {
   issues: IssueRecord[];
@@ -128,6 +168,33 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
     };
   }, [filtered, formulaConfig, dateFilter]);
 
+  const severityScorecard = useMemo(() => {
+    const levels = SEVERITY_LEVELS.map(def => ({ ...def, total: 0, resolved: 0, outstanding: 0 }));
+    let unrated = 0;
+
+    filtered.forEach(issue => {
+      const level = getNormalizedSeverity(issue);
+      const row = levels.find(l => l.key === level);
+      if (!row) {
+        unrated += 1;
+        return;
+      }
+      row.total += 1;
+      const category = getStatusCategory(issue.status);
+      if (category === 'DONE') row.resolved += 1;
+      if (category === 'OUTSTANDING') row.outstanding += 1;
+    });
+
+    // Weighted risk score: open issues weighted by severity, normalised to 0-100
+    // against the worst case where every rated open issue is critical.
+    const openRated = levels.reduce((sum, l) => sum + l.outstanding, 0);
+    const weighted = levels.reduce((sum, l) => sum + l.outstanding * l.weight, 0);
+    const riskScore = openRated > 0 ? Math.round((weighted / (openRated * SEVERITY_WEIGHT_MAX)) * 100) : 0;
+    const rated = filtered.length - unrated;
+
+    return { levels, unrated, rated, weighted, riskScore };
+  }, [filtered, formulaConfig]);
+
   const getStatusBadge = (status: string) => {
     const category = getStatusCategory(status);
     if (category === 'DONE') {
@@ -225,6 +292,50 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
           </div>
           <strong>{kpiTotals.securityOverdue}</strong>
         </article>
+      </section>
+
+      {/* Severity Scorecard */}
+      <section className="severity-scorecard mx-4" aria-label="Severity scorecard">
+        <header className="severity-scorecard-header">
+          <div>
+            <h3>Severity Scorecard</h3>
+            <p>
+              {severityScorecard.rated} of {kpiTotals.total} filtered issues rated
+              {severityScorecard.unrated > 0 && ` · ${severityScorecard.unrated} unrated (no severity/priority)`}
+            </p>
+          </div>
+          <div className="severity-risk-score" title="Sum of open issues × weight (Critical 10, High 5, Medium 2, Low 1), divided by the maximum if all were Critical">
+            <span>Open Risk Score</span>
+            <strong>{severityScorecard.riskScore}<small>/100</small></strong>
+            <small>Weighted points: {severityScorecard.weighted}</small>
+          </div>
+        </header>
+
+        <div className="severity-grid">
+          {severityScorecard.levels.map(level => {
+            const share = severityScorecard.rated > 0 ? (level.total / severityScorecard.rated) * 100 : 0;
+            const resolutionRate = level.total > 0 ? (level.resolved / level.total) * 100 : 0;
+            return (
+              <article key={level.key} className="severity-card" style={{ borderTopColor: level.accent }}>
+                <div className="severity-card-top">
+                  <span style={{ color: level.accent }}>{level.label}</span>
+                  <em>Weight ×{level.weight}</em>
+                </div>
+                <strong>{level.total}</strong>
+                <p className="severity-definition">{level.definition}</p>
+                <div className="severity-bar" aria-hidden="true">
+                  <div style={{ width: `${share}%`, background: level.accent }} />
+                </div>
+                <dl>
+                  <div><dt>Share</dt><dd>{share.toFixed(1)}%</dd></div>
+                  <div><dt>Outstanding</dt><dd>{level.outstanding}</dd></div>
+                  <div><dt>Resolved</dt><dd>{level.resolved}</dd></div>
+                  <div><dt>Resolution</dt><dd>{resolutionRate.toFixed(0)}%</dd></div>
+                </dl>
+              </article>
+            );
+          })}
+        </div>
       </section>
 
       {/* Header & Filter Controls Bar */}

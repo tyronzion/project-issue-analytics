@@ -26,7 +26,7 @@ function createEmptySeverityBreakdown(): SeverityBreakdown {
   };
 }
 
-function getNormalizedSeverity(issue: IssueRecord): SeverityLevel | undefined {
+export function getNormalizedSeverity(issue: IssueRecord): SeverityLevel | undefined {
   const rawSeverity = String(
     issue.severity ||
     issue.raw?.severity ||

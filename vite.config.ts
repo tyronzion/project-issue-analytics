@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { Pool } from 'pg';
 import {defineConfig, loadEnv} from 'vite';
+import { createMonitor } from './monitor/server/monitor.js';
 
 interface JiraApiConfig {
   baseUrl: string;
@@ -437,6 +438,34 @@ function jiraDatasourcePlugin() {
   };
 }
 
+// UberTicket monitoring (DPSA, Full Assessment, Rules of Engagement), served at /monitor/* and shown
+// in the app's sidebar tabs. Its encrypted UberTicket token and cache live in monitor/data (git-ignored).
+function uberticketMonitorPlugin() {
+  return {
+    name: 'uberticket-monitor',
+    async configureServer(server: any) {
+      const monitor = await createMonitor({
+        root: path.resolve(__dirname, 'monitor'),
+        env: process.env,
+        envFile: path.resolve(__dirname, '.env.local'),
+        embedded: true,
+        analyticsUrl: '/',
+      });
+      server.middlewares.use('/monitor', (req: any, res: any, next: any) => {
+        if (req.url === '/' || req.url === '') {
+          res.statusCode = 302;
+          res.setHeader('Location', '/monitor/DPSA');
+          res.end();
+          return;
+        }
+        monitor.app(req, res, next);
+      });
+      monitor.start();
+      server.httpServer?.on('close', () => monitor.stop());
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   // Make .env/.env.local variables available to server middleware via process.env.
   const env = loadEnv(mode, process.cwd(), '');
@@ -453,7 +482,7 @@ export default defineConfig(({ mode }) => {
     : undefined;
 
   return {
-    plugins: [react(), tailwindcss(), jiraDatasourcePlugin()],
+    plugins: [react(), tailwindcss(), jiraDatasourcePlugin(), uberticketMonitorPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -465,7 +494,8 @@ export default defineConfig(({ mode }) => {
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // monitor/data changes on every refresh (cache, encrypted token); it is not app source.
+      watch: process.env.DISABLE_HMR === 'true' ? null : { ignored: ['**/monitor/data/**'] },
     },
   };
 });

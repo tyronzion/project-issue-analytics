@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assessment Monitoring · Security Issues Analytics</title>
+<link rel="icon" href="static/cloudstaff-logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="static/theme.css">
+<style>
+  .prio { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 6px; border: 1px solid var(--cs-border); background: var(--cs-blue-50); color: var(--th-ink); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.03em; }
+  .prio i { width: 7px; height: 7px; border-radius: 2px; display: inline-block; }
+  .prio-critical i { background: var(--critical); } .prio-high i { background: var(--serious); }
+  .prio-medium i { background: var(--warning); } .prio-low i { background: var(--cs-primary); }
+  .sla-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 0; }
+  .sla-grid > div + div { border-left: 1px solid var(--cs-border); }
+  @media (max-width: 1400px) { .sla-grid { grid-template-columns: 1fr; } .sla-grid > div + div { border-left: 0; border-top: 1px solid var(--cs-border); } }
+  #slaTable th, #slaTable td { padding-left: 10px; padding-right: 10px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="" id="brandLink"><img src="static/cloudstaff-logo.svg" alt="Cloudstaff"><span class="divider"></span><b id="brandName">Assessment Monitoring</b></a>
+    <div class="top-actions">
+      <span class="top-meta" id="updated">Loading…</span>
+      <span class="top-meta" id="totals"></span>
+      <button class="btn" id="refreshBtn" type="button"><svg class="i"><use href="#i-refresh"/></svg>Refresh</button>
+    </div>
+  </div>
+</header>
+
+<div class="filterbar">
+  <div class="fgroup">
+    <span class="flabel"><svg class="i"><use href="#i-cal"/></svg>Date Range:</span>
+    <div class="seg" id="period">
+      <button data-v="all">All Time</button><button data-v="today">Today</button><button data-v="week">This Week</button><button data-v="mtd">This Month</button><button data-v="7">Last 7 Days</button><button data-v="30">Last 30 Days</button><button data-v="90">Last 90 Days</button><button data-v="year">This Year</button><button data-v="custom">Custom</button>
+    </div>
+  </div>
+  <div class="fgroup">
+    <span class="flabel"><svg class="i"><use href="#i-cal"/></svg>Submitted between:</span>
+    <label class="selectbox">From: <input type="date" id="dateFrom" aria-label="From date"> to <input type="date" id="dateTo" aria-label="To date"></label>
+  </div>
+  <div class="fgroup">
+    <span class="flabel"><svg class="i"><use href="#i-alert"/></svg>Priority:</span>
+    <div class="seg" id="prioSeg">
+      <button data-v="" aria-pressed="true">All</button><button data-v="critical">Critical</button><button data-v="high">High</button><button data-v="medium">Medium</button><button data-v="low">Low</button>
+    </div>
+  </div>
+  <label class="selectbox"><svg class="i"><use href="#i-app"/></svg>Product: <select id="product"><option value="">All Products</option></select></label>
+  <span class="chip" id="matching"><svg class="i"><use href="#i-funnel"/></svg><span></span></span>
+</div>
+
+<div class="workspace">
+  <nav class="sidebar" aria-label="Monitors and sections">
+    <span class="side-label">Monitors</span>
+    <a href="DPSA" class="page"><svg class="i"><use href="#i-shield"/></svg>DPSA Monitoring</a>
+    <span id="monitorLinks"></span>
+    <div class="sep"></div>
+    <span class="side-label">On this page</span>
+    <a href="#overview" class="active"><svg class="i"><use href="#i-layers"/></svg>Overview</a>
+    <a href="#slaSection"><svg class="i"><use href="#i-clock"/></svg>SLA by Priority</a>
+    <a href="#openSection"><svg class="i"><use href="#i-alert"/></svg>Needs Attention</a>
+    <a href="#retestSection"><svg class="i"><use href="#i-repeat"/></svg>Times Tested</a>
+    <a href="#ncSection"><svg class="i"><use href="#i-flag"/></svg>Non-Compliant</a>
+    <a href="#allSection"><svg class="i"><use href="#i-list"/></svg>All Assessments</a>
+    <div class="sep"></div>
+    <a href="http://10.6.99.208/" id="analyticsLink"><svg class="i"><use href="#i-back"/></svg>Security Issues Analytics</a>
+  </nav>
+
+  <main>
+    <div class="page-head" id="overview">
+      <div>
+        <h1 id="pageTitle">Assessment</h1>
+        <p>Data Security Team performance · UberTicket template <span id="tplId"></span></p>
+      </div>
+    </div>
+
+    <div id="banner"></div>
+
+    <section class="kpi-grid" id="tiles" aria-label="Full assessment KPI scorecards"></section>
+
+    <div class="rules">
+      <svg class="i"><use href="#i-info"/></svg>
+      <span class="lead">Monitor Performance targets:</span>
+      <span><b>Retest:</b> every tested application biannually.</span> ·
+      <span id="slaRule"></span>
+    </div>
+
+    <section class="panel" id="slaSection">
+      <div class="panel-head"><div><h2>SLA by Priority</h2><span class="count">business days from submission to resolution</span></div></div>
+      <div class="sla-grid">
+        <div class="tbl-wrap" id="slaTable"></div>
+        <div class="panel-body"><div class="legend"><span><i style="background:var(--s1)"></i>Average time to resolve</span><span>┊ SLA</span></div><div class="chart" id="slaChart"></div></div>
+      </div>
+    </section>
+
+    <section class="panel" id="openSection">
+      <div class="panel-head"><div><h2>Needs Attention: Open Assessments</h2><span class="count" id="openCount"></span></div><span class="note">All open assessments, regardless of date range.</span></div>
+      <div class="tbl-wrap" id="openTable"></div>
+    </section>
+
+    <section class="panel" id="retestSection">
+      <div class="panel-head"><div><h2>Times Tested per Application</h2><span class="count" id="retestCount"></span></div><span class="note" id="retestNote"></span></div>
+      <div class="tbl-wrap" id="retestTable"></div>
+    </section>
+
+    <section class="panel" id="ncSection">
+      <div class="panel-head"><div><h2 id="ncTitle">Non-Compliant Tickets</h2></div><span class="note" id="ncNote"></span></div>
+      <div class="tbl-wrap" id="ncTable"></div>
+    </section>
+
+    <section class="panel" id="allSection">
+      <div class="panel-head"><div><h2 id="allTitle">All Assessments</h2><span class="count" id="allCount"></span></div>
+        <label class="search"><svg class="i"><use href="#i-search"/></svg><input type="search" id="search" placeholder="Search ticket, product, person…"></label></div>
+      <div class="tbl-wrap" id="allTable"></div>
+    </section>
+
+    <p class="method" id="method"></p>
+  </main>
+</div>
+
+<script src="static/common.js"></script>
+<script>
+const ui = { period: 'year', from: '', to: '', priority: '', product: '', search: '', sort: ['createdAt', -1] };
+let data = null;
+const PRIOS = ['critical', 'high', 'medium', 'low'];
+const PNAME = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
+
+const tlink = (t) => data.demo ? `<b>${esc(t.key)}</b>` : `<a href="${esc(t.url)}" target="_blank" rel="noopener"><b>${esc(t.key)}</b></a>`;
+const prio = (p) => `<span class="prio prio-${p}"><i></i>${PNAME[p] ?? esc(p)}</span>`;
+// Second line under the product: whatever the template has (quarter/year, occurrence, app type, size).
+const sub = (t) => esc([`${t.quarter} ${t.year}`, t.occurrence && `#${t.occurrence}`, t.appType, t.size].filter(Boolean).join(' · '));
+const days = (d) => d == null ? '—' : `${d.toFixed(1)} d`;
+const DAYMS = 86400e3;
+
+async function load() {
+  data = await (await fetch(`api/assess/${MON.key}`)).json();
+  const sel = $('#product'), cur = sel.value;
+  const products = [...new Map(data.tickets.map((t) => [t.productKey, t.product])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  sel.innerHTML = `<option value="">All Products</option>` + products.map(([k, n]) => `<option value="${esc(k)}"${k === cur ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  render();
+}
+
+// Product / priority filters (no date range) — used by the times-tested and open lists.
+const scoped = () => data.tickets.filter((t) => (!ui.priority || t.priority === ui.priority) && (!ui.product || t.productKey === ui.product));
+const filtered = () => filterByRange(scoped());
+
+function render() {
+  renderChrome();
+  const T = filtered();
+  const all = data.tickets;
+  $('#totals').textContent = `${all.filter((t) => t.state === 'open').length} Open • ${all.length} Total Assessments`;
+  $('#matching span').innerHTML = `Matching: <strong>${T.length}</strong> / ${all.length} · ${esc(rangeLabel())}`;
+  syncRangeInputs();
+  $('#tplId').textContent = `${data.templateId} (${data.title})`;
+  $('#pageTitle').textContent = data.title;
+  $('#brandName').textContent = `${data.short} Monitoring`;
+  $('#allTitle').textContent = `All ${data.short} Tickets`;
+  document.title = `${data.short} · Security Issues Analytics`;
+  $('#slaRule').innerHTML = `<b>SLA:</b> ${PRIOS.map((p) => `${PNAME[p]} ${data.slaDays[p]}`).join(' · ')} business days.`;
+  $('#allCount').textContent = `(${T.length} assessments)`;
+  const retest = retestRows();
+  renderTiles(T, retest);
+  renderSla(T);
+  renderOpen();
+  renderRetest(retest);
+  renderNonCompliant(T);
+  renderAll(T);
+  const b = data.business;
+  $('#method').textContent = `Method: resolve time = submitted → resolved, both from each ticket's activity log (submitted = first entry, resolved = latest "Status: Resolved" entry), in business days (${b.start}–${b.end}, UTC${b.offsetHours >= 0 ? '+' : ''}${b.offsetHours}, ${b.days.length}-day week${b.holidays.length ? `, Philippine holidays excluded (${b.holidayYears.join(', ')})` : ''}; 1 business day = ${b.hoursPerDay} h), against the SLA for the ticket's priority ("Normal" in UberTicket counts as Medium). Start Time and End Time are shown for reference only. Times tested = completed (resolved) tickets per product. History loaded: last ${data.lookbackDays} days. Rejected tickets are excluded.`;
+}
+
+function renderTiles(T, retest) {
+  const done = T.filter((t) => t.state === 'resolved');
+  const met = done.filter((t) => t.slaMet).length;
+  const comp = pct(met, done.length);
+  const rd = done.map((t) => t.resolveDays);
+  const meanRes = avg(rd);
+  const testsDone = retest.reduce((n, r) => n + r.tested, 0);
+  const testing = retest.filter((r) => r.open.length).length;
+  const open = scoped().filter((t) => t.state === 'open');
+  const breached = open.filter((t) => t.risk === 'breached').length, atRisk = open.filter((t) => t.risk === 'at-risk').length;
+  const lvl = (v) => v == null ? 'none' : v === 100 ? 'good' : v >= 90 ? 'warning' : 'critical';
+
+  $('#tiles').innerHTML = [
+    tile('SLA Compliance', 'By priority SLA', comp == null ? '—' : `${comp}<small>%</small>`, `${met} of ${done.length} resolved`,
+      status(lvl(comp), comp == null ? 'No resolved assessments' : comp === 100 ? 'On target' : `${done.length - met} over SLA`),
+      comp != null && comp < 100 ? `<a href="#ncSection">See the ${done.length - met} tickets over SLA →</a>` : `Formula: resolved within ${PRIOS.map((p) => `${PNAME[p][0]} ${data.slaDays[p]}d`).join(' / ')} ÷ resolved`, true),
+    tile('Mean Time to Resolve', 'Business days', meanRes == null ? '—' : `${meanRes.toFixed(1)}<small>d</small>`, `median ${days(median(rd))}`,
+      status(done.length ? 'good' : 'none', done.length ? `${done.length} resolved in range` : 'No resolved assessments'),
+      `<a href="#slaSection">Average vs SLA by priority →</a>`, true),
+    tile('Applications Tested', 'All loaded history', `${retest.length}`, `${testsDone} tests completed`,
+      status(testing ? 'good' : 'none', testing ? `${testing} being tested now` : 'None in progress'),
+      `<a href="#retestSection">How many times each application was tested →</a>`, true),
+    tile('Open Assessments', 'Not resolved / not rejected', `${open.length}`, `${open.filter((t) => t.priority === 'critical').length} critical`,
+      breached ? status('critical', `${breached} past SLA`) : atRisk ? status('warning', `${atRisk} near SLA`) : status('good', 'All within SLA'),
+      `${T.length} submitted in range · ${breached} breached · ${atRisk} at risk`),
+  ].join('');
+}
+const tile = (title, tag, value, caption, st, foot, blue) => `<article class="kpi"><div class="kpi-top"><div class="kpi-title">${title}</div><div class="kpi-tag">${tag}</div></div><div class="kpi-value"><strong class="${blue ? 'blue' : ''}">${value}</strong><span>${caption}</span></div><div class="kpi-status">${st}</div><div class="kpi-foot">${foot}</div></article>`;
+
+function renderSla(T) {
+  const rows = PRIOS.map((p) => {
+    const ts = T.filter((t) => t.priority === p && t.state !== 'rejected');
+    const done = ts.filter((t) => t.state === 'resolved');
+    const rd = done.map((t) => t.resolveDays);
+    const open = scoped().filter((t) => t.priority === p && t.state === 'open');
+    return { p, sla: data.slaDays[p], n: ts.length, done: done.length, met: done.filter((t) => t.slaMet).length, avg: avg(rd), max: rd.length ? Math.max(...rd) : null, open: open.length, breached: open.filter((t) => t.risk === 'breached').length };
+  });
+  $('#slaTable').innerHTML = `<table><thead><tr><th>Priority</th><th class="num">SLA</th><th class="num">Tickets</th><th class="num">Resolved</th><th class="num">Avg resolve</th><th class="num">Longest</th><th>Within SLA</th><th class="num">Open</th></tr></thead><tbody>${
+    rows.map((r) => { const p = pct(r.met, r.done); return `<tr><td>${prio(r.p)}${r.p === 'medium' ? '<div class="muted">"Normal" in UberTicket</div>' : ''}</td><td class="num">${r.sla} d</td><td class="num">${r.n}</td><td class="num">${r.done}</td><td class="num">${days(r.avg)}</td><td class="num ${r.max > r.sla ? 'neg' : ''}">${days(r.max)}</td><td>${p == null ? '<span class="muted">—</span>' : status(p === 100 ? 'good' : p >= 90 ? 'warning' : 'critical', `${p}% (${r.met}/${r.done})`)}</td><td class="num">${r.open}${r.breached ? `<div class="muted neg">${r.breached} past SLA</div>` : ''}</td></tr>`; }).join('')
+  }</tbody></table>`;
+
+  // Horizontal bars: average resolve days per priority, with the SLA marked.
+  const W = 520, rowH = 44, m = { l: 74, r: 40, t: 6, b: 24 }, H = m.t + rows.length * rowH + m.b;
+  const max = Math.max(...rows.map((r) => Math.max(r.sla, r.max ?? 0))) * 1.08;
+  const ticks = niceTicks(max), top = ticks[ticks.length - 1];
+  const x = (v) => m.l + (v / top) * (W - m.l - m.r);
+  let svg = ticks.map((v) => `<line x1="${x(v)}" x2="${x(v)}" y1="${m.t}" y2="${H - m.b}" stroke="var(--grid)"/><text x="${x(v)}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--cs-soft)">${v}</text>`).join('');
+  rows.forEach((r, i) => {
+    const cy = m.t + i * rowH + rowH / 2, bh = 14;
+    svg += `<text x="${m.l - 10}" y="${cy + 4}" text-anchor="end" font-size="12" font-weight="700" fill="var(--cs-text)">${PNAME[r.p]}</text>`;
+    if (r.avg != null) {
+      const w = Math.max(2, x(r.avg) - m.l);
+      svg += `<path d="M${m.l},${cy - bh / 2}H${m.l + w - 4}Q${m.l + w},${cy - bh / 2} ${m.l + w},${cy - bh / 2 + 4}V${cy + bh / 2 - 4}Q${m.l + w},${cy + bh / 2} ${m.l + w - 4},${cy + bh / 2}H${m.l}Z" fill="var(--s1)"/>`;
+      // value inside the bar end when it fits, so it never collides with the SLA marker
+      svg += w > 46 ? `<text x="${m.l + w - 6}" y="${cy + 4}" text-anchor="end" font-size="11" font-weight="700" fill="#fff">${r.avg.toFixed(1)} d</text>`
+                    : `<text x="${m.l + w + 6}" y="${cy + 4}" font-size="11" fill="var(--cs-muted)">${r.avg.toFixed(1)} d</text>`;
+    } else svg += `<text x="${m.l + 6}" y="${cy + 4}" font-size="11" fill="var(--cs-soft)">no resolved tickets</text>`;
+    svg += `<line x1="${x(r.sla)}" x2="${x(r.sla)}" y1="${cy - 15}" y2="${cy + 15}" stroke="var(--cs-text)" stroke-width="2" stroke-dasharray="3 2"/><text x="${x(r.sla)}" y="${cy - 17}" text-anchor="middle" font-size="10" fill="var(--cs-muted)">${r.sla}d</text>`;
+    svg += `<rect class="hit" data-i="${i}" x="0" y="${m.t + i * rowH}" width="${W}" height="${rowH}" fill="transparent"/>`;
+  });
+  svg += `<line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${H - m.b}" stroke="var(--axis)"/>`;
+  const el = $('#slaChart');
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Average business days to resolve per priority against SLA">${svg}</svg><div class="tip"></div>`;
+  hover(el, (i) => { const r = rows[i]; return `<b>${PNAME[r.p]}</b><div class="row"><span>SLA</span><span>${r.sla} business days</span></div><div class="row"><span>Average</span><span>${days(r.avg)}</span></div><div class="row"><span>Longest</span><span>${days(r.max)}</span></div><div class="row"><span>Within SLA</span><span>${r.done ? `${r.met}/${r.done}` : '—'}</span></div>`; });
+}
+
+const RISK = { breached: ['critical', 'Past SLA'], 'at-risk': ['warning', 'Near SLA'], ok: ['good', 'Within SLA'] };
+function renderOpen() {
+  const now = Date.now();
+  const rows = scoped().filter((t) => t.state === 'open').sort((a, b) => a.dueAt - b.dueAt);
+  $('#openCount').textContent = `(${rows.length} open)`;
+  $('#openTable').innerHTML = rows.length ? `<table><thead><tr><th>Ticket</th><th>Product</th><th>Priority</th><th>Assignee</th><th>Submitted</th><th>Start → End Time</th><th>SLA due</th><th class="num">Time left</th><th>SLA</th></tr></thead><tbody>${
+    rows.map((t) => {
+      const left = (t.dueAt - now) / DAYMS;
+      return `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}</div></td><td>${esc(t.product)}<div class="muted">${sub(t)}</div></td><td>${prio(t.priority)}</td><td>${esc(t.assignee)}</td><td>${fmtDate(t.createdAt)}</td><td>${fmtDay(t.startDate)} →<br>${t.endDate == null ? '<span class="muted">not set</span>' : fmtDay(t.endDate)}</td><td>${fmtDay(t.dueAt)}<div class="muted">${t.sla} business days</div></td><td class="num ${left < 0 ? 'neg' : ''}">${left < 0 ? `${Math.abs(left).toFixed(1)} d over` : `${left.toFixed(1)} d`}</td><td>${status(...RISK[t.risk])}</td></tr>`;
+    }).join('')
+  }</tbody></table>` : `<div class="empty">${status('good', 'No open tickets')}</div>`;
+}
+
+// One row per product: how many times it has been tested.
+function retestRows() {
+  const by = new Map();
+  for (const t of scoped()) {
+    if (t.state === 'rejected') continue;
+    if (!by.has(t.productKey)) by.set(t.productKey, { name: t.product, ts: [] });
+    by.get(t.productKey).ts.push(t);
+  }
+  const year = new Date(Date.now() + offsetMs()).getUTCFullYear();
+  const yearOf = (t) => new Date(t + offsetMs()).getUTCFullYear();
+  return [...by.values()].map(({ name, ts }) => {
+    const done = ts.filter((t) => t.assessedAt != null).sort((a, b) => a.assessedAt - b.assessedAt);
+    const latest = [...ts].sort((a, b) => b.createdAt - a.createdAt)[0];
+    return {
+      name,
+      tested: done.length,
+      thisYear: done.filter((t) => yearOf(t.assessedAt) === year).length,
+      first: done[0],
+      last: done[done.length - 1],
+      open: ts.filter((t) => t.state === 'open'),
+      occurrence: latest?.occurrence,
+    };
+  }).sort((a, b) => b.tested - a.tested || a.name.localeCompare(b.name));
+}
+function renderRetest(rows) {
+  const year = new Date(Date.now() + offsetMs()).getUTCFullYear();
+  $('#retestCount').textContent = `(${rows.length} applications)`;
+  $('#retestNote').textContent = `Completed ${data.short} tickets per product, from all loaded history (not just the date range).`;
+  $('#retestTable').innerHTML = rows.length ? `<table><thead><tr><th>Product</th><th class="num">Times tested</th><th class="num">In ${year}</th><th>First tested</th><th>Last tested</th><th>In progress</th></tr></thead><tbody>${
+    rows.map((r) => `<tr><td><b>${esc(r.name)}</b>${r.occurrence ? `<div class="muted">Occurrence field: ${esc(r.occurrence)}</div>` : ''}</td><td class="num">${r.tested}</td><td class="num">${r.thisYear}</td><td>${r.first ? `${fmtDay(r.first.assessedAt)}<div class="muted">${tlink(r.first)}</div>` : '<span class="muted">—</span>'}</td><td>${r.last ? `${fmtDay(r.last.assessedAt)}<div class="muted">${tlink(r.last)} · ${PNAME[r.last.priority]}</div>` : '<span class="muted">—</span>'}</td><td>${r.open.length ? r.open.map((t) => `${tlink(t)}<div class="muted">since ${fmtDay(t.createdAt)}</div>`).join('') : '<span class="muted">—</span>'}</td></tr>`).join('')
+  }</tbody></table>` : `<div class="empty">No products</div>`;
+}
+
+// Tickets that broke their priority SLA (resolved late, or still open past it). [severity, text]
+function violations(t) {
+  if (t.state === 'rejected') return [];
+  const out = [];
+  if (t.state === 'resolved' && t.slaMet === false) out.push(['critical', `Over SLA: resolved in ${t.resolveDays.toFixed(1)} d (${PNAME[t.priority]} SLA ${t.sla} d)`]);
+  if (t.state === 'open' && t.risk === 'breached') out.push(['critical', `Still open past SLA (due ${fmtDay(t.dueAt)})`]);
+  return out;
+}
+
+function renderNonCompliant(T) {
+  const live = T.filter((t) => t.state !== 'rejected');
+  const rows = live.map((t) => ({ t, v: violations(t) })).filter((r) => r.v.length)
+    .sort((a, b) => b.v.filter((x) => x[0] === 'critical').length - a.v.filter((x) => x[0] === 'critical').length || b.t.createdAt - a.t.createdAt);
+  $('#ncTitle').innerHTML = `Non-Compliant Tickets <span class="count">(${rows.length} of ${live.length})</span>`;
+  $('#ncNote').textContent = `Submitted ${rangeLabel()} · resolved over, or still open past, the priority SLA`;
+  $('#ncTable').innerHTML = rows.length ? `<table><thead><tr><th>Ticket</th><th>Product</th><th>Priority</th><th>Assignee</th><th>Submitted</th><th>Resolved</th><th class="num">Resolve / SLA</th><th>Why it's not compliant</th></tr></thead><tbody>${
+    rows.map(({ t, v }) => `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}</div></td><td>${esc(t.product)}<div class="muted">${sub(t)}</div></td><td>${prio(t.priority)}</td><td>${esc(t.assignee)}</td><td>${fmtDate(t.createdAt)}</td><td>${t.resolvedAt ? fmtDate(t.resolvedAt) : '<span class="muted">open</span>'}</td><td class="num ${t.state === 'resolved' && !t.slaMet ? 'neg' : ''}">${t.state === 'resolved' ? days(t.resolveDays) : '—'}<div class="muted">SLA ${t.sla} d</div></td><td>${v.map((x) => status(...x)).join('<br>')}</td></tr>`).join('')
+  }</tbody></table>` : `<div class="empty">${status('good', 'Every ticket in this range is compliant')}</div>`;
+}
+
+const COLS = [['key', 'Ticket'], ['product', 'Product'], ['priority', 'Priority'], ['assignee', 'Assignee'], ['createdAt', 'Submitted'], ['startDate', 'Start'], ['endDate', 'End'], ['resolvedAt', 'Resolved'], ['resolveDays', 'Resolve', 1], ['slaMet', 'SLA']];
+function renderAll(T) {
+  const q = ui.search.toLowerCase();
+  let rows = q ? T.filter((t) => [t.key, t.product, t.assignee, t.submitter, t.priority, t.status, t.quarter, t.year].join(' ').toLowerCase().includes(q)) : T;
+  const [col, dir] = ui.sort;
+  rows = [...rows].sort((a, b) => { const x = a[col], y = b[col]; return (x == null) - (y == null) || (x < y ? -1 : x > y ? 1 : 0) * dir; });
+  const slaCell = (t) => t.state === 'rejected' ? status('none', 'Rejected') : t.state === 'open' ? status(...RISK[t.risk]) : t.slaMet ? status('good', 'Met') : status('critical', 'Over SLA');
+  $('#allTable').innerHTML = rows.length ? `<table><thead><tr>${COLS.map(([k, n, num]) => `<th data-k="${k}" class="${num ? 'num' : ''}">${n}${col === k ? (dir > 0 ? ' ↑' : ' ↓') : ''}</th>`).join('')}</tr></thead><tbody>${
+    rows.map((t) => `<tr><td>${tlink(t)}<div class="muted">${esc(t.status)}</div></td><td>${esc(t.product)}<div class="muted">${sub(t)}</div></td><td>${prio(t.priority)}</td><td>${esc(t.assignee)}</td><td>${fmtDate(t.createdAt)}</td><td>${fmtDay(t.startDate)}</td><td>${fmtDay(t.endDate)}</td><td>${t.resolvedAt ? fmtDate(t.resolvedAt) : '<span class="muted">—</span>'}</td><td class="num">${t.state === 'resolved' ? days(t.resolveDays) : '—'}<div class="muted">SLA ${t.sla} d</div></td><td>${slaCell(t)}</td></tr>`).join('')
+  }</tbody></table>` : `<div class="empty">No assessments match</div>`;
+  $('#allTable thead')?.addEventListener('click', (e) => {
+    const k = e.target.closest('th')?.dataset.k; if (!k) return;
+    ui.sort = [k, ui.sort[0] === k ? -ui.sort[1] : -1]; renderAll(filtered());
+  });
+}
+
+$('#prioSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; ui.priority = b.dataset.v; press($('#prioSeg'), b); render(); });
+$('#product').addEventListener('change', (e) => { ui.product = e.target.value; render(); });
+$('#search').addEventListener('input', (e) => { ui.search = e.target.value; renderAll(filtered()); });
+// Which monitor is this page? Decided by the URL (/FullAssessment, /RulesOfEngagement, …).
+let MON = null;
+(async () => {
+  const monitors = await (await fetch('api/monitors')).json();
+  // Works at the site root or under a prefix such as /monitor: match on the last path segment.
+  const here = '/' + location.pathname.split('/').filter(Boolean).pop()?.toLowerCase();
+  MON = monitors.find((m) => m.paths.some((p) => p.toLowerCase() === here)) ?? monitors[0];
+  $('#brandLink').href = MON.paths[0].slice(1);
+  $('#monitorLinks').outerHTML = monitors.map((m) => `<a href="${m.paths[0].slice(1)}" class="page${m === MON ? ' current' : ''}"><svg class="i"><use href="#i-scan"/></svg>${esc(m.short)}</a>`).join('');
+  wireDateRange(`${MON.key}.range`, () => render());
+  wireRefresh(load);
+  wireNavSpy();
+  await load();
+  setInterval(load, 60_000);
+})();
+</script>
+</body>
+</html>

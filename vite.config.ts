@@ -5,6 +5,7 @@ import path from 'path';
 import { Pool } from 'pg';
 import {defineConfig, loadEnv} from 'vite';
 import { createMonitor } from './monitor/server/monitor.js';
+import { isValidAppLogin } from './src/utils/appLogin';
 
 interface JiraApiConfig {
   baseUrl: string;
@@ -450,6 +451,8 @@ function uberticketMonitorPlugin() {
         envFile: path.resolve(__dirname, '.env.local'),
         embedded: true,
         analyticsUrl: '/',
+        // Changing the UberTicket token needs the same login as the app.
+        settingsLogin: isValidAppLogin,
       });
       server.middlewares.use('/monitor', (req: any, res: any, next: any) => {
         if (req.url === '/' || req.url === '') {

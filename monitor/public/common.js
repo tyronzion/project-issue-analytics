@@ -178,7 +178,9 @@ document.body.insertAdjacentHTML('beforeend', `
     <div id="tokenState" class="token-state">Loading…</div>
     <form id="tokenForm" autocomplete="off">
       <div id="pwRow" hidden>
-        <label for="settingsPw">Settings password</label>
+        <div id="userRow" hidden><label for="settingsUser">Username</label>
+        <input id="settingsUser" type="text" autocomplete="username" placeholder="Security Issues Analytics username"></div>
+        <label for="settingsPw" id="pwLabel">Settings password</label>
         <input id="settingsPw" type="password" placeholder="MONITOR_SETTINGS_PASSWORD on the server">
         <p class="settings-note" id="pwNote"></p>
       </div>
@@ -199,6 +201,9 @@ document.body.insertAdjacentHTML('beforeend', `
   </section>
 </dialog>`);
 
+// Login for Settings, sent as headers (URI-encoded so any characters are allowed).
+const authHeaders = () => ({ 'X-Monitor-User': encodeURIComponent($('#settingsUser').value), 'X-Monitor-Password': encodeURIComponent($('#settingsPw').value) });
+
 async function renderTokenState(st) {
   st = st ?? await (await fetch('api/token')).json();
   let html;
@@ -217,7 +222,13 @@ async function renderTokenState(st) {
   $('#tokenState').innerHTML = html;
   $('#tokenClear').hidden = !st.set;
   // Changing the token from another machine needs the server's settings password.
-  if (st.passwordRequired !== undefined) {
+  if (st.loginRequired) {
+    $('#pwRow').hidden = false;
+    $('#userRow').hidden = false;
+    $('#pwLabel').textContent = 'Password';
+    $('#settingsPw').placeholder = 'Security Issues Analytics password';
+    $('#pwNote').textContent = 'Use the same login as Security Issues Analytics.';
+  } else if (st.passwordRequired !== undefined) {
     $('#pwRow').hidden = !st.passwordRequired;
     $('#pwNote').textContent = st.passwordConfigured ? 'Required because you are not on the server itself.' : 'Not set on the server yet: add MONITOR_SETTINGS_PASSWORD to its .env.local, or change the token on the server itself.';
   }
@@ -239,7 +250,7 @@ $('#tokenForm').addEventListener('submit', async (e) => {
   const btn = $('#tokenSave'), label = btn.innerHTML;
   btn.disabled = true; btn.textContent = 'Saving & testing…';
   try {
-    const r = await fetch('api/token', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Monitor-Password': $('#settingsPw').value }, body: JSON.stringify({ token: $('#tokenInput').value }) });
+    const r = await fetch('api/token', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ token: $('#tokenInput').value }) });
     const st = await r.json();
     if (r.ok) $('#tokenInput').value = '';
     await renderTokenState(r.ok ? st : { ...(await (await fetch('api/token')).json()), error: st.error, needsPassword: true });
@@ -248,7 +259,7 @@ $('#tokenForm').addEventListener('submit', async (e) => {
 });
 $('#tokenClear').addEventListener('click', async () => {
   if (!confirm('Remove the saved UberTicket token from this computer?')) return;
-  const r = await fetch('api/token', { method: 'DELETE', headers: { 'X-Monitor-Password': $('#settingsPw').value } });
+  const r = await fetch('api/token', { method: 'DELETE', headers: { ...authHeaders() } });
   const st = await r.json();
   await renderTokenState(r.ok ? st : { ...(await (await fetch('api/token')).json()), error: st.error, needsPassword: true });
   await load();

@@ -187,5 +187,6 @@
   .embed .filterbar { padding: 10px 16px; }
   .embed .workspace { padding: 16px; }
   #pwRow { display: grid; gap: 6px; }
-  #pwRow[hidden] { display: none; }
-  #settingsPw { width: 100%; padding: 9px 11px; border: 1px solid var(--cs-border); border-radius: 8px; }
+  #pwRow[hidden], #userRow[hidden] { display: none; }
+  #userRow { display: grid; gap: 6px; }
+  #settingsUser, #settingsPw { width: 100%; padding: 9px 11px; border: 1px solid var(--cs-border); border-radius: 8px; }

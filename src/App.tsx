@@ -10,6 +10,12 @@ import {
   Gauge,
   ScanSearch,
   ClipboardCheck,
+  LayoutDashboard,
+  Table2,
+  ListChecks,
+  Archive,
+  RefreshCcw,
+  FileUp,
 } from 'lucide-react';
 import { 
   IssueRecord, 
@@ -50,6 +56,20 @@ import { LoginScreen } from './components/LoginScreen';
 import { getTabFromPath, getPathForTab, getTitleForTab } from './utils/routes';
 import { JiraIntegrationPage, JiraCredentials } from './components/JiraIntegrationPage';
 import { MonitorFrame, isMonitorTab } from './components/MonitorFrame';
+import AssessmentTracker from './components/tracker/AssessmentTracker.jsx';
+import { matchKey } from '../tracker/shared/logic.js';
+import { getProjectSecuritySeal } from './utils/securitySeal';
+
+// Assessment Tracker sidebar entries -> section shown by <AssessmentTracker>.
+const TRACKER_TABS = [
+  { tab: 'tracker', section: 'monitoring', label: 'Monitoring', Icon: LayoutDashboard },
+  { tab: 'tracker-assessment', section: 'assessment', label: 'Assessment List', Icon: Table2 },
+  { tab: 'tracker-checklist', section: 'checklist', label: 'Checklist', Icon: ListChecks },
+  { tab: 'tracker-decommissioned', section: 'decommissioned', label: 'Decommissioned', Icon: Archive },
+  { tab: 'tracker-sync', section: 'sync', label: 'UberTicket Sync', Icon: RefreshCcw },
+  { tab: 'tracker-import', section: 'import', label: 'Import Excel', Icon: FileUp },
+] as const;
+const trackerSection = (tab: ActiveTab) => TRACKER_TABS.find(t => t.tab === tab)?.section;
 
 const AUTH_SESSION_KEY = 'project_issue_analytics_authenticated_v1';
 const AUTO_SYNC_INTERVAL_MS = 15 * 60 * 1000;
@@ -309,6 +329,29 @@ export default function App() {
   );
 
   // Everything below the global filter bar reads these project-scoped lists.
+  // Assessment Tracker: each app's current Security Seal (all issues, every severity), used to
+  // snapshot the seal when its UberTicket resolves. Null while issues load or off the tracker pages.
+  const isTrackerPage = Boolean(trackerSection(activeTab));
+  const sealByProject = useMemo(() => {
+    if (!isTrackerPage || isDataLoading || issues.length === 0) return null;
+    const { summaries: allSummaries } = computeProjectSummaries(
+      issues,
+      settings.formulaConfig,
+      settings.dateFilter,
+      settings.deletedProjects,
+      settings.projectAliases,
+      settings.customProjectList,
+      settings.useCustomProjectListOnly
+    );
+    const map = new Map<string, string>();
+    allSummaries.forEach(summary => map.set(matchKey(summary.projectName), getProjectSecuritySeal(summary).seal));
+    return map;
+  }, [isTrackerPage, isDataLoading, issues, settings]);
+  const sealForProject = useMemo(
+    () => (sealByProject ? (name: string) => sealByProject.get(matchKey(name)) ?? null : null),
+    [sealByProject]
+  );
+
   const scopedSummaries = useMemo(
     () => summaries.filter(summary => matchesProject(summary.projectName)),
     [summaries, matchesProject]
@@ -854,6 +897,23 @@ export default function App() {
                 </button>
               ))}
 
+              <p className="px-3 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Assessment Tracker</p>
+              {TRACKER_TABS.map(({ tab, label, Icon }) => (
+                <button
+                  key={tab}
+                  id={`tab-${tab}-btn`}
+                  onClick={() => setActiveTab(tab)}
+                  className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    activeTab === tab
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-900/20'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{label}</span>
+                </button>
+              ))}
+
             </div>
           </aside>
 
@@ -1072,6 +1132,10 @@ export default function App() {
         )}
 
         {isMonitorTab(activeTab) && <MonitorFrame tab={activeTab} />}
+
+        {trackerSection(activeTab) && (
+          <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} />
+        )}
           </main>
         </div>
       </div>

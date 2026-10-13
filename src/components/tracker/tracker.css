@@ -1,0 +1,198 @@
+/* Assessment Tracker. Scoped to .at-root.
+   The global .cloudstaff-theme rules repaint any class containing "bg-" (and several text colours),
+   so colours here come from these classes / inline styles, never Tailwind colour utilities. */
+
+.at-root {
+  --at-good: #0ca30c;
+  --at-good-ink: #146c2e;
+  --at-good-wash: #ecfbef;
+  --at-warn: #fab219;
+  --at-warn-ink: #8a5300;
+  --at-warn-wash: #fff6e0;
+  --at-idle: #c3c2b7;
+  --at-idle-ink: #486188;
+  --at-idle-wash: #f1f5fb;
+  color: var(--cs-text);
+}
+
+.at-muted { color: var(--cs-muted); }
+.at-soft { color: var(--cs-soft); }
+.at-link { color: var(--cs-primary); }
+.at-link:hover { text-decoration: underline; }
+
+.at-card {
+  border: 1px solid var(--cs-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(17, 35, 71, 0.05);
+}
+
+/* Buttons & inputs */
+.at-btn,
+.at-btn-ghost,
+.at-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--cs-primary-strong);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.at-btn { background: var(--cs-primary); color: #fff; }
+.at-btn:hover { background: var(--cs-primary-strong); }
+.at-btn:disabled, .at-btn-ghost:disabled { opacity: 0.55; cursor: not-allowed; }
+.at-btn-ghost { background: #fff; color: var(--cs-text); border-color: var(--cs-border); }
+.at-btn-ghost:hover { background: #dde8ff; }
+.at-btn-danger { background: #fff; color: #b42318; border-color: #f6b2ad; }
+.at-btn-danger:hover { background: #fff4f2; }
+
+.at-input {
+  height: 34px;
+  border: 1px solid var(--cs-border);
+  border-radius: 6px;
+  background: #fff;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--cs-text);
+}
+textarea.at-input { height: auto; padding: 8px 10px; }
+.at-input:focus { outline: none; border-color: var(--cs-primary); box-shadow: 0 0 0 3px rgba(11, 99, 206, 0.15); }
+.at-input.at-has-icon { padding-left: 2rem; }
+
+/* Period chips (same as the issues date-range presets) */
+.at-chip {
+  padding: 4px 12px;
+  border: 1px solid var(--cs-primary-strong);
+  border-radius: 6px;
+  background: var(--cs-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.at-chip:hover { background: var(--cs-primary-strong); }
+.at-chip[aria-pressed='true'] { background: var(--cs-primary-strong); box-shadow: 0 0 0 2px rgba(121, 185, 255, 0.7); }
+
+/* Status pills */
+.at-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.at-pill--done { color: var(--at-good-ink); background: var(--at-good-wash); border-color: rgba(12, 163, 12, 0.3); }
+.at-pill--progress { color: var(--at-warn-ink); background: var(--at-warn-wash); border-color: rgba(250, 178, 25, 0.5); }
+.at-pill--idle { color: var(--at-idle-ink); background: var(--at-idle-wash); border-color: var(--cs-border); }
+.at-pill--small { padding: 1px 6px; font-size: 10px; }
+
+.at-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.at-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border: 1px solid var(--seal-border);
+  border-radius: 6px;
+  background: var(--seal-bg);
+  color: var(--seal-text);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.at-ticket {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  border: 1px solid var(--cs-border);
+  border-radius: 4px;
+  background: var(--cs-surface-0);
+  color: var(--cs-primary);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.at-ticket:hover { border-color: var(--cs-primary); }
+
+.at-progress { height: 6px; width: 64px; border-radius: 999px; overflow: hidden; background: #e8eef7; }
+.at-progress > div { height: 100%; border-radius: 999px; }
+
+/* KPI and severity cards reuse the app's .issues-kpi-card / .severity-* styles. */
+.at-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (min-width: 1900px) { .at-kpi-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .at-kpi-grid { grid-template-columns: 1fr; } }
+.at-root .issues-kpi-card { min-height: 96px; }
+.at-root .issues-kpi-card strong em { font-style: normal; font-size: 18px; color: var(--cs-soft); }
+.at-root .severity-bar { display: flex; gap: 2px; }
+.at-root .severity-bar > div { border-radius: 0; }
+
+.at-seal-tile { border: 1px solid var(--cs-border); border-radius: 8px; overflow: hidden; }
+.at-seal-tile > div:first-child { padding: 6px 12px; font-size: 13px; font-weight: 700; }
+.at-seal-tile strong {
+  display: block;
+  padding: 10px 12px;
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+  font-size: 28px;
+  line-height: 1;
+}
+
+/* Tables reuse .cs-table-shell / .cs-data-table; add spacing. */
+.at-root .cs-data-table { width: 100%; font-size: 13px; }
+.at-root .cs-data-table th { padding: 8px 12px; font-size: 11px; font-weight: 700; text-align: left; white-space: nowrap; }
+.at-root .cs-data-table td { padding: 8px 12px; border-bottom: 1px solid #e1ebfb; vertical-align: middle; }
+.at-root .cs-data-table tbody tr.at-row { cursor: pointer; }
+.at-root .cs-data-table tbody tr.at-row--dim td { opacity: 0.6; }
+
+/* Checklist grid */
+.at-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #9cc6ff;
+  border-radius: 6px;
+  background: #fff;
+  color: transparent;
+  transition: background 0.1s;
+}
+.at-check:hover { border-color: var(--cs-primary); }
+.at-check[aria-pressed='true'] { border-color: var(--cs-primary-strong); background: var(--cs-primary); color: #fff; }
+.at-vertical { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+.at-sticky-col { position: sticky; left: 0; z-index: 1; background: inherit; }
+.at-root .cs-data-table thead th.at-sticky-col { z-index: 3; }
+
+/* Alerts */
+.at-alert { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid; border-radius: 8px; font-size: 13px; }
+.at-alert--warn { border-color: #fcd34d; background: #fffbeb; color: #78350f; }
+.at-alert--error { border-color: #f6b2ad; background: #fff4f2; color: #b42318; }
+.at-alert--info { border-color: var(--cs-border); background: var(--cs-surface-0); color: var(--cs-text); }
+
+/* Edit drawer */
+.at-overlay { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: flex-end; background: rgba(17, 35, 71, 0.3); }
+.at-drawer { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 44rem; background: #fff; box-shadow: -12px 0 40px rgba(17, 35, 71, 0.18); }
+.at-label { display: block; margin-bottom: 4px; font-size: 11px; font-weight: 700; color: var(--cs-muted); }
+.at-check-option { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--cs-border); border-radius: 8px; font-size: 13px; cursor: pointer; }
+.at-check-option--on { border-color: rgba(12, 163, 12, 0.35); background: var(--at-good-wash); }
+.at-dropzone { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px; border: 2px dashed #9cc6ff; border-radius: 12px; background: var(--cs-surface-0); text-align: center; cursor: pointer; }
+.at-dropzone:hover { border-color: var(--cs-primary); }
+.at-section-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }

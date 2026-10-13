@@ -5,6 +5,7 @@ import path from 'path';
 import { Pool } from 'pg';
 import {defineConfig, loadEnv} from 'vite';
 import { createMonitor } from './monitor/server/monitor.js';
+import { createTracker } from './tracker/server/tracker.js';
 import { isValidAppLogin } from './src/utils/appLogin';
 
 interface JiraApiConfig {
@@ -463,6 +464,19 @@ function uberticketMonitorPlugin() {
         }
         monitor.app(req, res, next);
       });
+
+      // Assessment Tracker (Excel replacement) at /api/tracker. Its data lives in tracker/data (git-ignored).
+      // After every UberTicket refresh it syncs status, tester, dates and time spent from the
+      // Full Assessment / Rules of Engagement tickets.
+      const tracker = await createTracker({
+        root: path.resolve(__dirname, 'tracker'),
+        getTickets: () => ({ full: monitor.assessmentTickets('full'), roe: monitor.assessmentTickets('roe') }),
+        ticketStatus: () => monitor.status(),
+        offsetHours: monitor.config.business.offsetHours,
+      });
+      server.middlewares.use('/api/tracker', tracker.app);
+      monitor.onRefresh(() => tracker.sync());
+
       monitor.start();
       server.httpServer?.on('close', () => monitor.stop());
     },
@@ -498,7 +512,7 @@ export default defineConfig(({ mode }) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       // monitor/data changes on every refresh (cache, encrypted token); it is not app source.
-      watch: process.env.DISABLE_HMR === 'true' ? null : { ignored: ['**/monitor/data/**'] },
+      watch: process.env.DISABLE_HMR === 'true' ? null : { ignored: ['**/monitor/data/**', '**/tracker/data/**'] },
     },
   };
 });

@@ -12,6 +12,12 @@ export const TAB_ROUTES: { tab: ActiveTab; path: string; title: string }[] = [
   { tab: 'dpsa', path: '/dpsa', title: 'DPSA Monitoring' },
   { tab: 'full-assessment', path: '/full-assessment', title: 'Full Assessment' },
   { tab: 'roe', path: '/rules-of-engagement', title: 'Rules of Engagement' },
+  { tab: 'tracker', path: '/assessment-tracker', title: 'Assessment Tracker' },
+  { tab: 'tracker-assessment', path: '/assessment-tracker/assessments', title: 'Assessment List' },
+  { tab: 'tracker-checklist', path: '/assessment-tracker/checklist', title: 'Assessment Checklist' },
+  { tab: 'tracker-decommissioned', path: '/assessment-tracker/decommissioned', title: 'Decommissioned Apps' },
+  { tab: 'tracker-sync', path: '/assessment-tracker/uberticket-sync', title: 'UberTicket Sync' },
+  { tab: 'tracker-import', path: '/assessment-tracker/import', title: 'Import Assessment Excel' },
 ];
 
 // Extra paths that should open an existing tab.
@@ -23,6 +29,8 @@ const PATH_ALIASES: Record<string, ActiveTab> = {
   '/fullassessment': 'full-assessment',
   '/rulesofengagement': 'roe',
   '/roe': 'roe',
+  '/tracker': 'tracker',
+  '/assessment-tracker/monitoring': 'tracker',
 };
 
 function normalizePath(pathname: string): string {

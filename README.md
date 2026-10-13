@@ -89,3 +89,20 @@ Every push to `main` will run deploy automatically.
 ### 4. Manual trigger (optional)
 
 You can also run deploy manually from GitHub Actions using `workflow_dispatch`.
+
+## Assessment Tracker (Security Full Assessment Tracker workbook)
+
+Sidebar → **Assessment Tracker**: Monitoring, Assessment List, Checklist, Decommissioned, UberTicket Sync, Import Excel.
+It replaces the SharePoint "Security Full Assessment Tracker" Excel (Checklist → Full assessment → Monitoring sheets,
+Bi-Annual and Quarterly). Scoring rules ported from the workbook formulas are in `tracker/shared/logic.js`.
+
+- **Storage:** SQLite at `tracker/data/tracker.db` (git-ignored, back it up). Needs **Node.js 22.13+** (built-in `node:sqlite`);
+  on older Node only the tracker pages show an error. `TRACKER_DB_PATH` overrides the location.
+- **Seed / reload from Excel:** Import Excel page, or `node tracker/server/cli-import.js <workbook.xlsx>`.
+- **UberTicket sync** (after every monitor refresh, using the UberTicket token saved in Settings):
+  Full Assessment (1080829) and Rules of Engagement (72913) tickets are matched to apps by product name (ignoring case,
+  spaces, punctuation and a leading "Cloudstaff") and by quarter/year → period (Quarterly cycle first, else Bi-Annual).
+  UberTicket sets **status** (open = In Progress, resolved = Done), **tester** (assignee, frozen at resolution),
+  **actual start/end** (submitted/resolved) and Rules of Engagement **time spent**. Unmatched products can be linked once on the
+  UberTicket Sync page. When a ticket is resolved, the app's **Security Seal** is captured from the Security Seal page.
+- **Tests:** `npm run test:tracker`.

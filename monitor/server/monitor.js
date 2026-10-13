@@ -142,6 +142,9 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
     Object.assign(progress, patch, { percent: patch.running === true ? next : Math.max(progress.percent, next) });
   };
 
+  // Called after every successful refresh (e.g. the Assessment Tracker's UberTicket sync).
+  const refreshListeners = new Set();
+
   let running = null;
   // Starts a refresh, or joins the one already running. trigger: 'manual' | 'auto' | 'token'.
   function refresh(trigger = 'auto') {
@@ -203,6 +206,13 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
       log(`loaded ${state.raw.length} DPSA, ${config.assessments.map((m) => `${state.assess[m.key]?.length ?? 0} ${m.short}`).join(', ')} tickets`);
       const tickets = state.raw.length + Object.values(state.assess).reduce((n, a) => n + (a?.length ?? 0), 0);
       setProgress({ running: false, percent: 100, step: 'Done', finishedAt: Date.now(), ok: true, tickets });
+      for (const fn of refreshListeners) {
+        try {
+          await fn();
+        } catch (err) {
+          log(`refresh listener failed: ${err.message}`);
+        }
+      }
     } catch (err) {
       state.error = err.message;
       state.errorKind = err instanceof AuthError ? 'auth' : 'fetch';
@@ -337,6 +347,18 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
   return {
     app,
     config,
+    // Normalized Full Assessment / Rules of Engagement tickets from the last refresh.
+    assessmentTickets(key) {
+      const m = config.assessments.find((x) => x.key === key);
+      if (!m) return [];
+      const now = Date.now();
+      return (state.assess[key] ?? []).map((r) => normalizeFull(r, { calendar, slaDays: config.slaDays, offsetHours: config.business.offsetHours, fields: m.fields, now }));
+    },
+    status: () => ({ fetchedAt: state.fetchedAt, loading: state.loading, error: state.error, errorKind: state.errorKind, demo: config.demo }),
+    onRefresh(fn) {
+      refreshListeners.add(fn);
+      return () => refreshListeners.delete(fn);
+    },
     start() {
       if (config.demo) log('using demo data');
       const year = new Date().getFullYear();

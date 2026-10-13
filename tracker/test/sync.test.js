@@ -1,0 +1,90 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { openDb } from '../server/db.js';
+import { syncTickets } from '../server/sync.js';
+import { enrich, matchKey } from '../shared/logic.js';
+
+const ms = (iso) => Date.parse(`${iso}T00:00:00Z`) - 8 * 3_600_000; // midnight Manila
+
+async function setup() {
+  const db = await openDb(':memory:');
+  db.prepare("INSERT INTO cycles (id, track, year) VALUES (1, 'biannual', 2026), (2, 'quarterly', 2026)").run();
+  const add = db.prepare('INSERT INTO assessments (cycle_id, period, project, priority, security_tester, seal, seal_source) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  add.run(1, '2nd Half', 'MyStaff', 'High', 'Old Tester', null, null);
+  add.run(1, '2nd Half', 'Pact-X', 'High', null, 'Secure', 'excel');
+  add.run(1, '1st Half', 'Buzz', 'Low', null, null, null);
+  add.run(2, '3rd Quarter', 'Payroll', 'Critical', null, null, null);
+  add.run(1, '2nd Half', 'Payroll', 'Critical', null, null, null);
+  return db;
+}
+
+const ticket = (o) => ({ key: 'UB-1', url: 'https://x/1', state: 'open', product: 'X', quarter: 'Q3', year: '2026', assignee: 'ZionM', createdAt: ms('2026-07-01'), resolvedAt: null, ...o });
+const row = (db, project, period) => db.prepare('SELECT * FROM assessments WHERE project = ? AND period = ?').get(project, period);
+
+test('matchKey ignores case, punctuation and a leading "Cloudstaff"', () => {
+  assert.equal(matchKey('Cloudstaff Mystaff'), matchKey('MyStaff'));
+  assert.equal(matchKey('Pact-X'), matchKey('pact x'));
+  assert.notEqual(matchKey('MyStaff'), matchKey('MyStaff Mobile'));
+});
+
+test('open ticket -> In Progress with tester and start date', async () => {
+  const db = await setup();
+  const res = syncTickets(db, { full: [ticket({ product: 'Cloudstaff Mystaff' })], roe: [] });
+  assert.equal(res.matchedApps, 1);
+  const r = row(db, 'MyStaff', '2nd Half');
+  assert.equal(r.ticket_state, 'open');
+  assert.equal(r.security_tester, 'ZionM');
+  assert.equal(r.actual_start, '2026-07-01');
+  assert.equal(r.actual_end, null);
+  assert.equal(enrich({ checks: {}, ticketState: r.ticket_state }).status, 'In Progress');
+});
+
+test('resolved ticket -> Done, end date, tester frozen at resolution', async () => {
+  const db = await setup();
+  syncTickets(db, { full: [ticket({ product: 'MyStaff', state: 'resolved', resolvedAt: ms('2026-07-20') })], roe: [] });
+  let r = row(db, 'MyStaff', '2nd Half');
+  assert.equal(r.actual_end, '2026-07-20');
+  assert.equal(r.tester_frozen, 1);
+  // Reassigned after resolution: tester stays.
+  syncTickets(db, { full: [ticket({ product: 'MyStaff', state: 'resolved', resolvedAt: ms('2026-07-20'), assignee: 'Someone Else' })], roe: [] });
+  r = row(db, 'MyStaff', '2nd Half');
+  assert.equal(r.security_tester, 'ZionM');
+  const e = enrich({ checks: {}, ticketState: 'resolved' });
+  assert.equal(e.status, 'Done');
+  assert.equal(e.checklistGap, true);
+});
+
+test('existing Excel seal is kept and tied to the resolved ticket', async () => {
+  const db = await setup();
+  syncTickets(db, { full: [ticket({ key: 'UB-9', product: 'PactX', state: 'resolved', resolvedAt: ms('2026-08-01') })], roe: [] });
+  const r = row(db, 'Pact-X', '2nd Half');
+  assert.equal(r.seal, 'Secure');
+  assert.equal(r.seal_ticket_key, 'UB-9');
+});
+
+test('quarterly apps take precedence; quarter picks the period; ROE time spent', async () => {
+  const db = await setup();
+  syncTickets(db, { full: [], roe: [ticket({ product: 'Payroll', timeSpent: '480' }), ticket({ key: 'UB-2', product: 'Buzz', quarter: 'Q1' })] });
+  assert.equal(row(db, 'Payroll', '3rd Quarter').ticket_key, 'UB-1');
+  assert.equal(row(db, 'Payroll', '3rd Quarter').time_spent, 480);
+  assert.equal(row(db, 'Payroll', '2nd Half').ticket_key, null);
+  assert.equal(row(db, 'Buzz', '1st Half').ticket_key, 'UB-2');
+});
+
+test('unmatched tickets are reported; a manual link fixes them; rejected are ignored', async () => {
+  const db = await setup();
+  let res = syncTickets(db, { full: [ticket({ product: 'Staff Portal' }), ticket({ key: 'UB-3', product: 'Buzz', state: 'rejected', quarter: 'Q1' })], roe: [] });
+  assert.equal(res.unmatched.length, 1);
+  assert.equal(res.unmatched[0].product, 'Staff Portal');
+  db.prepare('INSERT INTO ticket_links (product_key, product, project) VALUES (?, ?, ?)').run(matchKey('Staff Portal'), 'Staff Portal', 'MyStaff');
+  res = syncTickets(db, { full: [ticket({ product: 'Staff Portal' })], roe: [] });
+  assert.equal(res.unmatched.length, 0);
+  assert.equal(row(db, 'MyStaff', '2nd Half').ticket_key, 'UB-1');
+  assert.equal(row(db, 'Buzz', '1st Half').ticket_key, null);
+});
+
+test('latest ticket wins when an app has several in the period', async () => {
+  const db = await setup();
+  syncTickets(db, { full: [ticket({ key: 'UB-OLD', product: 'MyStaff', createdAt: ms('2026-07-01') }), ticket({ key: 'UB-NEW', product: 'MyStaff', createdAt: ms('2026-09-01') })], roe: [] });
+  assert.equal(row(db, 'MyStaff', '2nd Half').ticket_key, 'UB-NEW');
+});

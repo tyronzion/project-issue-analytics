@@ -116,4 +116,6 @@ export interface AppSettings {
 
 export type ActiveTab = 'dashboard' | 'seal' | 'charts' | 'issues' | 'formulas' | 'projects' | 'dependabots' | 'jira'
   // UberTicket monitoring tabs (pages served by the monitor plugin at /monitor/*)
-  | 'dpsa' | 'full-assessment' | 'roe';
+  | 'dpsa' | 'full-assessment' | 'roe'
+  // Assessment Tracker (the Security Full Assessment Tracker workbook)
+  | 'tracker' | 'tracker-assessment' | 'tracker-checklist' | 'tracker-decommissioned' | 'tracker-sync' | 'tracker-import';

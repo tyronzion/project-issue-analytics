@@ -10,6 +10,7 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test:monitor": "node --test monitor/server/*.test.js",
+    "test:tracker": "node --test tracker/test/*.test.js",
     "monitor": "node monitor/server/server.js"
   },
   "dependencies": {

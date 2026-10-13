@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { IssueRecord, FormulaConfig, DateFilter } from '../types';
 import { 
   Search, 
-  Filter, 
+  X, 
   Apple, 
   Smartphone, 
   Monitor, 
@@ -62,9 +62,9 @@ interface IssuesTableViewProps {
   issues: IssueRecord[];
   formulaConfig: FormulaConfig;
   dateFilter: DateFilter;
-  selectedProject?: string;
   selectedPlatform?: string;
-  onClearProjectFilter: () => void;
+  /** Hide the Dependabots source filter on pages that already show only Dependabots issues. */
+  hideSourceFilter?: boolean;
   onOpenClearData?: () => void;
 }
 
@@ -72,13 +72,11 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
   issues,
   formulaConfig,
   dateFilter,
-  selectedProject = '',
   selectedPlatform = 'ALL',
-  onClearProjectFilter,
+  hideSourceFilter = false,
   onOpenClearData,
 }) => {
   const [search, setSearch] = useState('');
-  const [projectFilter, setProjectFilter] = useState(selectedProject);
   const [platformFilter, setPlatformFilter] = useState(selectedPlatform);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sourceFilter, setSourceFilter] = useState<'ALL' | 'DEPENDABOTS' | 'NON_DEPENDABOTS'>('ALL');
@@ -95,24 +93,23 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
 
   // Sync incoming props if changed
   React.useEffect(() => {
-    if (selectedProject) setProjectFilter(selectedProject);
-  }, [selectedProject]);
-
-  React.useEffect(() => {
     if (selectedPlatform) setPlatformFilter(selectedPlatform);
   }, [selectedPlatform]);
 
-  // Extract distinct projects and statuses
-  const distinctProjects = useMemo(() => {
-    const set = new Set<string>();
-    issues.forEach(i => {
-      if (i.project) set.add(i.project);
-    });
-    if (projectFilter && projectFilter !== 'ALL') {
-      set.add(projectFilter);
-    }
-    return Array.from(set).sort();
-  }, [issues, projectFilter]);
+  // Reset to the first page whenever the incoming (globally filtered) list changes.
+  React.useEffect(() => {
+    setPage(1);
+  }, [issues]);
+
+  const hasTableFilters = Boolean(search) || platformFilter !== 'ALL' || sourceFilter !== 'ALL' || statusFilter !== 'ALL';
+
+  const clearTableFilters = () => {
+    setSearch('');
+    setPlatformFilter('ALL');
+    setSourceFilter('ALL');
+    setStatusFilter('ALL');
+    setPage(1);
+  };
 
   // Filter issues
   const filtered = useMemo(() => {
@@ -126,11 +123,6 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
           issue.project.toLowerCase().includes(q) ||
           (issue.assignee && issue.assignee.toLowerCase().includes(q));
         if (!match) return false;
-      }
-
-      // Project
-      if (projectFilter && projectFilter !== 'ALL' && issue.project !== projectFilter) {
-        return false;
       }
 
       // Platform tag
@@ -153,7 +145,7 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
 
       return true;
     });
-  }, [issues, search, projectFilter, platformFilter, sourceFilter, statusFilter, formulaConfig, dateFilter]);
+  }, [issues, search, platformFilter, sourceFilter, statusFilter, formulaConfig, dateFilter]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const paginatedIssues = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -253,6 +245,26 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
       <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] font-medium bg-amber-950/60 text-amber-400 border border-amber-800/60">
         <Clock className="w-3 h-3" />
         <span>{status}</span>
+      </span>
+    );
+  };
+
+  const getSeverityBadge = (issue: IssueRecord) => {
+    const level = SEVERITY_LEVELS.find(l => l.key === getNormalizedSeverity(issue));
+    if (!level) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-normal bg-slate-800 text-slate-400 border border-slate-700">
+          Unrated
+        </span>
+      );
+    }
+    return (
+      <span
+        className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border"
+        style={{ color: level.accent, borderColor: level.accent, backgroundColor: `${level.accent}14` }}
+        title={level.definition}
+      >
+        {level.label}
       </span>
     );
   };
@@ -370,9 +382,9 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
       <div className="p-4 border-b border-slate-800 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
-            <h2 className="font-semibold text-base text-white">All Filtered Issues & Backlog Records</h2>
+            <h2 className="font-semibold text-base text-white">Issues</h2>
             <span className="text-xs text-slate-400">
-              ({filtered.length} of {issues.length} matching)
+              {filtered.length === issues.length ? `${issues.length} records` : `${filtered.length} of ${issues.length} records`}
             </span>
           </div>
 
@@ -400,10 +412,9 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
           </div>
         </div>
 
-        {/* Filter Toolbar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 pt-2">
-          {/* Search Box */}
-          <div className="relative">
+        {/* Table-only refinements (date, project and severity live in the global filter bar) */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div className="relative flex-1 min-w-[220px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -417,54 +428,8 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
             />
           </div>
 
-          {/* Project Filter */}
           <select
-            value={projectFilter}
-            onChange={e => {
-              setProjectFilter(e.target.value);
-              setPage(1);
-            }}
-            className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
-          >
-            <option value="ALL">All Projects / Applications</option>
-            {distinctProjects.map(p => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-
-          {/* Platform Tag Filter */}
-          <select
-            value={platformFilter}
-            onChange={e => {
-              setPlatformFilter(e.target.value);
-              setPage(1);
-            }}
-            className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
-          >
-            <option value="ALL">All Platforms (iOS / AOS / General)</option>
-            <option value="IOS">Apple [IOS] Keyword Only</option>
-            <option value="AOS">Android [AOS] Keyword Only</option>
-            <option value="GENERAL">General / Non-Mobile Tagged</option>
-          </select>
-
-          {/* Dependabots Source Filter */}
-          <select
-            value={sourceFilter}
-            onChange={e => {
-              setSourceFilter(e.target.value as typeof sourceFilter);
-              setPage(1);
-            }}
-            className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
-          >
-            <option value="ALL">All Sources (incl. Dependabots)</option>
-            <option value="DEPENDABOTS">Dependabots Only</option>
-            <option value="NON_DEPENDABOTS">Without Dependabots</option>
-          </select>
-
-          {/* Status Filter */}
-          <select
+            aria-label="Status"
             value={statusFilter}
             onChange={e => {
               setStatusFilter(e.target.value);
@@ -472,13 +437,55 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
             }}
             className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
           >
-            <option value="ALL">All Statuses</option>
-            <option value="DONE">Done</option>
-            <option value="CANCELLED">Cancelled</option>
-            <option value="RISK_ACCEPTED">Risk Accepted</option>
-            <option value="OUTSTANDING">Outstanding</option>
-            <option value="SECURITY_OVERDUE">Overdue Issues</option>
+            <option value="ALL">Status: All</option>
+            <option value="OUTSTANDING">Status: Outstanding</option>
+            <option value="SECURITY_OVERDUE">Status: Overdue</option>
+            <option value="DONE">Status: Done</option>
+            <option value="RISK_ACCEPTED">Status: Risk Accepted</option>
+            <option value="CANCELLED">Status: Cancelled</option>
           </select>
+
+          <select
+            aria-label="Platform"
+            value={platformFilter}
+            onChange={e => {
+              setPlatformFilter(e.target.value);
+              setPage(1);
+            }}
+            className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+          >
+            <option value="ALL">Platform: All</option>
+            <option value="IOS">Platform: iOS</option>
+            <option value="AOS">Platform: Android</option>
+            <option value="GENERAL">Platform: General</option>
+          </select>
+
+          {!hideSourceFilter && (
+            <select
+              aria-label="Source"
+              value={sourceFilter}
+              onChange={e => {
+                setSourceFilter(e.target.value as typeof sourceFilter);
+                setPage(1);
+              }}
+              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+            >
+              <option value="ALL">Source: All</option>
+              <option value="DEPENDABOTS">Source: Dependabots only</option>
+              <option value="NON_DEPENDABOTS">Source: Exclude Dependabots</option>
+            </select>
+          )}
+
+          {hasTableFilters && (
+            <button
+              onClick={clearTableFilters}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-300 rounded-lg hover:bg-amber-200 transition"
+              title="Clear search, status, platform and source"
+            >
+              <X className="w-3 h-3" />
+              <span>Clear</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -490,6 +497,7 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
               <th className="py-3 px-4 w-28">Issue Key</th>
               <th className="py-3 px-4 w-44">Project</th>
               <th className="py-3 px-4">Summary</th>
+              <th className="py-3 px-4 w-24 text-center">Severity</th>
               <th className="py-3 px-4 w-28 text-center">Platform Tag</th>
               <th className="py-3 px-4 w-28">Created Date</th>
               <th className="py-3 px-4 w-32">Status Changed</th>
@@ -500,7 +508,7 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
           <tbody className="divide-y divide-slate-800 text-xs">
             {paginatedIssues.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-10 text-center text-slate-500">
+                <td colSpan={9} className="py-10 text-center text-slate-500">
                   No issues found matching the active filters.
                 </td>
               </tr>
@@ -521,6 +529,11 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
                     {/* Summary */}
                     <td className="py-3 px-4 text-slate-200">
                       <span className="font-normal">{issue.summary}</span>
+                    </td>
+
+                    {/* Severity */}
+                    <td className="py-3 px-4 text-center">
+                      {getSeverityBadge(issue)}
                     </td>
 
                     {/* Platform Tag */}

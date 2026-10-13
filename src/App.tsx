@@ -28,7 +28,7 @@ import {
   loadJiraIntegrationProfile,
   saveJiraIntegrationProfile,
 } from './utils/storage';
-import { computeProjectSummaries, isDependabotsIssue } from './utils/metricsEngine';
+import { computeProjectSummaries, isDependabotsIssue, getNormalizedSeverity } from './utils/metricsEngine';
 import { exportToExcel } from './utils/excelParser';
 import { parseExcelOrCsvFile, mapObjectsToIssueRecords } from './utils/excelParser';
 import { loadRemoteIssues, saveRemoteIssues } from './utils/remotePersistence';
@@ -53,6 +53,7 @@ import { MonitorFrame, isMonitorTab } from './components/MonitorFrame';
 
 const AUTH_SESSION_KEY = 'project_issue_analytics_authenticated_v1';
 const AUTO_SYNC_INTERVAL_MS = 15 * 60 * 1000;
+const FILTERABLE_TABS: ActiveTab[] = ['dashboard', 'charts', 'seal', 'dependabots', 'issues', 'projects'];
 
 function hasAuthenticationSession(): boolean {
   try {
@@ -60,6 +61,18 @@ function hasAuthenticationSession(): boolean {
   } catch {
     return false;
   }
+}
+
+// Global project filter: an exact project name selects just that project; any other text is a
+// case-insensitive "contains" search (e.g. "Genesis" matches "Genesis IOS" and "Genesis AOS").
+function createProjectMatcher(query: string, knownProjects: string[]): (projectName: string) => boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return () => true;
+  const isExact = knownProjects.some(name => name.toLowerCase() === needle);
+  return projectName => {
+    const name = (projectName || '').toLowerCase();
+    return isExact ? name === needle : name.includes(needle);
+  };
 }
 
 function removeCancelledIssues(rows: IssueRecord[], config: FormulaConfig): IssueRecord[] {
@@ -84,7 +97,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>(
     () => getTabFromPath(window.location.pathname) ?? 'dashboard'
   );
-  const [drilldownProject, setDrilldownProject] = useState<string>('');
   const [drilldownPlatform, setDrilldownPlatform] = useState<string>('ALL');
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('');
   const [selectedSeverityFilter, setSelectedSeverityFilter] = useState<string>('');
@@ -262,17 +274,7 @@ export default function App() {
   const severityFilteredIssues = useMemo(() => {
     if (!selectedSeverityFilter) return issues;
 
-    return issues.filter(issue => {
-      const severityValue = String(
-        issue.severity || issue.raw?.severity || issue.raw?.Severity || issue.raw?.SEVERITY || issue.priority || ''
-      ).trim().toLowerCase();
-      const normalizedSeverity = ['critical', 'sev1', 's1', 'p0', 'blocker', 'urgent'].includes(severityValue) ? 'critical'
-        : ['high', 'sev2', 's2', 'p1', 'major'].includes(severityValue) ? 'high'
-        : ['medium', 'med', 'moderate', 'sev3', 's3', 'p2', 'normal'].includes(severityValue) ? 'medium'
-        : ['low', 'minor', 'trivial', 'sev4', 's4', 'p3', 'p4'].includes(severityValue) ? 'low'
-        : 'unclassified';
-      return normalizedSeverity === selectedSeverityFilter;
-    });
+    return issues.filter(issue => (getNormalizedSeverity(issue) || 'unclassified') === selectedSeverityFilter);
   }, [issues, selectedSeverityFilter]);
 
   // 4. Compute Project Metrics & Filtered Data with Custom Target Watchlist
@@ -296,14 +298,24 @@ export default function App() {
     settings.useCustomProjectListOnly
   ]);
 
-  const dashboardIssues = useMemo(() => {
-    if (!selectedProjectFilter) return filteredIssues;
-    return filteredIssues.filter(issue => issue.project === selectedProjectFilter);
-  }, [filteredIssues, selectedProjectFilter]);
-
   const projectFilterOptions = useMemo(
-    () => summaries.map(summary => summary.projectName),
+    () => summaries.map(summary => summary.projectName).sort((a, b) => a.localeCompare(b)),
     [summaries]
+  );
+
+  const matchesProject = useMemo(
+    () => createProjectMatcher(selectedProjectFilter, projectFilterOptions),
+    [selectedProjectFilter, projectFilterOptions]
+  );
+
+  // Everything below the global filter bar reads these project-scoped lists.
+  const scopedSummaries = useMemo(
+    () => summaries.filter(summary => matchesProject(summary.projectName)),
+    [summaries, matchesProject]
+  );
+  const scopedIssues = useMemo(
+    () => filteredIssues.filter(issue => matchesProject(issue.project)),
+    [filteredIssues, matchesProject]
   );
 
   // Dependabots-only view: reuse all formulas but only include issues tagged [github-dependabots]
@@ -330,6 +342,15 @@ export default function App() {
     settings.customProjectList,
     settings.useCustomProjectListOnly
   ]);
+
+  const scopedDependabotsSummaries = useMemo(
+    () => dependabotsSummaries.filter(summary => matchesProject(summary.projectName)),
+    [dependabotsSummaries, matchesProject]
+  );
+  const scopedDependabotsIssues = useMemo(
+    () => dependabotsFilteredIssues.filter(issue => matchesProject(issue.project)),
+    [dependabotsFilteredIssues, matchesProject]
+  );
 
   // 5. Extract all unique project names ever detected in dataset
   const allDetectedProjects = useMemo(() => {
@@ -490,7 +511,7 @@ export default function App() {
 
   // Handler: Drilldown into specific project or platform
   const handleDrilldown = (projectName: string, platformTag?: string) => {
-    setDrilldownProject(projectName);
+    setSelectedProjectFilter(projectName);
     setDrilldownPlatform(platformTag || 'ALL');
     setActiveTab('issues');
   };
@@ -506,8 +527,8 @@ export default function App() {
       dateRangeText = `${settings.dateFilter.startDate || 'Beginning'} to ${settings.dateFilter.endDate || 'Present'}`;
     }
     exportToExcel(
-      summaries,
-      filteredIssues,
+      scopedSummaries,
+      scopedIssues,
       dateRangeText,
       `Project_Issues_Metrics_${new Date().toISOString().split('T')[0]}.xlsx`,
       includeSeverity
@@ -519,7 +540,7 @@ export default function App() {
   const handleResetDataToSample = () => {
     setIssues([]);
     savePersistedData([]);
-    setDrilldownProject('');
+    setSelectedProjectFilter('');
     setDrilldownPlatform('ALL');
   };
 
@@ -539,7 +560,7 @@ export default function App() {
         projectAliases: [],
       }));
     }
-    setDrilldownProject('');
+    setSelectedProjectFilter('');
     setDrilldownPlatform('ALL');
   };
 
@@ -591,7 +612,7 @@ export default function App() {
           : loadJiraIntegrationProfile().autoSyncEnabled,
         lastSyncedAt: new Date().toISOString(),
       });
-      setDrilldownProject('');
+      setSelectedProjectFilter('');
       setDrilldownPlatform('ALL');
       return { loaded: activeRows.length };
     } catch (error: any) {
@@ -689,8 +710,8 @@ export default function App() {
         customProjectListCount={settings.customProjectList?.length || 0}
       />
 
-      {/* Date Range Filter Bar (the UberTicket monitoring tabs have their own filters) */}
-      {!isMonitorTab(activeTab) && <DateRangeFilterBar
+      {/* Global filter bar: shown only on pages whose data it filters (monitoring tabs have their own) */}
+      {FILTERABLE_TABS.includes(activeTab) && <DateRangeFilterBar
         dateFilter={settings.dateFilter}
         onChange={handleDateFilterChange}
         projectOptions={projectFilterOptions}
@@ -699,8 +720,8 @@ export default function App() {
         selectedSeverity={selectedSeverityFilter}
         onSeverityChange={setSelectedSeverityFilter}
         isDataLoading={isDataLoading}
-        totalFilteredCount={filteredIssues.length}
-        totalAllCount={severityFilteredIssues.length}
+        totalFilteredCount={activeTab === 'dependabots' ? scopedDependabotsIssues.length : scopedIssues.length}
+        totalAllCount={activeTab === 'dependabots' ? issues.filter(isDependabotsIssue).length : issues.length}
       />}
 
       {/* Main Content Workspace */}
@@ -839,8 +860,8 @@ export default function App() {
           <main className="flex-1 min-w-0">
         {activeTab === 'dashboard' && (
           <MetricsDashboard
-            summaries={summaries}
-            allFilteredIssues={filteredIssues}
+            summaries={scopedSummaries}
+            allFilteredIssues={scopedIssues}
             formulaConfig={settings.formulaConfig}
             dateFilter={settings.dateFilter}
             projectAliases={settings.projectAliases}
@@ -859,27 +880,22 @@ export default function App() {
         )}
 
         {activeTab === 'seal' && (
-          <SecuritySealDashboard summaries={summaries} />
+          <SecuritySealDashboard summaries={scopedSummaries} />
         )}
 
         {activeTab === 'charts' && (
           <ChartsDashboard
-            issues={dashboardIssues}
+            issues={scopedIssues}
             formulaConfig={settings.formulaConfig}
           />
         )}
 
         {activeTab === 'issues' && (
           <IssuesTableView
-            issues={filteredIssues}
+            issues={scopedIssues}
             formulaConfig={settings.formulaConfig}
             dateFilter={settings.dateFilter}
-            selectedProject={drilldownProject}
             selectedPlatform={drilldownPlatform}
-            onClearProjectFilter={() => {
-              setDrilldownProject('');
-              setDrilldownPlatform('ALL');
-            }}
             onOpenClearData={() => setIsClearDataOpen(true)}
           />
         )}
@@ -912,7 +928,7 @@ export default function App() {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <span className="font-semibold text-slate-200 text-sm">
-                  Active Applications ({summaries.length})
+                  Active Applications ({scopedSummaries.length})
                 </span>
                 {settings.deletedProjects.length > 0 && (
                   <span className="text-xs text-amber-700 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
@@ -922,7 +938,7 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {summaries.map(p => (
+                {scopedSummaries.map(p => (
                   <div
                     key={p.projectName}
                     className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between hover:border-blue-300 transition shadow-sm"
@@ -1019,8 +1035,8 @@ export default function App() {
             </div>
 
             <MetricsDashboard
-              summaries={dependabotsSummaries}
-              allFilteredIssues={dependabotsFilteredIssues}
+              summaries={scopedDependabotsSummaries}
+              allFilteredIssues={scopedDependabotsIssues}
               formulaConfig={settings.formulaConfig}
               dateFilter={settings.dateFilter}
               projectAliases={settings.projectAliases}
@@ -1038,15 +1054,11 @@ export default function App() {
             />
 
             <IssuesTableView
-              issues={dependabotsFilteredIssues}
+              issues={scopedDependabotsIssues}
+              hideSourceFilter
               formulaConfig={settings.formulaConfig}
               dateFilter={settings.dateFilter}
-              selectedProject={drilldownProject}
               selectedPlatform={drilldownPlatform}
-              onClearProjectFilter={() => {
-                setDrilldownProject('');
-                setDrilldownPlatform('ALL');
-              }}
               onOpenClearData={() => setIsClearDataOpen(true)}
             />
           </div>

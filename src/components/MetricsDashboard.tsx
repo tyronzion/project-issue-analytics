@@ -8,7 +8,6 @@ import {
   SeverityBreakdown,
 } from '../types';
 import {
-  Search,
   Trash2,
   ExternalLink,
   Smartphone,
@@ -121,7 +120,6 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
     }
   };
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('totalFound');
   const [sortAsc, setSortAsc] = useState(false);
   const [viewPrefs, setViewPrefs] = useState<DashboardViewPrefs>(loadViewPrefs);
@@ -191,8 +189,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
   };
 
   const filteredSummaries = useMemo(() => {
-    return summaries
-      .filter(s => s.projectName.toLowerCase().includes(searchQuery.toLowerCase()))
+    return [...summaries]
       .sort((a, b) => {
         const valA = getSortValue(a, sortField);
         const valB = getSortValue(b, sortField);
@@ -203,7 +200,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
         }
         return sortAsc ? (Number(valA) || 0) - (Number(valB) || 0) : (Number(valB) || 0) - (Number(valA) || 0);
       });
-  }, [summaries, searchQuery, sortField, sortAsc]);
+  }, [summaries, sortField, sortAsc]);
 
   // Calculate Aggregates
   const totals = summaries.reduce(
@@ -772,16 +769,6 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
               </button>
             )}
 
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search application name..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-56"
-              />
-            </div>
           </div>
         </div>
 
@@ -1066,7 +1053,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                         <p className="font-semibold text-slate-200 text-sm">
                           {allFilteredIssues.length === 0
                             ? 'No Issue Data in Workspace'
-                            : 'No Applications Match Search / Target Watchlist'}
+                            : 'No Applications Match the Current Filters / Target Watchlist'}
                         </p>
                         <p className="text-slate-500 text-xs mt-1 max-w-md mx-auto">
                           {allFilteredIssues.length === 0

@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Search, ShieldCheck } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { ShieldCheck } from 'lucide-react';
 import { ProjectSummary, SecuritySeal } from '../types';
 import { getProjectSecuritySeal, SECURITY_SEAL_ORDER } from '../utils/securitySeal';
 
@@ -26,7 +26,6 @@ const matrixRows: Array<{ seal: SecuritySeal; critical: string; high: string; me
 ];
 
 export const SecuritySealDashboard: React.FC<SecuritySealDashboardProps> = ({ summaries }) => {
-  const [searchQuery, setSearchQuery] = useState('');
   const groupedProjects = useMemo(() => {
     const groups = new Map<SecuritySeal, ProjectSummary[]>();
     SECURITY_SEAL_ORDER.forEach(seal => groups.set(seal, []));
@@ -35,17 +34,12 @@ export const SecuritySealDashboard: React.FC<SecuritySealDashboardProps> = ({ su
       groups.get(getProjectSecuritySeal(summary).seal)!.push(summary);
     });
 
-    const query = searchQuery.trim().toLowerCase();
     groups.forEach(projects => {
       projects.sort((left, right) => left.projectName.localeCompare(right.projectName));
-      if (query) {
-        const matching = projects.filter(project => project.projectName.toLowerCase().includes(query));
-        projects.splice(0, projects.length, ...matching);
-      }
     });
 
     return groups;
-  }, [searchQuery, summaries]);
+  }, [summaries]);
 
   return (
     <div className="space-y-6">
@@ -60,15 +54,6 @@ export const SecuritySealDashboard: React.FC<SecuritySealDashboardProps> = ({ su
               <p className="text-xs text-slate-400 mt-1">Seal is calculated from each project's outstanding severity backlog.</p>
             </div>
           </div>
-          <label className="relative block w-full lg:w-80">
-            <Search className="absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-slate-500" />
-            <input
-              value={searchQuery}
-              onChange={event => setSearchQuery(event.target.value)}
-              placeholder="Search by project name"
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-9 pr-3 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
-            />
-          </label>
         </div>
 
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">

@@ -96,8 +96,8 @@ Sidebar → **Assessment Tracker**: Monitoring, Assessment List, Checklist, Deco
 It replaces the SharePoint "Security Full Assessment Tracker" Excel (Checklist → Full assessment → Monitoring sheets,
 Bi-Annual and Quarterly). Scoring rules ported from the workbook formulas are in `tracker/shared/logic.js`.
 
-- **Storage:** SQLite at `tracker/data/tracker.db` (git-ignored, back it up). Needs **Node.js 22.13+** (built-in `node:sqlite`);
-  on older Node only the tracker pages show an error. `TRACKER_DB_PATH` overrides the location.
+- **Storage:** SQLite file at `tracker/data/tracker.db` (git-ignored, back it up). Uses Node's built-in `node:sqlite` on
+  Node 22.13+, otherwise `sql.js` (WebAssembly SQLite) with the same file. `TRACKER_DB_PATH` overrides the location.
 - **Seed / reload from Excel:** Import Excel page, or `node tracker/server/cli-import.js <workbook.xlsx>`.
 - **UberTicket sync** (after every monitor refresh, using the UberTicket token saved in Settings):
   Full Assessment (1080829) and Rules of Engagement (72913) tickets are matched to apps by product name (ignoring case,

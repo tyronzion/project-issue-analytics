@@ -1,13 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { openSqlite } from './sqlite.js';
 
-// Assessment Tracker storage: SQLite via Node's built-in node:sqlite (Node 22.13+), no extra packages.
-export async function openDb(dbPath) {
-  const { DatabaseSync } = await import('node:sqlite');
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  const db = new DatabaseSync(dbPath);
+// Assessment Tracker storage: one SQLite file, via node:sqlite (Node 22.13+) or sql.js on older Node.
+export async function openDb(dbPath, options) {
+  if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  const { db, engine } = await openSqlite(dbPath, options);
+  db.engine = engine;
+  // WAL needs a real file handle; sql.js works on an in-memory copy.
+  if (engine === 'node:sqlite') db.exec('PRAGMA journal_mode = WAL;');
   db.exec(`
-    PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
 
     CREATE TABLE IF NOT EXISTS cycles (

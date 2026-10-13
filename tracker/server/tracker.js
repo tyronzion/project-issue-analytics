@@ -13,8 +13,9 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
   let unavailable = null;
   try {
     db = await openDb(process.env.TRACKER_DB_PATH || path.join(root, 'data', 'tracker.db'));
+    log(`database ready (${db.engine})`);
   } catch (err) {
-    unavailable = `Assessment Tracker needs Node.js 22.13 or newer (node:sqlite). ${err.message}`;
+    unavailable = `Assessment Tracker database could not be opened: ${err.message}`;
     log(unavailable);
   }
 

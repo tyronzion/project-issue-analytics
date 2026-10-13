@@ -109,6 +109,11 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
   });
 
   router.delete('/assessments/:id', (req, res) => {
+    const r = db.prepare('SELECT project, ticket_key, ticket_source, created_from_ticket FROM assessments WHERE id = ?').get(req.params.id);
+    // Deleting an app that came from a Rules of Engagement ticket: don't let the sync re-create it.
+    const ignore = db.prepare('INSERT OR IGNORE INTO ticket_ignores (ticket_key, product, ignored_by) VALUES (?, ?, ?)');
+    if (r?.created_from_ticket) ignore.run(r.created_from_ticket, r.project, userOf(req));
+    if (r?.ticket_source === 'roe' && r.ticket_key) ignore.run(r.ticket_key, r.project, userOf(req));
     db.prepare('DELETE FROM assessments WHERE id = ?').run(req.params.id);
     res.status(204).end();
   });

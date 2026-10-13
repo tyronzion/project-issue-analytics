@@ -88,3 +88,61 @@ test('latest ticket wins when an app has several in the period', async () => {
   syncTickets(db, { full: [ticket({ key: 'UB-OLD', product: 'MyStaff', createdAt: ms('2026-07-01') }), ticket({ key: 'UB-NEW', product: 'MyStaff', createdAt: ms('2026-09-01') })], roe: [] });
   assert.equal(row(db, 'MyStaff', '2nd Half').ticket_key, 'UB-NEW');
 });
+
+test('classification: Rules of Engagement = New, Full Assessment = Old', async () => {
+  const db = await setup();
+  syncTickets(db, { full: [ticket({ product: 'MyStaff' })], roe: [ticket({ key: 'UB-2', product: 'Buzz', quarter: 'Q1' })] });
+  assert.equal(row(db, 'MyStaff', '2nd Half').classification, 'Old');
+  assert.equal(row(db, 'Buzz', '1st Half').classification, 'New');
+});
+
+test('a Rules of Engagement ticket for an unknown app creates it as a New app', async () => {
+  const db = await setup();
+  const res = syncTickets(db, { full: [], roe: [ticket({ key: 'UB-50', product: 'Staff Portal', priority: 'high', targetLink: 'https://portal.example', state: 'resolved', resolvedAt: ms('2026-08-10'), timeSpent: '600' })] });
+  assert.equal(res.created.length, 1);
+  assert.equal(res.unmatched.length, 0);
+  const r = row(db, 'Staff Portal', '2nd Half');
+  assert.equal(r.cycle_id, 1);
+  assert.equal(r.classification, 'New');
+  assert.equal(r.priority, 'High');
+  assert.equal(r.testing_url, 'https://portal.example');
+  assert.equal(r.ticket_key, 'UB-50');
+  assert.equal(r.ticket_state, 'resolved');
+  assert.equal(r.actual_end, '2026-08-10');
+  assert.equal(r.time_spent, 600);
+  assert.equal(r.created_from_ticket, 'UB-50');
+  // Next sync: matched, not created again.
+  const again = syncTickets(db, { full: [], roe: [ticket({ key: 'UB-50', product: 'Staff Portal', state: 'resolved', resolvedAt: ms('2026-08-10') })] });
+  assert.equal(again.created.length, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM assessments WHERE project = 'Staff Portal'").get().n, 1);
+});
+
+test('one app per period even with several tickets; Full Assessment tickets never create apps', async () => {
+  const db = await setup();
+  const res = syncTickets(db, {
+    full: [ticket({ key: 'UB-60', product: 'Ghost App' })],
+    roe: [ticket({ key: 'UB-61', product: 'New Tool' }), ticket({ key: 'UB-62', product: 'new-tool', createdAt: ms('2026-09-01') })],
+  });
+  assert.equal(res.created.length, 1);
+  assert.equal(row(db, 'New Tool', '2nd Half').ticket_key, 'UB-62');
+  assert.equal(row(db, 'Ghost App', '2nd Half'), undefined);
+  assert.equal(res.unmatched.length, 1);
+});
+
+test('no backfill for old years; a new year gets its Bi-Annual cycle', async () => {
+  const db = await setup();
+  const res = syncTickets(db, { full: [], roe: [ticket({ key: 'UB-70', product: 'Old Thing', year: '2023' }), ticket({ key: 'UB-71', product: 'Next Year App', year: '2027', quarter: 'Q1' })] });
+  assert.equal(res.created.length, 1);
+  assert.equal(res.unmatched[0].product, 'Old Thing');
+  const c = db.prepare("SELECT id FROM cycles WHERE track = 'biannual' AND year = 2027").get();
+  assert.ok(c);
+  assert.equal(row(db, 'Next Year App', '1st Half').cycle_id, c.id);
+});
+
+test('an ignored ticket (its app was deleted) is not re-created', async () => {
+  const db = await setup();
+  db.prepare("INSERT INTO ticket_ignores (ticket_key, product) VALUES ('UB-80', 'Unwanted')").run();
+  const res = syncTickets(db, { full: [], roe: [ticket({ key: 'UB-80', product: 'Unwanted' })] });
+  assert.equal(res.created.length, 0);
+  assert.equal(res.unmatched.length, 1);
+});

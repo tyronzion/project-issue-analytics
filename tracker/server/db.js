@@ -71,6 +71,14 @@ export async function openDb(dbPath, options) {
       linked_by TEXT,
       linked_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    -- Rules of Engagement tickets whose auto-created app was deleted: don't create it again.
+    CREATE TABLE IF NOT EXISTS ticket_ignores (
+      ticket_key TEXT PRIMARY KEY,
+      product TEXT,
+      ignored_by TEXT,
+      ignored_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   // Columns added after the first release.
@@ -87,6 +95,7 @@ export async function openDb(dbPath, options) {
     ['seal_source', 'TEXT'],         // 'excel' | 'manual' | 'auto'
     ['seal_ticket_key', 'TEXT'],     // ticket whose resolution the seal belongs to
     ['seal_at', 'TEXT'],
+    ['created_from_ticket', 'TEXT'], // set when the app was created from a Rules of Engagement ticket
   ]) {
     if (!existing.has(col)) db.exec(`ALTER TABLE assessments ADD COLUMN ${col} ${type}`);
   }
@@ -135,6 +144,7 @@ const SYNC_FIELDS = {
   sealSource: 'seal_source',
   sealTicketKey: 'seal_ticket_key',
   sealAt: 'seal_at',
+  createdFromTicket: 'created_from_ticket',
 };
 
 export function toApi(row) {

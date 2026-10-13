@@ -117,7 +117,8 @@ export default function Editor({ row, periods, testers, onClose, onSaved, onDele
                   {' · '}{row.ticketSource === 'roe' ? 'Rules of Engagement' : 'Security Full Assessment'} · {row.ticketState}
                 </div>
                 <div className="at-muted">
-                  Status, tester and actual dates come from UberTicket{row.testerFrozen ? ' (tester kept as it was at resolution)' : ''}.
+                  Status, tester, actual dates and the New / Old tag come from UberTicket{row.testerFrozen ? ' (tester kept as it was at resolution)' : ''}.
+                  {row.createdFromTicket && <> Added automatically from Rules of Engagement {row.createdFromTicket}.</>}
                   {row.sealSource === 'auto' && row.sealAt && <> Seal captured {row.sealAt.slice(0, 10)}.</>}
                 </div>
               </div>
@@ -179,7 +180,7 @@ export default function Editor({ row, periods, testers, onClose, onSaved, onDele
               <Field label="Period"><Choice value={draft.period} onChange={set('period')} options={periods} /></Field>
               <Field label="Priority"><Choice value={draft.priority} onChange={set('priority')} options={PRIORITIES} /></Field>
               <Field label="Quarter"><Choice value={draft.quarter} onChange={set('quarter')} options={QUARTERS} blank="—" /></Field>
-              <Field label="Classification"><Choice value={draft.classification} onChange={set('classification')} options={CLASSIFICATIONS} blank="—" /></Field>
+              <Field label="Classification" locked={linked}><Choice value={draft.classification} onChange={set('classification')} options={CLASSIFICATIONS} blank="—" disabled={linked} /></Field>
               <Field label="Security tester" locked={linked}>
                 <input list="at-testers" value={draft.securityTester ?? ''} onChange={(e) => set('securityTester')(e.target.value)} className="at-input w-full" disabled={linked} />
                 <datalist id="at-testers">{testers.map((t) => <option key={t} value={t} />)}</datalist>

@@ -49,8 +49,9 @@ export default function SyncPage({ projects, onSynced }) {
           <h2 className="text-lg font-bold">UberTicket sync</h2>
           <p className="text-sm at-muted">
             Runs after every UberTicket refresh (Full Assessment and Rules of Engagement tickets). It sets <b>status</b> (open = In Progress, resolved = Done),
-            <b> tester</b> (assignee, kept as it was at resolution), <b>actual start / end</b> (submitted / resolved) and Rules of Engagement <b>time spent</b>.
-            The <b>seal</b> is captured from the Security Seal page when a ticket is resolved.
+            <b> tester</b> (assignee, kept as it was at resolution), <b>actual start / end</b> (submitted / resolved), Rules of Engagement <b>time spent</b>{' '}
+            and the <b>New / Old</b> tag (Rules of Engagement = New app, Full Assessment = Old app). A Rules of Engagement ticket for an app that isn't in the
+            tracker <b>adds the app</b>. The <b>seal</b> is captured from the Security Seal page when a ticket is resolved.
           </p>
         </div>
         <button type="button" onClick={() => act(api.syncNow)} disabled={busy} className="at-btn">
@@ -70,13 +71,35 @@ export default function SyncPage({ projects, onSynced }) {
           <article className="issues-kpi-card"><div><span>Apps linked</span><small>Matched to a tracker app</small></div><strong>{last?.matchedApps ?? 0}</strong></article>
           <article className="issues-kpi-card"><div><span>Updated</span><small>Apps changed by the last sync</small></div><strong>{last?.updated ?? 0}</strong></article>
           <article className="issues-kpi-card"><div><span>Unmatched</span><small>Products needing a link</small></div><strong>{unmatched.length}</strong></article>
-          <article className="issues-kpi-card"><div><span>Manual links</span><small>Product → app</small></div><strong>{info.links.length}</strong></article>
+          <article className="issues-kpi-card"><div><span>New apps added</span><small>From Rules of Engagement, last sync</small></div><strong>{last?.created?.length ?? 0}</strong></article>
         </section>
       )}
       {last?.error && <div className="at-alert at-alert--error">Sync failed: {last.error}</div>}
       {ub?.errorKind === 'auth' || (ub?.error && /token/i.test(ub.error)) ? (
         <div className="at-alert at-alert--warn">The UberTicket token is missing or expired. Open <b>DPSA Monitoring → Settings</b> and paste a new token.</div>
       ) : null}
+
+      {last?.created?.length > 0 && (
+        <section className="cs-table-shell overflow-hidden">
+          <div className="p-3" style={{ borderBottom: '1px solid var(--cs-border)' }}>
+            <h2 className="text-base font-bold">New apps added by the last sync ({last.created.length})</h2>
+            <p className="text-xs at-muted">Created from Rules of Engagement tickets and tagged New. If one is an app you already have under another name, link the product to it below (or above) and delete the duplicate; a deleted app is not re-created.</p>
+          </div>
+          <table className="cs-data-table">
+            <thead><tr><th>App</th><th>Cycle</th><th>Period</th><th>Ticket</th></tr></thead>
+            <tbody>
+              {last.created.map((c) => (
+                <tr key={c.id}>
+                  <td className="font-semibold">{c.project}</td>
+                  <td>{c.year} Bi-Annual</td>
+                  <td>{c.period}</td>
+                  <td><span className="at-ticket"><Ticket className="w-3 h-3" aria-hidden /> {c.ticket}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       <section className="cs-table-shell overflow-hidden">
         <div className="p-3" style={{ borderBottom: '1px solid var(--cs-border)' }}>

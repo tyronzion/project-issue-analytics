@@ -83,6 +83,22 @@ Add a new entry only for decisions a future developer might otherwise reconsider
   - Production needs HTTPS and the Entra settings **before** this is deployed, or the app is locked for everyone.
   - New public paths must be added to `PUBLIC_PREFIXES` deliberately.
 
+### D9: Reverse proxy and hostname are explicit settings
+- **Date:** 2026-10-14
+- **Decision:**
+  - Production is reached as `https://security-analytics.cloudstaff.tech` through an OpenResty proxy (`proxy-nsoc`, 10.6.99.71), which forwards to the CT.
+  - `APP_HOSTNAMES` feeds Vite `server.allowedHosts`. Never set it to `true`.
+  - `TRUST_PROXY` lists the proxy IPs. Only from those IPs does `auth/auth.js` believe:
+    - `X-Forwarded-For`: the right-most untrusted hop is the client IP for the login rate limit.
+    - `X-Forwarded-Proto`: https means Secure cookies.
+- **Reason:**
+  - Vite's host check prevents DNS rebinding.
+  - Behind a proxy, every client shares the proxy's IP, so one person's failed logins would lock everyone out.
+  - The forwarded headers are forgeable unless they come from the proxy.
+- **Impact:**
+  - Both settings live in the server's `.env.local`.
+  - Microsoft sign-in can use `https://security-analytics.cloudstaff.tech/auth/callback` as its redirect URI.
+
 ### D6: Cloudstaff Design System is the visual foundation, applied through tokens
 - **Date:** 2026-10-14
 - **Decision:**

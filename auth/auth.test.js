@@ -211,12 +211,12 @@ test('session cookies are not secure-flagged for a localhost redirect URI (plain
 
 // ---- Classic login (used until Microsoft sign-in is configured) ----
 
-function post(auth, { url = '/auth/login', form, cookie = '', ip = '10.0.0.5', contentType = 'application/x-www-form-urlencoded', encrypted = false }) {
+function post(auth, { url = '/auth/login', form, cookie = '', ip = '10.0.0.5', contentType = 'application/x-www-form-urlencoded', encrypted = false, headers: extra = {} }) {
   return new Promise((resolve) => {
     const headers = {};
     const listeners = {};
     const req = {
-      method: 'POST', url, headers: { cookie, accept: 'text/html', 'content-type': contentType },
+      method: 'POST', url, headers: { cookie, accept: 'text/html', 'content-type': contentType, ...extra },
       socket: { remoteAddress: ip, encrypted }, on(ev, fn) { listeners[ev] = fn; return req; },
     };
     const res = { statusCode: 200, setHeader: (k, v) => { headers[k.toLowerCase()] = v; }, end: (b) => resolve({ status: res.statusCode, headers, body: String(b || '') }) };
@@ -316,4 +316,44 @@ test('with Microsoft configured, both options work side by side', async () => {
   assert.doesNotMatch(only.body, /name="password"/);
   assert.equal((await post(microsoftOnly, { form: { username: 'csdatasec', password: 'x' } })).status, 404);
   microsoftOnly.stop();
+});
+
+// ---- Behind the HTTPS reverse proxy ----
+
+const PROXY = '10.6.99.71';
+const viaProxy = (client, extra = {}) => ({ ip: PROXY, headers: { 'x-forwarded-for': client, 'x-forwarded-proto': 'https', ...extra } });
+
+test('behind a trusted proxy, the login rate limit is per real client, not per proxy', async () => {
+  const auth = createAuth({ env: { ...CLASSIC, TRUST_PROXY: PROXY }, log: () => {} });
+  for (let i = 0; i < 10; i++) assert.equal((await post(auth, { form: { username: 'team', password: `g${i}` }, ...viaProxy('203.0.113.7') })).status, 401);
+  assert.equal((await post(auth, { form: { username: 'team', password: 'long secret' }, ...viaProxy('203.0.113.7') })).status, 429);
+  // another person behind the same proxy is not locked out
+  assert.equal((await post(auth, { form: { username: 'team', password: 'long secret' }, ...viaProxy('203.0.113.8') })).status, 303);
+  // a client can't escape its limit by prepending a fake address: the right-most untrusted hop counts
+  assert.equal((await post(auth, { form: { username: 'team', password: 'long secret' }, ...viaProxy('1.2.3.4, 203.0.113.7') })).status, 429);
+  auth.stop();
+});
+
+test('X-Forwarded-* headers are ignored unless the request comes from a trusted proxy', async () => {
+  const noTrust = createAuth({ env: CLASSIC, log: () => {} });
+  // without TRUST_PROXY, a direct client faking X-Forwarded-For is still counted by its real address
+  for (let i = 0; i < 10; i++) await post(noTrust, { form: { username: 'team', password: `g${i}` }, ip: '10.9.0.1', headers: { 'x-forwarded-for': `198.51.100.${i}` } });
+  assert.equal((await post(noTrust, { form: { username: 'team', password: 'long secret' }, ip: '10.9.0.1', headers: { 'x-forwarded-for': '198.51.100.99' } })).status, 429);
+  // ...and can't make its cookie look HTTPS-only
+  const plain = await post(noTrust, { form: { username: 'team', password: 'long secret' }, ip: '10.9.0.2', headers: { 'x-forwarded-proto': 'https' } });
+  assert.doesNotMatch(String(plain.headers['set-cookie']), /Secure/);
+  noTrust.stop();
+
+  const trusted = createAuth({ env: { ...CLASSIC, TRUST_PROXY: PROXY }, log: () => {} });
+  const untrustedSender = await post(trusted, { form: { username: 'team', password: 'long secret' }, ip: '10.9.0.3', headers: { 'x-forwarded-proto': 'https' } });
+  assert.doesNotMatch(String(untrustedSender.headers['set-cookie']), /Secure/);
+  trusted.stop();
+});
+
+test('HTTPS through the trusted proxy gives Secure session cookies', async () => {
+  const auth = createAuth({ env: { ...CLASSIC, TRUST_PROXY: `::ffff:${PROXY}` }, log: () => {} });
+  const ok = await post(auth, { form: { username: 'team', password: 'long secret' }, ip: `::ffff:${PROXY}`, headers: { 'x-forwarded-for': '203.0.113.9', 'x-forwarded-proto': 'https' } });
+  assert.equal(ok.status, 303);
+  assert.match(String(ok.headers['set-cookie']), /HttpOnly; SameSite=Lax; Secure/);
+  auth.stop();
 });

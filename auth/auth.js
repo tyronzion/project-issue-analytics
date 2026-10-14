@@ -26,6 +26,11 @@
 // Microsoft sign-in is on when all four AUTH_* settings above are valid; otherwise its button is disabled and the
 // server log says what is missing. With neither option available, every request is refused (fails closed).
 //
+// Behind a reverse proxy (e.g. the HTTPS proxy in front of the production server):
+//   TRUST_PROXY=10.6.99.71   comma-separated proxy IPs. Only for requests from these IPs are X-Forwarded-For (the
+//                            real client IP, used for the login rate limit) and X-Forwarded-Proto (https -> Secure
+//                            cookies) believed; from anyone else those headers are ignored.
+//
 // Roles (admin / user) come from auth/users.js and are looked up on every request, so a change applies at once.
 // Server routes that only admins may use call requireAdmin(req, res).
 
@@ -92,6 +97,8 @@ function sameString(a, b) {
   const y = Buffer.from(String(b));
   return x.length === y.length && timingSafeEqual(x, y);
 }
+
+const normalizeIp = (ip) => String(ip || '').trim().replace(/^::ffff:/, '');
 
 function isLoopback(req) {
   const ip = String(req.socket?.remoteAddress || '');
@@ -287,6 +294,21 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
   if (mode === 'unconfigured') log(`No sign-in method is available, so every request is refused: ${problems.join('; ')}`);
 
   const secureCookies = configured && redirectUri.startsWith('https:');
+  const trustedProxies = new Set(String(env.TRUST_PROXY || '').split(',').map(normalizeIp).filter(Boolean));
+  if (trustedProxies.size) log(`trusting X-Forwarded-For/-Proto from: ${[...trustedProxies].join(', ')}`);
+  const viaTrustedProxy = (req) => trustedProxies.has(normalizeIp(req.socket?.remoteAddress));
+
+  // The visitor's IP: the socket address, or (from a trusted proxy) the right-most X-Forwarded-For entry that is
+  // not itself a trusted proxy. Left-most entries are client-supplied and could be forged, so they are not used.
+  function clientIp(req) {
+    const socketIp = normalizeIp(req.socket?.remoteAddress) || 'unknown';
+    if (!viaTrustedProxy(req)) return socketIp;
+    const hops = String(req.headers['x-forwarded-for'] || '').split(',').map(normalizeIp).filter(Boolean);
+    for (let i = hops.length - 1; i >= 0; i--) if (!trustedProxies.has(hops[i])) return hops[i];
+    return socketIp;
+  }
+  const isHttps = (req) => !!req.socket?.encrypted
+    || (viaTrustedProxy(req) && String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim().toLowerCase() === 'https');
   const cca = configured
     ? msalClient || new ConfidentialClientApplication({
       auth: { clientId, clientSecret, authority: `https://login.microsoftonline.com/${tenantId}` },
@@ -306,10 +328,11 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
   const timer = setInterval(sweep, 10 * 60 * 1000);
   timer.unref?.();
 
-  // Secure when the Microsoft redirect URI is https, or (classic login) when this request came over HTTPS.
+  // Secure when the Microsoft redirect URI is https, or when this request came over HTTPS (directly or via a
+  // trusted proxy).
   function cookie(name, value, maxAgeSeconds, req = null) {
     const parts = [`${name}=${encodeURIComponent(value)}`, 'Path=/', 'HttpOnly', 'SameSite=Lax'];
-    if (secureCookies || req?.socket?.encrypted) parts.push('Secure');
+    if (secureCookies || (req && isHttps(req))) parts.push('Secure');
     if (maxAgeSeconds != null) parts.push(`Max-Age=${maxAgeSeconds}`);
     return parts.join('; ');
   }
@@ -417,7 +440,7 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
   }
 
   async function classicLogin(req, res) {
-    const ip = String(req.socket?.remoteAddress || 'unknown');
+    const ip = clientIp(req);
     const t = now();
     const f = failures.get(ip);
     if (f && t - f.first > CLASSIC_WINDOW_MS) failures.delete(ip);

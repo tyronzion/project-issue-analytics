@@ -564,6 +564,9 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       https,
+      // Hostnames this server answers to besides localhost and IP addresses (Vite blocks others, which protects
+      // against DNS rebinding). Comma-separated in APP_HOSTNAMES, e.g. security-analytics.cloudstaff.tech.
+      allowedHosts: String(process.env.APP_HOSTNAMES || '').split(',').map((h) => h.trim()).filter(Boolean),
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',

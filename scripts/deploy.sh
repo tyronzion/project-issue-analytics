@@ -3,6 +3,17 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="${APP_DIR:-}"
+
+# The git sync below rewrites this file while it runs, and bash reads scripts as it goes. Run from a private copy
+# so the rest of this run is the version that started.
+if [ -z "${DEPLOY_RUNNING_COPY:-}" ]; then
+  DEPLOY_COPY="$(mktemp "${TMPDIR:-/tmp}/deploy.XXXXXX.sh")"
+  cp "${BASH_SOURCE[0]}" "${DEPLOY_COPY}"
+  export DEPLOY_RUNNING_COPY="${DEPLOY_COPY}"
+  export APP_DIR="${APP_DIR:-$(dirname "${SCRIPT_DIR}")}"
+  exec bash "${DEPLOY_COPY}" "$@"
+fi
+trap 'rm -f "${DEPLOY_RUNNING_COPY}"' EXIT
 BRANCH="${BRANCH:-main}"
 APP_PORT="${APP_PORT:-80}"
 # Production (CT) runs the app as this systemd service; see scripts/security-issues-analytics.service.
@@ -53,7 +64,7 @@ print_summary() {
   esac
 }
 
-trap print_summary EXIT
+trap 'print_summary; rm -f "${DEPLOY_RUNNING_COPY}"' EXIT
 
 resolve_app_dir() {
   local candidates=()
@@ -104,6 +115,7 @@ fi
 CURRENT_STAGE="git_sync"
 echo "[deploy] Fetching latest code"
 GIT_BEFORE="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+LOCK_BEFORE="$(sha256sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true)"
 git fetch origin "${BRANCH}"
 git checkout "${BRANCH}"
 
@@ -119,10 +131,15 @@ else
 fi
 
 CURRENT_STAGE="dependency_install"
-echo "[deploy] Installing dependencies"
-if [ -f package-lock.json ]; then
+LOCK_AFTER="$(sha256sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true)"
+# npm ci deletes node_modules, which the running app uses; only reinstall when the lockfile changed.
+if [ -d node_modules ] && [ -n "${LOCK_AFTER}" ] && [ "${LOCK_BEFORE}" = "${LOCK_AFTER}" ] && [ "${FORCE_INSTALL:-0}" != 1 ]; then
+  echo "[deploy] package-lock.json unchanged; keeping installed dependencies (FORCE_INSTALL=1 to reinstall)"
+elif [ -f package-lock.json ]; then
+  echo "[deploy] Installing dependencies"
   npm ci
 else
+  echo "[deploy] Installing dependencies"
   npm install
 fi
 

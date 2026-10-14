@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="${APP_DIR:-}"
 BRANCH="${BRANCH:-main}"
 APP_PORT="${APP_PORT:-80}"
+# Production (CT) runs the app as this systemd service; see scripts/security-issues-analytics.service.
+SERVICE_NAME="${SERVICE_NAME:-security-issues-analytics}"
 START_TS="$(date +%s)"
 CURRENT_STAGE="initializing"
 PULL_RESULT="not_started"
@@ -132,6 +134,40 @@ if ! npm run lint; then
 fi
 
 CURRENT_STAGE="restart_app"
+
+# When the app runs as the systemd service, never start a second copy: signal the service's main process (it runs
+# as this user, so no root is needed) and systemd starts it again with the new code (the unit has Restart=always).
+if command -v systemctl >/dev/null 2>&1 && systemctl cat "${SERVICE_NAME}.service" >/dev/null 2>&1; then
+  OLD_PID="$(systemctl show -p MainPID --value "${SERVICE_NAME}")"
+  if [ "${OLD_PID:-0}" -eq 0 ]; then
+    echo "[deploy] ERROR: service ${SERVICE_NAME} is not running. Start it as root: systemctl start ${SERVICE_NAME}"
+    exit 1
+  fi
+  echo "[deploy] Restarting systemd service ${SERVICE_NAME} (main PID ${OLD_PID})"
+  if ! kill -TERM "${OLD_PID}"; then
+    echo "[deploy] ERROR: cannot signal PID ${OLD_PID} as $(id -un). Restart it as root: systemctl restart ${SERVICE_NAME}"
+    exit 1
+  fi
+  RESTARTED=false
+  for _ in $(seq 1 60); do
+    sleep 1
+    NEW_PID="$(systemctl show -p MainPID --value "${SERVICE_NAME}")"
+    if [ "${NEW_PID:-0}" -ne 0 ] && [ "${NEW_PID}" != "${OLD_PID}" ] && curl -s -o /dev/null "http://127.0.0.1:${APP_PORT}/"; then
+      RESTARTED=true
+      break
+    fi
+  done
+  if [ "${RESTARTED}" != true ]; then
+    echo "[deploy] ERROR: ${SERVICE_NAME} did not come back on port ${APP_PORT} within 60s."
+    echo "[deploy]        Check as root: systemctl status ${SERVICE_NAME}; journalctl -u ${SERVICE_NAME} -n 50"
+    exit 1
+  fi
+  CURRENT_STAGE="completed"
+  echo "[deploy] Deployment successful (service ${SERVICE_NAME}, main PID ${NEW_PID})"
+  exit 0
+fi
+
+# Legacy servers without the service: start the app directly.
 echo "[deploy] Restarting app with npm run dev (without PM2) on port ${APP_PORT}"
 
 if [ "${APP_PORT}" -lt 1024 ] && [ "$(id -u)" -ne 0 ]; then

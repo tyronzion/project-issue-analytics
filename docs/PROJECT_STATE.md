@@ -31,6 +31,7 @@ These are recorded only, not fixed.
   - systemd unit `security-issues-analytics` (`npm run dev` = `vite dev` on port 80, user csdatasec, starts on boot). No pm2, no Docker.
   - There's no `sudo`; use `su -c`.
   - All APIs live in Vite `configureServer` plugins, so `vite build` / `dist/` contains **no backend**.
+  - To update the server, run `bash scripts/deploy.sh` there as csdatasec (no root needed); it restarts the service. Don't run `npm install` or `npm audit fix` on the server.
   - The README's deploy and pm2 section is stale.
   - No GitHub runner is registered, so pushes don't deploy.
 - **Some docs are stale.** The top of `README.md` is AI Studio boilerplate. `monitor/README.md` describes the old standalone package: it refers to `src/phHolidays.js` (the file is now `monitor/server/phHolidays.js`) and to `npm start/demo` (the root script is `npm run monitor`).

@@ -26,7 +26,13 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 These are recorded only, not fixed.
 - **Production still runs the old build** until a deploy. That build has client-only login, an exposed `/tracker/data/tracker.db`, and probably exposed `monitor/data` key files. Treat the old password (`csdatasec` login) as public: change it anywhere else it is used. Consider rotating the UberTicket token after deploying.
 - **Entra client secret expires.** Renew it in Entra before the expiry date, or sign-in stops working.
-- **Production runs `vite dev`** under pm2 (see `scripts/deploy.sh`). All APIs live in Vite `configureServer` plugins, so `vite build` / `dist/` contains **no backend**.
+- **Production** has been the Proxmox CT since 2026-10-14, currently at 10.6.99.208 and moving to **10.6.99.213** (see the session file). It was moved from the old VM; see `docs/sessions/server-migration.md`.
+  - Debian 12, Node 22, PostgreSQL 16 native on localhost.
+  - systemd unit `security-issues-analytics` (`npm run dev` = `vite dev` on port 80, user csdatasec, starts on boot). No pm2, no Docker.
+  - There's no `sudo`; use `su -c`.
+  - All APIs live in Vite `configureServer` plugins, so `vite build` / `dist/` contains **no backend**.
+  - The README's deploy and pm2 section is stale.
+  - No GitHub runner is registered, so pushes don't deploy.
 - **Some docs are stale.** The top of `README.md` is AI Studio boilerplate. `monitor/README.md` describes the old standalone package: it refers to `src/phHolidays.js` (the file is now `monitor/server/phHolidays.js`) and to `npm start/demo` (the root script is `npm run monitor`).
 - **Holidays need a yearly update.** `monitor/server/phHolidays.js` covers 2024–2026, so 2027 must be added once it is proclaimed.
 - **Design-system adoption is partial by design.** Icons are still lucide (the design system recommends Font Awesome Free), the existing copy and Title Case were kept, there is no dark mode, and coloured status text is still flattened to brand blue by the existing overrides.

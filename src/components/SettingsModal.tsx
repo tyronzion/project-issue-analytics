@@ -11,7 +11,14 @@ import {
   CheckCircle,
   Database
 } from 'lucide-react';
-import { DEFAULT_SETTINGS, clearPersistedData } from '../utils/storage';
+import {
+  DEFAULT_SETTINGS,
+  clearPersistedData,
+  loadJiraIntegrationProfile,
+  normalizeJiraProfile,
+  normalizeSettings,
+  saveJiraIntegrationProfile,
+} from '../utils/storage';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -34,6 +41,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onRestoreBackup,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const settingsFileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -69,6 +77,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }
       } catch (err) {
         alert('Failed to read JSON backup file.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Settings only (formulas, aliases, target list, hidden projects, filters, Jira connection without its API
+  // token). These live in this browser, per site address, so this moves them to another address. Importing never
+  // touches the shared issue data, so anyone may use it.
+  const handleExportSettingsJSON = () => {
+    const exported = {
+      kind: 'settings',
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      settings,
+      jiraProfile: { ...loadJiraIntegrationProfile(), apiToken: '' },
+    };
+    const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Project_Analytics_Settings_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportSettingsJSON = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target?.result as string);
+        // Accepts a settings export or a full backup; only its settings are used.
+        if (!parsed?.settings || typeof parsed.settings !== 'object' || !parsed.settings.formulaConfig) {
+          alert('This file does not contain settings.');
+          return;
+        }
+        if (!window.confirm("Replace this browser's settings (formulas, aliases, target list, filters) with the ones in this file? The shared issue data is not changed.")) return;
+        onUpdateSettings(normalizeSettings(parsed.settings));
+        if (parsed.jiraProfile && typeof parsed.jiraProfile === 'object') {
+          // Keep this browser's own Jira API token; it is never exported.
+          const current = loadJiraIntegrationProfile();
+          saveJiraIntegrationProfile(normalizeJiraProfile({ ...parsed.jiraProfile, apiToken: current.apiToken }));
+        }
+        alert('Settings imported.');
+        onClose();
+      } catch {
+        alert('Failed to read the settings file.');
       }
     };
     reader.readAsText(file);
@@ -153,6 +207,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span>Restore Backup (JSON)</span>
                 </button>
               </div>}
+            </div>
+          </div>
+
+          {/* Settings only: move them to another address (e.g. after a server move) */}
+          <div className="space-y-3 pt-3 border-t border-slate-800">
+            <span className="font-semibold text-slate-300 text-sm block">Move settings to another address</span>
+            <p className="text-xs text-slate-400">
+              Your formulas, aliases, target list and filters are saved in this browser for this address only. Export them here,
+              then import them after opening the app at its new address. The shared issue data is not included.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={handleExportSettingsJSON}
+                className="flex items-center justify-center space-x-2 p-3 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl text-slate-200 hover:text-white transition"
+              >
+                <Download className="w-4 h-4 text-blue-400" />
+                <span>Export Settings (JSON)</span>
+              </button>
+              <div>
+                <input
+                  ref={settingsFileInputRef}
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={e => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleImportSettingsJSON(e.target.files[0]);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => settingsFileInputRef.current?.click()}
+                  className="w-full flex items-center justify-center space-x-2 p-3 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl text-slate-200 hover:text-white transition"
+                >
+                  <Upload className="w-4 h-4 text-emerald-400" />
+                  <span>Import Settings (JSON)</span>
+                </button>
+              </div>
             </div>
           </div>
 

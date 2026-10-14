@@ -230,34 +230,38 @@ export const DEFAULT_JIRA_INTEGRATION_PROFILE: JiraIntegrationProfile = {
   lastSyncedAt: '',
 };
 
+// Fills in defaults for anything missing; used for stored settings and for imported settings files.
+export function normalizeSettings(parsed: any): AppSettings {
+  const savedTargetListRaw = Array.isArray(parsed.customProjectList) ? parsed.customProjectList : [];
+  const savedTargetList = normalizeTargetList(savedTargetListRaw);
+
+  // Manual/saved settings always take priority once settings exist.
+  const resolvedTargetList = savedTargetList;
+  const resolvedStrictMode = Boolean(parsed.useCustomProjectListOnly);
+
+  const nextSettings: AppSettings = {
+    ...DEFAULT_SETTINGS,
+    ...parsed,
+    customProjectList: resolvedTargetList,
+    useCustomProjectListOnly: resolvedStrictMode,
+    formulaConfig: {
+      ...DEFAULT_FORMULA_CONFIG,
+      ...(parsed.formulaConfig || {}),
+      columnMapping: {
+        ...DEFAULT_FORMULA_CONFIG.columnMapping,
+        ...(parsed.formulaConfig?.columnMapping || {})
+      }
+    }
+  };
+
+  return nextSettings;
+}
+
 export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    const parsed = JSON.parse(raw);
-    const savedTargetListRaw = Array.isArray(parsed.customProjectList) ? parsed.customProjectList : [];
-    const savedTargetList = normalizeTargetList(savedTargetListRaw);
-
-    // Manual/saved settings always take priority once settings exist.
-    const resolvedTargetList = savedTargetList;
-    const resolvedStrictMode = Boolean(parsed.useCustomProjectListOnly);
-
-    const nextSettings: AppSettings = {
-      ...DEFAULT_SETTINGS,
-      ...parsed,
-      customProjectList: resolvedTargetList,
-      useCustomProjectListOnly: resolvedStrictMode,
-      formulaConfig: {
-        ...DEFAULT_FORMULA_CONFIG,
-        ...(parsed.formulaConfig || {}),
-        columnMapping: {
-          ...DEFAULT_FORMULA_CONFIG.columnMapping,
-          ...(parsed.formulaConfig?.columnMapping || {})
-        }
-      }
-    };
-
-    return nextSettings;
+    return normalizeSettings(JSON.parse(raw));
   } catch (err) {
     console.error('Failed to load settings from storage:', err);
     return DEFAULT_SETTINGS;
@@ -299,26 +303,28 @@ export function clearPersistedData(): void {
   }
 }
 
+export function normalizeJiraProfile(parsed: any): JiraIntegrationProfile {
+  return {
+    ...DEFAULT_JIRA_INTEGRATION_PROFILE,
+    ...parsed,
+    baseUrl: String(parsed.baseUrl || ''),
+    email: String(parsed.email || ''),
+    apiToken: String(parsed.apiToken || ''),
+    filterId: String(parsed.filterId || ''),
+    jql: String(parsed.jql || ''),
+    severityField: String(parsed.severityField || DEFAULT_JIRA_INTEGRATION_PROFILE.severityField),
+    securityDueDateField: String(parsed.securityDueDateField || DEFAULT_JIRA_INTEGRATION_PROFILE.securityDueDateField),
+    securityTypeField: String(parsed.securityTypeField || DEFAULT_JIRA_INTEGRATION_PROFILE.securityTypeField),
+    autoSyncEnabled: parsed.autoSyncEnabled !== undefined ? Boolean(parsed.autoSyncEnabled) : true,
+    lastSyncedAt: String(parsed.lastSyncedAt || ''),
+  };
+}
+
 export function loadJiraIntegrationProfile(): JiraIntegrationProfile {
   try {
     const raw = localStorage.getItem(JIRA_PROFILE_KEY);
     if (!raw) return DEFAULT_JIRA_INTEGRATION_PROFILE;
-    const parsed = JSON.parse(raw);
-
-    return {
-      ...DEFAULT_JIRA_INTEGRATION_PROFILE,
-      ...parsed,
-      baseUrl: String(parsed.baseUrl || ''),
-      email: String(parsed.email || ''),
-      apiToken: String(parsed.apiToken || ''),
-      filterId: String(parsed.filterId || ''),
-      jql: String(parsed.jql || ''),
-      severityField: String(parsed.severityField || DEFAULT_JIRA_INTEGRATION_PROFILE.severityField),
-      securityDueDateField: String(parsed.securityDueDateField || DEFAULT_JIRA_INTEGRATION_PROFILE.securityDueDateField),
-      securityTypeField: String(parsed.securityTypeField || DEFAULT_JIRA_INTEGRATION_PROFILE.securityTypeField),
-      autoSyncEnabled: parsed.autoSyncEnabled !== undefined ? Boolean(parsed.autoSyncEnabled) : true,
-      lastSyncedAt: String(parsed.lastSyncedAt || ''),
-    };
+    return normalizeJiraProfile(JSON.parse(raw));
   } catch (err) {
     console.error('Failed to load Jira integration profile:', err);
     return DEFAULT_JIRA_INTEGRATION_PROFILE;

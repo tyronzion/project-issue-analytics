@@ -31,7 +31,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `src/utils/metricsEngine.ts` | Per-project summaries, severity normalisation, Dependabot detection | MetricsDashboard and the seal |
 | `src/utils/projectMatcher.ts` | Maps issues to projects using aliases and fuzzy matching | metricsEngine |
 | `src/utils/securitySeal.ts` | **Seal matrix** (Secure → Compromised) from outstanding severities | SecuritySealDashboard and the tracker seal snapshot |
-| `src/utils/storage.ts` | localStorage for issues, settings, formulas and the Jira profile | App |
+| `src/utils/storage.ts` | localStorage for issues, settings, formulas and the Jira profile. `normalizeSettings` / `normalizeJiraProfile` validate stored and imported settings. | App, SettingsModal (settings-only export/import) |
 | `src/utils/remotePersistence.ts` | Client for `/api/state/issues` | App |
 | `src/utils/excelParser.ts` | Excel/CSV import and export, and row → `IssueRecord` mapping | ImportModal, App |
 | `src/utils/sampleData.ts` | Default and sample data | Bootstrap |

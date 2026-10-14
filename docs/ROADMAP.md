@@ -9,6 +9,11 @@
 
 ## Next
 These candidates come from known issues and need user approval first.
+- Server move follow-ups (see `docs/sessions/server-migration.md`):
+  - delete `~/sia-migration` on the CT once no longer needed as a backup
+  - router DHCP reservation or exclusion for .208
+  - delete the old VM eventually
+  - optional: GitHub runner on the CT
 - Design-system polish (optional):
   - Font Awesome icons instead of lucide
   - sentence case and en-AU copy
@@ -28,4 +33,5 @@ These candidates come from known issues and need user approval first.
 - Cloudstaff Design System adopted as the visual design (2026-10-14)
 - Microsoft Entra sign-in on the server, with data folders blocked (2026-10-14, built; awaiting go-live)
 - User management with admin and user roles (2026-10-14)
-- Auto-deploy on push to `main`
+- Auto-deploy on push to `main` (currently inactive: no runner registered)
+- Moved production to the Proxmox CT at 10.6.99.208 with identical data (2026-10-14)

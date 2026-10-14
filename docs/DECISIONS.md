@@ -86,7 +86,7 @@ Add a new entry only for decisions a future developer might otherwise reconsider
 ### D9: Reverse proxy and hostname are explicit settings
 - **Date:** 2026-10-14
 - **Decision:**
-  - Production is reached as `https://security-analytics.cloudstaff.tech` through an OpenResty proxy (`proxy-nsoc`, 10.6.99.71), which forwards to the CT.
+  - Production is reached as `https://security-analytics.cloudstaff.tech` through an OpenResty proxy (`proxy-nsoc`, 10.6.99.71). The proxy connects to the CT over a separate network: the CT's `netweb` card, 10.69.100.110, with the proxy coming **from 10.69.100.1**. So `TRUST_PROXY=10.69.100.1`; use the address the CT actually sees.
   - `APP_HOSTNAMES` feeds Vite `server.allowedHosts`. Never set it to `true`.
   - `TRUST_PROXY` lists the proxy IPs. Only from those IPs does `auth/auth.js` believe:
     - `X-Forwarded-For`: the right-most untrusted hop is the client IP for the login rate limit.

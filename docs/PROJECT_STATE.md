@@ -31,7 +31,7 @@ These are recorded only, not fixed.
   - systemd unit `security-issues-analytics` (`npm run dev` = `vite dev` on port 80, user csdatasec, starts on boot). No pm2, no Docker.
   - There's no `sudo`; use `su -c`.
   - All APIs live in Vite `configureServer` plugins, so `vite build` / `dist/` contains **no backend**.
-  - **Public URL:** `https://security-analytics.cloudstaff.tech`, via the OpenResty proxy at 10.6.99.71, which provides HTTPS (D9). The server's `.env.local` has `APP_HOSTNAMES` and `TRUST_PROXY`.
+  - **Public URL:** `https://security-analytics.cloudstaff.tech`, via the OpenResty proxy, which provides HTTPS and reaches the CT from 10.69.100.1 on its `netweb` network (D9). The server's `.env.local` has `APP_HOSTNAMES` and `TRUST_PROXY`.
   - To update the server, run `bash scripts/deploy.sh` there as csdatasec (no root needed); it restarts the service. Don't run `npm install` or `npm audit fix` on the server.
   - The README's deploy and pm2 section is stale.
   - No GitHub runner is registered, so pushes don't deploy.

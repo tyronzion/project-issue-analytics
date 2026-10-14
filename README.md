@@ -19,16 +19,23 @@ View your app in AI Studio: https://ai.studio/apps/2f6e33a0-f681-4ab9-8603-9a956
 3. Run the app:
    `npm run dev`
 
-## Sign-in: classic login now, Microsoft sign-in later
+## Sign-in: Microsoft or classic login
 
-**Until Microsoft sign-in is configured,** the app uses the classic shared username and password, as before.
+The sign-in page offers two options.
+
+**Sign in with Microsoft**
+- Works once the four Microsoft settings below are configured. Until then the button is shown but disabled.
+- If the settings are incomplete or invalid, the button stays disabled and the server log says why.
+- Each person gets their own role (see Roles).
+
+**Classic login** (the shared team account)
+- Works as before: the same username and password.
 - The password is checked on the server; only a salted hash is kept in the code.
 - Failed attempts are rate-limited.
-- The shared account is an admin.
-- You can use your own credentials instead by setting `AUTH_CLASSIC_USERNAME` and `AUTH_CLASSIC_PASSWORD` in `.env.local`.
-
-**When the Microsoft settings below are added,** Microsoft sign-in replaces the classic login automatically.
-- If only some of them are set, or they're invalid, the app stays locked rather than falling back to the shared password. The server log says why.
+- The shared account is always an admin.
+- Settings in `.env.local`:
+  - `AUTH_CLASSIC_USERNAME` and `AUTH_CLASSIC_PASSWORD` replace the built-in account.
+  - `AUTH_CLASSIC_LOGIN=0` turns classic login off, for example once everyone uses Microsoft.
 
 Code: `auth/auth.js` (tests: `npm run test:auth`).
 

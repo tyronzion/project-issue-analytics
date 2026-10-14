@@ -6,12 +6,14 @@ _Last updated: 2026-10-14_
 The app is in production use and gets features added incrementally. The Assessment Tracker was merged in on 2026-10-13, which brings all three parts (analytics, monitors and tracker) into one app.
 
 ## Current focus
-Classic login stays until SSO is set up (D7 amended). Deploying no longer locks anyone out. Microsoft sign-in switches on once the four `AUTH_*` settings are on the server, which needs HTTPS and the Entra app registration.
+The sign-in page offers two options, "Sign in with Microsoft" and the classic team login (D7 amended).
+- The Microsoft button is disabled until the four `AUTH_*` settings are on the server, which needs HTTPS and the Entra app registration.
+- Classic login keeps working throughout.
 
 ## Recently completed
 - **User management with two roles** (2026-10-14, D8). Admins can do everything; users can't make data changes or monitor/tracker setup. Enforced on the server. `zionm@cloudstaff.com` is a permanent admin via `AUTH_ADMIN_EMAILS` in the local `.env.local`.
 - **Sign-in on the server** (2026-10-14, D7).
-  - Classic shared login, checked server-side (hash only) and rate-limited, until Microsoft Entra is configured.
+  - Two options: Microsoft SSO and the classic shared login, checked server-side (hash only) and rate-limited.
   - The client-side hardcoded login was removed.
   - `/tracker/data` and `/monitor/data` are now blocked. Before this, the tracker database was downloadable without logging in.
 - **Cloudstaff Design System applied** (2026-10-14) to the analytics UI, monitor pages, tracker and login, with the official logo. It works through tokens and the existing overrides; no TSX markup was rewritten.
@@ -54,7 +56,7 @@ See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3
 ## Verification (2026-10-14, after Microsoft sign-in)
 | Check | Result |
 |---|---|
-| `npm run test:auth` | 25/25 pass (classic and Microsoft sign-in, roles) |
+| `npm run test:auth` | 25/25 pass (both sign-in options side by side, roles) |
 | `npm run test:monitor` | 26/26 pass |
 | `npm run test:tracker` | 16/16 pass (node:sqlite and sql.js) |
 | `npm run lint` (tsc) | clean |
@@ -62,8 +64,9 @@ See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3
 | Browser check (`issue-analytics-demo` preview) | design pages checked. Auth checked live: fails closed (503), data folders 404, dev bypass and sign-out work. Classic login checked live (`issue-analytics-classic` preview, generated test credentials). Roles checked live in both preview configs: admin Users page (add, change role, remove), and as user every admin action returns 403 while admin pages redirect. The real Entra round trip is **not yet tested** (no app registration). |
 
 ## Next action
-Pushed to `main` on 2026-10-14; it auto-deploys with the classic login. To switch to SSO:
+Pushed to `main` on 2026-10-14. The self-hosted deploy runner was queued, apparently offline. To turn on Microsoft sign-in:
 1. Register the app in Entra (steps in README).
 2. Test a real sign-in locally with `AUTH_REDIRECT_URI=http://localhost:5199/auth/callback`.
 3. Arrange HTTPS on the server.
 4. Put the four `AUTH_*` settings and `AUTH_ADMIN_EMAILS=zionm@cloudstaff.com` in the server's `.env.local`, then restart.
+5. Optional: set a strong `AUTH_CLASSIC_PASSWORD`, or `AUTH_CLASSIC_LOGIN=0` once everyone uses Microsoft.

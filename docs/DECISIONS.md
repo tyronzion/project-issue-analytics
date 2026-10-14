@@ -53,14 +53,17 @@ Add a new entry only for decisions a future developer might otherwise reconsider
   - Any new route that changes shared data or setup must call `requireAdmin` (or the tracker's `adminOnly`).
   - Who may sign in at all is still controlled in Entra; removing a person in the app only resets their role.
 
-### D7: Microsoft Entra sign-in handled on the server; classic login until it's configured
-- **Amended 2026-10-14:** the user asked to keep the classic login until SSO is configured.
-  - **When classic applies:** only when **none** of the four Microsoft settings are set.
-  - **How it's checked:** the original shared account, verified server-side against a salted scrypt hash (`BUILT_IN_CLASSIC`), or `AUTH_CLASSIC_USERNAME`/`AUTH_CLASSIC_PASSWORD` instead.
-  - **Brute-force limit:** 10 failures per IP per 15 minutes.
-  - **Role:** the shared account is an admin.
-  - **Partial or invalid Microsoft settings** lock the app (503).
-  - **Turning it off:** `AUTH_CLASSIC_LOGIN=0`.
+### D7: Server-side sign-in with two options, Microsoft SSO and classic login
+- **Amended 2026-10-14:** at the user's request, both options are offered side by side on `/auth/login`.
+  - **"Sign in with Microsoft"** goes to `/auth/microsoft`, then `/auth/callback`. It's enabled when all four `AUTH_*` settings are valid; otherwise the button is shown disabled and the problems are logged.
+  - **Classic form** (POST `/auth/login`):
+    - Uses the original shared account, verified server-side against a salted scrypt hash (`BUILT_IN_CLASSIC`), or `AUTH_CLASSIC_USERNAME`/`AUTH_CLASSIC_PASSWORD` instead.
+    - Brute-force limit: 10 failures per IP per 15 minutes.
+    - The account is always an admin.
+    - `AUTH_CLASSIC_LOGIN=0` turns it off.
+  - **Lock-out:** with neither option available, the app returns 503.
+  - **Exposed flags:** `auth.methods = { microsoft, classic }`, and `auth.mode` is `login`, `dev-bypass` or `unconfigured`.
+  - **Trade-off:** the shared classic account remains an admin entry point next to SSO. Recommend a strong `AUTH_CLASSIC_PASSWORD`, or turning classic off, once SSO is proven.
   - The original record below still applies otherwise.
 - **Date:** 2026-10-14
 - **Decision:**

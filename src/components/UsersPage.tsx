@@ -37,7 +37,7 @@ export const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [me, setMe] = useState('');
   const [readOnly, setReadOnly] = useState(false);
-  const [mode, setMode] = useState('');
+  const [methods, setMethods] = useState<{ microsoft: boolean; classic: boolean } | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [newEmail, setNewEmail] = useState('');
@@ -49,7 +49,7 @@ export const UsersPage: React.FC = () => {
       setUsers(data.users || []);
       setMe(String(data.me || '').toLowerCase());
       setReadOnly(Boolean(data.readOnly));
-      setMode(String(data.mode || ''));
+      setMethods(data.methods || null);
       setError('');
     } catch (err: any) {
       setError(err.message);
@@ -109,10 +109,12 @@ export const UsersPage: React.FC = () => {
       {error && (
         <div className="at-alert at-alert--error" role="alert">{error}</div>
       )}
-      {mode === 'classic' && (
+      {methods && (
         <div className="at-alert at-alert--info" role="status">
-          Microsoft sign-in isn't set up yet, so everyone uses the shared classic login, which is an admin. You can set up
-          people and roles here now; they take effect once Microsoft sign-in is configured.
+          {methods.microsoft
+            ? 'Roles here apply to people who sign in with Microsoft.'
+            : "Microsoft sign-in isn't set up yet. You can add people and roles now; they apply once people sign in with Microsoft."}
+          {methods.classic && ' The shared classic login (team account) is always an admin.'}
         </div>
       )}
       {readOnly && (

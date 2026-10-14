@@ -130,7 +130,7 @@ test('an Entra session gets its role from the store, and a role change applies o
     const res = { statusCode: 200, setHeader: (k, v) => { headers[k.toLowerCase()] = v; }, end: () => resolve({ headers, req }) };
     auth.middleware(req, res, () => resolve({ headers, req, next: true }));
   });
-  const start = await run('/auth/login');
+  const start = await run('/auth/microsoft');
   const state = new URL(start.headers.location).searchParams.get('state');
   const done = await run(`/auth/callback?code=c&state=${state}`, [].concat(start.headers['set-cookie']).map((c) => c.split(';')[0]).join('; '));
   const cookie = [].concat(done.headers['set-cookie']).map((c) => c.split(';')[0]).find((c) => c.startsWith(SESSION_COOKIE));

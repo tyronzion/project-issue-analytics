@@ -46,7 +46,7 @@ function call(auth, { method = 'GET', url = '/', cookie = '', accept = 'text/htm
 const cookiesFrom = (setCookie) => [].concat(setCookie || []).map((c) => c.split(';')[0]).join('; ');
 
 async function signIn(auth) {
-  const start = await call(auth, { url: '/auth/login?returnTo=%2Fissues' });
+  const start = await call(auth, { url: '/auth/microsoft?returnTo=%2Fissues' });
   const state = new URL(start.headers.location).searchParams.get('state');
   const done = await call(auth, { url: `/auth/callback?code=abc&state=${state}`, cookie: cookiesFrom(start.headers['set-cookie']) });
   return { start, state, done, cookie: cookiesFrom(done.headers['set-cookie']).split('; ').find((c) => c.startsWith(SESSION_COOKIE)) };
@@ -80,7 +80,7 @@ test('with classic login turned off and no Microsoft settings, every request is 
   auth.stop();
 });
 
-test('invalid settings are reported and fail closed', () => {
+test('invalid Microsoft settings switch Microsoft sign-in off (classic stays); with classic off they lock', () => {
   const cases = [
     { ...ENV, AUTH_TENANT_ID: 'common' },
     { ...ENV, AUTH_TENANT_ID: 'contoso.onmicrosoft.com' },
@@ -89,11 +89,14 @@ test('invalid settings are reported and fail closed', () => {
   ];
   for (const env of cases) {
     const auth = createAuth({ env, log: () => {} });
-    assert.equal(auth.mode, 'unconfigured', JSON.stringify(env));
+    assert.deepEqual(auth.methods, { microsoft: false, classic: true }, JSON.stringify(env));
     auth.stop();
+    const locked = createAuth({ env: { ...env, AUTH_CLASSIC_LOGIN: '0' }, log: () => {} });
+    assert.equal(locked.mode, 'unconfigured', JSON.stringify(env));
+    locked.stop();
   }
   const local = createAuth({ env: { ...ENV, AUTH_REDIRECT_URI: 'http://localhost:5199/auth/callback' }, msalClient: fakeMsal(), log: () => {} });
-  assert.equal(local.mode, 'entra');
+  assert.equal(local.methods.microsoft, true);
   local.stop();
 });
 
@@ -106,7 +109,8 @@ test('dev bypass only works from this machine and never alongside real settings'
   assert.equal((await call(auth, { url: '/', ip: '10.0.0.5' })).status, 403);
   auth.stop();
   const both = createAuth({ env: { ...ENV, AUTH_DEV_BYPASS: '1' }, msalClient: fakeMsal(), log: () => {} });
-  assert.equal(both.mode, 'entra');
+  assert.equal(both.mode, 'login');
+  assert.equal(both.methods.microsoft, true);
   both.stop();
 });
 
@@ -146,7 +150,7 @@ test('full sign-in: PKCE + state + nonce, secure HttpOnly session cookie, back t
 
 test('callback is refused when the state does not match this browser', async () => {
   const auth = createAuth({ env: ENV, msalClient: fakeMsal(), log: () => {} });
-  const start = await call(auth, { url: '/auth/login' });
+  const start = await call(auth, { url: '/auth/microsoft' });
   const state = new URL(start.headers.location).searchParams.get('state');
   const noCookie = await call(auth, { url: `/auth/callback?code=abc&state=${state}` });
   assert.equal(noCookie.status, 400);
@@ -169,7 +173,7 @@ test('tokens from another tenant or with a wrong nonce are rejected', async () =
 
 test('users not assigned to the app get a clear message, not the raw error', async () => {
   const auth = createAuth({ env: ENV, msalClient: fakeMsal(), log: () => {} });
-  const start = await call(auth, { url: '/auth/login' });
+  const start = await call(auth, { url: '/auth/microsoft' });
   const state = new URL(start.headers.location).searchParams.get('state');
   const r = await call(auth, {
     url: `/auth/callback?state=${state}&error=access_denied&error_description=${encodeURIComponent('AADSTS50105: <script>x</script>')}`,
@@ -224,15 +228,21 @@ function post(auth, { url = '/auth/login', form, cookie = '', ip = '10.0.0.5', c
 // Test credentials (the built-in account works the same way; its password is not repeated here).
 const CLASSIC = { AUTH_CLASSIC_USERNAME: 'Team', AUTH_CLASSIC_PASSWORD: 'long secret' };
 
-test('no Microsoft settings: classic login is the default', () => {
+test('no Microsoft settings: the sign-in page offers classic login and a disabled Microsoft button', async () => {
   const auth = createAuth({ env: {}, log: () => {} });
-  assert.equal(auth.mode, 'classic');
+  assert.equal(auth.mode, 'login');
+  assert.deepEqual(auth.methods, { microsoft: false, classic: true });
+  const page = await call(auth, { url: '/auth/login' });
+  assert.match(page.body, /<button class="btn btn-ms" type="button" disabled/);
+  assert.match(page.body, /isn't set up yet/);
+  assert.match(page.body, /name="password"/);
+  assert.equal((await call(auth, { url: '/auth/microsoft' })).status, 404);
   auth.stop();
 });
 
 test('classic login is checked on the server and leads back to the page asked for', async () => {
   const auth = createAuth({ env: CLASSIC, log: () => {} });
-  assert.equal(auth.mode, 'classic');
+  assert.equal(auth.methods.classic, true);
   const page = await call(auth, { url: '/issues' });
   assert.equal(page.status, 302);
   assert.equal(page.headers.location, '/auth/login?returnTo=%2Fissues');
@@ -282,12 +292,28 @@ test('classic login: own credentials replace the built-in account; HTTPS gets Se
   half.stop();
 });
 
-test('classic login switches off as soon as Microsoft sign-in is configured, and partial Microsoft settings lock', async () => {
-  const entra = createAuth({ env: ENV, msalClient: fakeMsal(), log: () => {} });
-  assert.equal(entra.mode, 'entra');
-  assert.equal((await post(entra, { form: { username: 'team', password: 'long secret' } })).status, 404);
-  entra.stop();
-  const partial = createAuth({ env: { AUTH_TENANT_ID: ENV.AUTH_TENANT_ID }, log: () => {} });
-  assert.equal(partial.mode, 'unconfigured');
-  partial.stop();
+test('with Microsoft configured, both options work side by side', async () => {
+  const msal = fakeMsal();
+  const auth = createAuth({ env: { ...ENV, ...CLASSIC }, msalClient: msal, log: () => {} });
+  assert.deepEqual(auth.methods, { microsoft: true, classic: true });
+  const page = await call(auth, { url: '/auth/login?returnTo=%2Fissues' });
+  assert.match(page.body, /<a class="btn btn-ms" href="\/auth\/microsoft\?returnTo=%2Fissues">/);
+  assert.match(page.body, /name="password"/);
+  // classic: shared admin account
+  const ok = await post(auth, { form: { username: 'team', password: 'long secret' } });
+  assert.equal(ok.status, 303);
+  const classicUser = await call(auth, { url: '/x', cookie: ok.headers['set-cookie'].split(';')[0], accept: '*/*' });
+  assert.equal(classicUser.req.user.role, 'admin');
+  // Microsoft: a person, whose role comes from the user store (none here: least privilege)
+  const { cookie } = await signIn(auth);
+  const msUser = await call(auth, { url: '/x', cookie, accept: '*/*' });
+  assert.equal(msUser.req.user.email, 'grace@cloudstaff.com');
+  assert.equal(msUser.req.user.role, 'user');
+  auth.stop();
+
+  const microsoftOnly = createAuth({ env: { ...ENV, AUTH_CLASSIC_LOGIN: '0' }, msalClient: fakeMsal(), log: () => {} });
+  const only = await call(microsoftOnly, { url: '/auth/login' });
+  assert.doesNotMatch(only.body, /name="password"/);
+  assert.equal((await post(microsoftOnly, { form: { username: 'csdatasec', password: 'x' } })).status, 404);
+  microsoftOnly.stop();
 });

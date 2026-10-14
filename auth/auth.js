@@ -1,5 +1,7 @@
-// Sign-in for the whole app: Microsoft Entra ID (Azure AD) single sign-on, or, until that is configured, the
-// classic shared username/password login.
+// Sign-in for the whole app, with two options on one sign-in page (/auth/login):
+//   - "Sign in with Microsoft": Microsoft Entra ID (Azure AD) single sign-on, once its settings are configured
+//     (until then the button is shown disabled), and
+//   - the classic shared username/password login.
 //
 // Flow: OpenID Connect authorization code + PKCE, as a confidential client (msal-node). The server keeps the
 // session; the browser only holds an opaque, HttpOnly session cookie. Every request needs a session except
@@ -17,12 +19,12 @@
 //                       machine (127.0.0.1 / ::1) are signed in as "Local developer"; everyone else is refused.
 //   AUTH_DEV_ROLE=user  With the bypass, act as a "user" instead of an "admin" (to test what users see).
 //
-// Classic login (used while the four AUTH_* Microsoft settings above are not set):
+// Classic login (on unless AUTH_CLASSIC_LOGIN=0):
 //   The shared Security Issues Analytics username/password, checked here on the server (only a salted scrypt hash
 //   is kept in code). AUTH_CLASSIC_USERNAME + AUTH_CLASSIC_PASSWORD replace the built-in one. The shared account
-//   is an admin, as before. Failed attempts are rate-limited per IP. AUTH_CLASSIC_LOGIN=0 turns it off (then,
-//   without Microsoft settings, every request is refused). Once Microsoft sign-in is configured, classic login is
-//   off automatically.
+//   is an admin, as before. Failed attempts are rate-limited per IP.
+// Microsoft sign-in is on when all four AUTH_* settings above are valid; otherwise its button is disabled and the
+// server log says what is missing. With neither option available, every request is refused (fails closed).
 //
 // Roles (admin / user) come from auth/users.js and are looked up on every request, so a change applies at once.
 // Server routes that only admins may use call requireAdmin(req, res).
@@ -159,6 +161,14 @@ function shell(title, inner) {
   input:focus { border-color: var(--color-brand-primary, #007aff); }
   button.btn { border: 0; font: inherit; font-weight: 700; padding: 11px; border-radius: 9999px; cursor: pointer;
     background: var(--color-action-primary, #0070eb); color: #fff; }
+  .btn.btn-ms { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 10px; border-radius: 9999px;
+    border: 1px solid var(--color-border-strong, #c9d2e1); background: #fff; color: var(--color-text-base-primary, #252938);
+    font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+  a.btn.btn-ms:hover { background: var(--color-brand-primary-hover, #f0f7ff); }
+  .btn.btn-ms[disabled] { opacity: .55; cursor: not-allowed; }
+  .hint { margin-top: -8px; font-size: 12px; text-align: center; color: var(--color-text-base-muted, #737c90); }
+  .or { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--color-text-base-muted, #737c90); }
+  .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--color-border-subtle, #e8edf4); }
   .alert { padding: 10px 12px; border-radius: var(--radius-lg, .75rem); font-weight: 600; font-size: 13px;
     color: var(--color-feedback-danger, #f22c46); background: var(--color-feedback-danger-soft, #fde9ec); border: 1px solid var(--color-border-danger, #f9aab5); }
 </style></head>
@@ -174,15 +184,27 @@ function page(title, message, action) {
   ${action ? `<a class="btn" href="${escapeHtml(action.href)}">${escapeHtml(action.label)}</a>` : ''}`);
 }
 
-function classicLoginPage({ returnTo = '/', error = '', username = '' } = {}) {
-  return shell('Sign in', `<div><h1>Security Issues Analytics</h1><p>Sign in to access the issue workspace.</p></div>
+const MICROSOFT_LOGO = '<svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>';
+
+// The sign-in page: "Sign in with Microsoft" (disabled until configured) and the classic form.
+function loginPage({ returnTo = '/', error = '', username = '', microsoft = false, classic = true } = {}) {
+  const microsoftOption = microsoft
+    ? `<a class="btn btn-ms" href="/auth/microsoft?returnTo=${encodeURIComponent(returnTo)}">${MICROSOFT_LOGO}<span>Sign in with Microsoft</span></a>`
+    : `<button class="btn btn-ms" type="button" disabled aria-describedby="ms-note">${MICROSOFT_LOGO}<span>Sign in with Microsoft</span></button>
+    <p class="hint" id="ms-note">Microsoft sign-in isn't set up yet.</p>`;
+  const classicOption = classic
+    ? `<div class="or"><span>or use the team account</span></div>
   <form method="post" action="/auth/login">
-    ${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}
     <input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}">
     <label>Username <input name="username" autocomplete="username" required value="${escapeHtml(username)}" ${username ? '' : 'autofocus'}></label>
     <label>Password <input name="password" type="password" autocomplete="current-password" required ${username ? 'autofocus' : ''}></label>
     <button class="btn" type="submit">Sign in</button>
-  </form>`);
+  </form>`
+    : '';
+  return shell('Sign in', `<div><h1>Security Issues Analytics</h1><p>Sign in to access the issue workspace.</p></div>
+  ${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}
+  ${microsoftOption}
+  ${classicOption}`);
 }
 
 // application/x-www-form-urlencoded body (the classic login form), at most 4 KB.
@@ -238,17 +260,15 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
   }
   if (callbackPath !== '/auth/callback') problems.push('AUTH_REDIRECT_URI must end in /auth/callback');
 
-  const configured = problems.length === 0;
+  const configured = problems.length === 0; // Microsoft sign-in available
   const devBypass = !configured && env.AUTH_DEV_BYPASS === '1';
 
   // Classic login credential: from AUTH_CLASSIC_USERNAME/PASSWORD, else the built-in one.
   let classic = null;
   const classicUser = String(env.AUTH_CLASSIC_USERNAME || '').trim();
   const classicPass = String(env.AUTH_CLASSIC_PASSWORD || '').trim();
-  // Only when no Microsoft setting is present: a partial or invalid Microsoft setup stays locked (fails closed)
-  // rather than quietly falling back to the shared password.
   const anyMicrosoftSetting = [tenantId, clientId, clientSecret, redirectUri].some(Boolean);
-  if (!configured && !anyMicrosoftSetting && env.AUTH_CLASSIC_LOGIN !== '0') {
+  if (env.AUTH_CLASSIC_LOGIN !== '0') {
     if (classicUser && classicPass) {
       const salt = randomBytes(16).toString('base64url');
       classic = { username: classicUser, salt, hash: scryptSync(classicPass, salt, 32).toString('base64url') };
@@ -258,8 +278,10 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
       classic = BUILT_IN_CLASSIC;
     }
   }
-  const mode = configured ? 'entra' : devBypass ? 'dev-bypass' : classic ? 'classic' : 'unconfigured';
-  if (mode === 'classic') log('Microsoft sign-in is not configured yet; using the classic username/password login (shared admin account).');
+  const methods = { microsoft: configured, classic: !!classic };
+  const mode = devBypass ? 'dev-bypass' : configured || classic ? 'login' : 'unconfigured';
+  if (mode === 'login') log(`sign-in options: ${[configured && 'Microsoft', classic && 'classic (shared admin account)'].filter(Boolean).join(' + ')}`);
+  if (!configured && anyMicrosoftSetting) log(`Microsoft sign-in is off until its settings are fixed: ${problems.join('; ')}`);
   if (configured && env.AUTH_DEV_BYPASS === '1') log('AUTH_DEV_BYPASS is ignored because Microsoft sign-in is configured');
   if (devBypass) log('WARNING: AUTH_DEV_BYPASS=1 — requests from this machine are signed in without Microsoft. Never set this on a server.');
   if (mode === 'unconfigured') log(`No sign-in method is available, so every request is refused: ${problems.join('; ')}`);
@@ -331,7 +353,7 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
 
   async function finishLogin(req, res, url) {
     const clearState = cookie(STATE_COOKIE, '', 0);
-    const retry = { href: '/auth/login', label: 'Sign in with Microsoft' };
+    const retry = { href: '/auth/login', label: 'Back to sign-in' };
     const state = url.searchParams.get('state') || '';
     const browserState = parseCookies(req.headers.cookie)[STATE_COOKIE] || '';
     // The state must match the one this browser started with (stops login CSRF / session fixation).
@@ -406,7 +428,7 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
     try {
       form = await readForm(req);
     } catch (err) {
-      return html(res, err.status || 400, classicLoginPage({ error: 'Something went wrong. Please try again.' }));
+      return html(res, err.status || 400, loginPage({ ...methods, error: 'Something went wrong. Please try again.' }));
     }
     const returnTo = safeReturnTo(form.get('returnTo'));
     const username = String(form.get('username') || '').slice(0, 200);
@@ -415,7 +437,7 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
       entry.count += 1;
       failures.set(ip, entry);
       log(`classic sign-in failed from ${ip}`);
-      return html(res, 401, classicLoginPage({ returnTo, username, error: 'Incorrect username or password. Please try again.' }));
+      return html(res, 401, loginPage({ ...methods, returnTo, username, error: 'Incorrect username or password. Please try again.' }));
     }
     failures.delete(ip);
     const old = parseCookies(req.headers.cookie)[SESSION_COOKIE];
@@ -440,16 +462,15 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
       return redirect(res, '/auth/signed-out', { 'Set-Cookie': cookie(SESSION_COOKIE, '', 0, req) }, 303);
     }
     if (path === '/auth/signed-out' && method === 'GET') {
-      const again = mode === 'entra' ? { href: '/auth/login', label: 'Sign in with Microsoft' } : mode === 'classic' ? { href: '/auth/login', label: 'Sign in' } : null;
-      return html(res, 200, page('You are signed out', 'You have been signed out of Security Issues Analytics.', again));
+      return html(res, 200, page('You are signed out', 'You have been signed out of Security Issues Analytics.', mode === 'login' ? { href: '/auth/login', label: 'Sign in' } : null));
     }
-    if (mode === 'classic' && path === '/auth/login' && method === 'GET') {
+    if (mode === 'login' && path === '/auth/login' && method === 'GET') {
       if (req.user) return redirect(res, safeReturnTo(url.searchParams.get('returnTo')));
-      return html(res, 200, classicLoginPage({ returnTo: safeReturnTo(url.searchParams.get('returnTo')) }));
+      return html(res, 200, loginPage({ ...methods, returnTo: safeReturnTo(url.searchParams.get('returnTo')) }));
     }
-    if (mode === 'classic' && path === '/auth/login' && method === 'POST') return classicLogin(req, res);
-    if (mode === 'entra' && path === '/auth/login' && method === 'GET') return startLogin(req, res, url);
-    if (mode === 'entra' && path === '/auth/callback' && method === 'GET') return finishLogin(req, res, url);
+    if (methods.classic && mode === 'login' && path === '/auth/login' && method === 'POST') return classicLogin(req, res);
+    if (methods.microsoft && path === '/auth/microsoft' && method === 'GET') return startLogin(req, res, url);
+    if (methods.microsoft && path === '/auth/callback' && method === 'GET') return finishLogin(req, res, url);
     return json(res, 404, { error: 'Not found' });
   }
 
@@ -465,7 +486,7 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
     }
     const actor = { email: req.user.email || req.user.name };
     try {
-      if (path === '/auth/users' && method === 'GET') return json(res, 200, { users: users.list(), me: req.user.email, readOnly: users.isReadOnly(), mode });
+      if (path === '/auth/users' && method === 'GET') return json(res, 200, { users: users.list(), me: req.user.email, readOnly: users.isReadOnly(), methods });
       if (path === '/auth/users' && method === 'POST') {
         const body = await readJson(req);
         return json(res, 201, await users.add(body.email, body.role, actor));
@@ -486,7 +507,7 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
   }
 
   function refuseUnconfigured(res) {
-    return html(res, 503, page('Sign-in is not set up', 'Microsoft sign-in has not been configured on this server yet, so the app is locked. Ask the administrator to set the AUTH_* settings.'));
+    return html(res, 503, page('Sign-in is not set up', 'No sign-in option is available on this server, so the app is locked. Ask the administrator to check the AUTH_* settings.'));
   }
 
   // Connect-style middleware. Must run before every other route (see vite.config.ts).
@@ -499,14 +520,15 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
       if (mode === 'dev-bypass') {
         if (!isLoopback(req)) return html(res, 403, page('Not available', 'This copy of the app runs in local development mode and only accepts requests from its own machine.'));
         req.user = { name: 'Local developer', email: 'dev@localhost', oid: '', dev: true, role: env.AUTH_DEV_ROLE === 'user' ? 'user' : 'admin' };
-      } else if (mode === 'entra') {
+      } else if (mode === 'login') {
         const session = sessionFor(req);
-        // Role is looked up on every request, so a change by an admin applies immediately. No store = least privilege.
-        if (session) req.user = { ...session.user, role: users ? users.roleOf(session.user) : 'user' };
-      } else if (mode === 'classic') {
-        // One shared account, which can do everything (as before). Per-person roles start with Microsoft sign-in.
-        const session = sessionFor(req);
-        if (session) req.user = { ...session.user, role: 'admin' };
+        if (session?.user.classic) {
+          // The shared classic account can do everything (as before). Per-person roles come with Microsoft sign-in.
+          if (methods.classic) req.user = { ...session.user, role: 'admin' };
+        } else if (session) {
+          // Role is looked up on every request, so a change by an admin applies at once. No store = least privilege.
+          req.user = { ...session.user, role: users ? users.roleOf(session.user) : 'user' };
+        }
       }
 
       if (path.startsWith('/auth/')) return await handleAuthRoute(req, res, url);
@@ -529,6 +551,7 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
 
   return {
     mode,
+    methods,
     problems,
     middleware,
     stop: () => clearInterval(timer),

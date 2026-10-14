@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Now
-- Microsoft sign-in go-live (classic login is live meanwhile):
+- Enable "Sign in with Microsoft" (classic login works meanwhile):
   - Entra app registration
   - real sign-in test
   - HTTPS on the server

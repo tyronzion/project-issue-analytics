@@ -16,3 +16,6 @@ tracker/data/
 
 # Users and roles (live data; back it up, never commit)
 auth/data/
+
+# Server migration notes: internal IPs/hosts; this repo is public
+docs/sessions/server-migration.md

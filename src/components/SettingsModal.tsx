@@ -19,8 +19,9 @@ interface SettingsModalProps {
   settings: AppSettings;
   issues: IssueRecord[];
   onUpdateSettings: (newSettings: AppSettings) => void;
-  onResetDataToSample: () => void;
-  onRestoreBackup: (backup: { settings: AppSettings; issues: IssueRecord[] }) => void;
+  // Data changes: only passed for admins; the buttons are hidden otherwise.
+  onResetDataToSample?: () => void;
+  onRestoreBackup?: (backup: { settings: AppSettings; issues: IssueRecord[] }) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -60,7 +61,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         const text = e.target?.result as string;
         const parsed = JSON.parse(text);
         if (parsed.settings && parsed.issues) {
-          onRestoreBackup({ settings: parsed.settings, issues: parsed.issues });
+          onRestoreBackup?.({ settings: parsed.settings, issues: parsed.issues });
           alert('Backup restored successfully!');
           onClose();
         } else {
@@ -132,7 +133,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span>Export Backup (JSON)</span>
               </button>
 
-              <div>
+              {onRestoreBackup && <div>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -151,7 +152,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <Upload className="w-4 h-4 text-emerald-400" />
                   <span>Restore Backup (JSON)</span>
                 </button>
-              </div>
+              </div>}
             </div>
           </div>
 
@@ -159,7 +160,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="space-y-3 pt-3 border-t border-slate-800">
             <span className="font-semibold text-slate-300 text-sm block">Data Management</span>
             <div className="space-y-2">
-              <button
+              {onResetDataToSample && <button
                 onClick={() => {
                   onResetDataToSample();
                   alert('Cleared loaded issues dataset.');
@@ -171,7 +172,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span>Clear Loaded Issues Dataset</span>
                 </div>
                 <RotateCcw className="w-3.5 h-3.5" />
-              </button>
+              </button>}
 
               <button
                 onClick={handleClearAll}

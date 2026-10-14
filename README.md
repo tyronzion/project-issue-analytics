@@ -19,6 +19,58 @@ View your app in AI Studio: https://ai.studio/apps/2f6e33a0-f681-4ab9-8603-9a956
 3. Run the app:
    `npm run dev`
 
+## Sign-in: classic login now, Microsoft sign-in later
+
+**Until Microsoft sign-in is configured,** the app uses the classic shared username and password, as before.
+- The password is checked on the server; only a salted hash is kept in the code.
+- Failed attempts are rate-limited.
+- The shared account is an admin.
+- You can use your own credentials instead by setting `AUTH_CLASSIC_USERNAME` and `AUTH_CLASSIC_PASSWORD` in `.env.local`.
+
+**When the Microsoft settings below are added,** Microsoft sign-in replaces the classic login automatically.
+- If only some of them are set, or they're invalid, the app stays locked rather than falling back to the shared password. The server log says why.
+
+Code: `auth/auth.js` (tests: `npm run test:auth`).
+
+### Microsoft sign-in setup
+
+1. **Register the app.** In the Entra admin center, go to App registrations → New registration:
+   - Supported account types: **this organizational directory only (single tenant)**.
+   - Redirect URI: platform **Web**, `https://<server>/auth/callback`. Add `http://localhost:5199/auth/callback` for local testing.
+2. **Copy the IDs.** From Overview, copy the **Application (client) ID** and the **Directory (tenant) ID**.
+3. **Create a secret.** Certificates & secrets → New client secret. Copy its **Value**, and note when it expires.
+4. **Limit access.** Enterprise applications → this app:
+   - Properties → **Assignment required = Yes**.
+   - Users and groups → add the people or group allowed in.
+5. **Configure the server.** In `.env.local`, set:
+   - `AUTH_TENANT_ID`
+   - `AUTH_CLIENT_ID`
+   - `AUTH_CLIENT_SECRET`
+   - `AUTH_REDIRECT_URI`: exactly the redirect URI registered above.
+   - `AUTH_ADMIN_EMAILS`: the permanent admins, for example `zionm@cloudstaff.com`.
+
+### Roles
+
+There are two roles:
+- **Admin** can do everything:
+  - data changes: Import Data, Merge Data, delete or clear data, restore a backup, Jira Integration
+  - UberTicket token
+  - tracker Import Excel and UberTicket Sync links
+  - the **Users & Roles** page
+- **User** can do everything else.
+
+Roles are enforced on the server.
+
+- **Permanent admins:** people in `AUTH_ADMIN_EMAILS` are always admins.
+- **New sign-ins:** everyone else starts as User.
+- **Changing roles:** admins change roles, or add people ahead of time, on the Users & Roles page.
+- **Where roles are stored:** `auth/data/users.json` (git-ignored; back it up).
+
+Notes:
+- **HTTPS is required on the server.** Microsoft accepts `http://` redirect URIs only for `localhost`.
+- **Sign-out:** sessions are kept in server memory, so restarting the app signs everyone out. They sign in again with one click.
+- **Local development without Entra:** set `AUTH_DEV_BYPASS=1`. Only requests from the same machine are let in. Never set it on a server.
+
 ## Durable Data Persistence (Docker + Postgres)
 
 This app can persist issue data to PostgreSQL so data survives app restarts, browser refreshes, and server reboot.

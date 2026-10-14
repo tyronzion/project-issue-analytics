@@ -1,0 +1,22 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Brand colours" subtitle="Primary blue & secondary teal — the rebrand anchors" -->
+<!DOCTYPE html>
+<html lang="en-AU"><head><meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:20px;background:var(--color-background-page);font-family:var(--font-family-body)}
+  .row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .sw{border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--color-border-subtle);background:var(--color-background-primary)}
+  .chip{height:74px;display:flex;align-items:flex-end;padding:8px 10px}
+  .chip code{font-family:var(--font-family-mono);font-size:11px;color:#fff;background:rgba(0,0,0,.28);padding:2px 6px;border-radius:6px}
+  .lbl{padding:8px 10px;font-size:12px}
+  .lbl b{font-family:var(--font-family-heading);font-weight:600;display:block}
+  .lbl span{color:var(--color-foreground-muted);font-family:var(--font-family-mono);font-size:10px}
+</style></head>
+<body>
+  <div class="row">
+    <div class="sw"><div class="chip" style="background:var(--color-brand-primary)"><code>#007aff</code></div><div class="lbl"><b>Primary</b><span>--color-brand-primary</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-brand-primary-strong)"><code>AA</code></div><div class="lbl"><b>Primary strong</b><span>--…-primary-strong</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-brand-secondary)"><code>#00ab9c</code></div><div class="lbl"><b>Secondary</b><span>--color-brand-secondary</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-brand-primary-soft)"></div><div class="lbl"><b>Primary soft</b><span>--…-primary-soft</span></div></div>
+  </div>
+</body></html>

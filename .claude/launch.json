@@ -1,0 +1,64 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "issue-analytics",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port=5199",
+        "--strictPort"
+      ],
+      "port": 5199
+    },
+    {
+      "name": "issue-analytics-demo",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "DEMO=1",
+        "TRACKER_DB_PATH=tracker/data/dev-copy.db",
+        "AUTH_DEV_BYPASS=1",
+        "npx",
+        "vite",
+        "--port=5199",
+        "--strictPort"
+      ],
+      "port": 5199
+    },
+    {
+      "name": "issue-analytics-demo-user",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "DEMO=1",
+        "TRACKER_DB_PATH=tracker/data/dev-copy.db",
+        "AUTH_DEV_BYPASS=1",
+        "AUTH_DEV_ROLE=user",
+        "npx",
+        "vite",
+        "--port=5198",
+        "--strictPort"
+      ],
+      "port": 5198
+    },
+    {
+      "name": "issue-analytics-classic",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "DEMO=1",
+        "TRACKER_DB_PATH=tracker/data/dev-copy.db",
+        "AUTH_CLASSIC_USERNAME=local-tester",
+        "AUTH_CLASSIC_PASSWORD=Zql-5xuufBjwzZFT",
+        "npx",
+        "vite",
+        "--port=5197",
+        "--strictPort"
+      ],
+      "port": 5197
+    },
+    {
+      "name": "full-assessment-tracker",
+      "url": "http://localhost:5180",
+      "port": 5180
+    }
+  ]
+}

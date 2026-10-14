@@ -1,12 +1,14 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { Pool } from 'pg';
 import {defineConfig, loadEnv} from 'vite';
+import { createAuth, isBlockedPath, requireAdmin } from './auth/auth.js';
+import { createUserStore } from './auth/users.js';
 import { createMonitor } from './monitor/server/monitor.js';
 import { createTracker } from './tracker/server/tracker.js';
-import { isValidAppLogin } from './src/utils/appLogin';
 
 interface JiraApiConfig {
   baseUrl: string;
@@ -390,6 +392,8 @@ function jiraDatasourcePlugin() {
           }
 
           if (method === 'POST') {
+            // Saving the shared issue dataset is a data change: admins only.
+            if (!requireAdmin(req, res)) return;
             const payload = await readJsonBody(req);
             const issues = Array.isArray(payload?.issues) ? payload.issues : [];
             await savePersistedIssues(issues);
@@ -420,6 +424,9 @@ function jiraDatasourcePlugin() {
         try {
           const req = _req;
           const isPost = String(req?.method || 'GET').toUpperCase() === 'POST';
+          // Jira Integration (sync with your own Jira credentials) is a data change: admins only. GET only reads
+          // with the server's configured Jira, for the initial load when there is no data yet.
+          if (isPost && !requireAdmin(req, res)) return;
           const rows = isPost
             ? await loadJiraRowsFromConfig(await readJsonBody(req))
             : await loadJiraRowsFromApi();
@@ -440,6 +447,53 @@ function jiraDatasourcePlugin() {
   };
 }
 
+// Microsoft sign-in (auth/auth.js) in front of everything: every request needs a signed-in user except /auth/*
+// and /design-system/*. Live data folders are refused for everyone, because the Vite dev server (which is
+// what runs in production) would otherwise serve any file in the project folder, e.g. the tracker database.
+function authPlugin() {
+  return {
+    name: 'microsoft-sign-in',
+    async configureServer(server: any) {
+      // Roles (admin / user) for signed-in people; auth/data is git-ignored and blocked below.
+      const users = await createUserStore({
+        file: path.resolve(__dirname, 'auth', 'data', 'users.json'),
+        adminEmails: process.env.AUTH_ADMIN_EMAILS || '',
+      });
+      const auth = createAuth({ users });
+      server.middlewares.use((req: any, res: any, next: any) => {
+        const pathname = String(req.url || '/').split('?')[0];
+        if (isBlockedPath(pathname)) {
+          res.statusCode = 404;
+          res.end('Not found');
+          return;
+        }
+        next();
+      });
+      server.middlewares.use(auth.middleware);
+      server.httpServer?.on('close', () => auth.stop());
+    },
+  };
+}
+
+// Cloudstaff Design System stylesheets, fonts and logos at /design-system/*, for the plain-HTML monitor
+// pages (the React app bundles them through src/index.css). Only these folders are exposed, read-only.
+const DESIGN_SYSTEM_DIR = path.resolve(__dirname, 'Cloudstaff Design System');
+const DESIGN_SYSTEM_FOLDERS = ['css', 'fonts', 'assets'];
+
+function designSystemAssetsPlugin() {
+  return {
+    name: 'cloudstaff-design-system-assets',
+    configureServer(server: any) {
+      for (const folder of DESIGN_SYSTEM_FOLDERS) {
+        server.middlewares.use(`/design-system/${folder}`, express.static(path.join(DESIGN_SYSTEM_DIR, folder), {
+          index: false,
+          dotfiles: 'ignore',
+        }));
+      }
+    },
+  };
+}
+
 // UberTicket monitoring (DPSA, Full Assessment, Rules of Engagement), served at /monitor/* and shown
 // in the app's sidebar tabs. Its encrypted UberTicket token and cache live in monitor/data (git-ignored).
 function uberticketMonitorPlugin() {
@@ -452,8 +506,8 @@ function uberticketMonitorPlugin() {
         envFile: path.resolve(__dirname, '.env.local'),
         embedded: true,
         analyticsUrl: '/',
-        // Changing the UberTicket token needs the same login as the app.
-        settingsLogin: isValidAppLogin,
+        // Changing the UberTicket token is admin-only (req.user and its role are set by authPlugin).
+        settingsUser: (req: any) => (req.user?.role === 'admin' ? req.user : null),
       });
       server.middlewares.use('/monitor', (req: any, res: any, next: any) => {
         if (req.url === '/' || req.url === '') {
@@ -473,6 +527,8 @@ function uberticketMonitorPlugin() {
         getTickets: () => ({ full: monitor.assessmentTickets('full'), roe: monitor.assessmentTickets('roe') }),
         ticketStatus: () => monitor.status(),
         offsetHours: monitor.config.business.offsetHours,
+        // Excel import and UberTicket sync/links are admin-only.
+        isAdmin: (req: any) => req.user?.role === 'admin',
       });
       server.middlewares.use('/api/tracker', tracker.app);
       monitor.onRefresh(() => tracker.sync());
@@ -499,7 +555,8 @@ export default defineConfig(({ mode }) => {
     : undefined;
 
   return {
-    plugins: [react(), tailwindcss(), jiraDatasourcePlugin(), uberticketMonitorPlugin()],
+    // authPlugin must stay first so its middleware runs before every other route.
+    plugins: [authPlugin(), react(), tailwindcss(), jiraDatasourcePlugin(), designSystemAssetsPlugin(), uberticketMonitorPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

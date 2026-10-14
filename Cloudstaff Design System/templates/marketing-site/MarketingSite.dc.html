@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Marketing lander" description="Full-width marketing page — hero, feature tiles, 2 content sections, closing CTA. Pure CSS; no React required." -->
+<helmet>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script src="./ds-base.js"></script>
+  <script src="./image-slot.js"></script>
+  <style>body{margin:0;background:var(--color-background-canvas)}</style>
+</helmet>
+
+<!-- sticky top nav — outside .lander so it doesn't scroll with sections -->
+<header style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-lg);padding:var(--space-md) var(--space-2xl);border-bottom:1px solid var(--color-border-subtle);position:sticky;top:0;background:color-mix(in oklch,var(--color-background-canvas),transparent 8%);backdrop-filter:var(--blur-md);z-index:var(--z-index-topbar)">
+  <img src="../../assets/logos/cloudstaff-logo-landscape.svg" width="150" alt="Cloudstaff">
+  <nav style="display:flex;gap:var(--space-lg);align-items:center">
+    <a href="#" style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);color:var(--color-foreground-secondary)">Solutions</a>
+    <a href="#" style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);color:var(--color-foreground-secondary)">How it works</a>
+    <a href="#" style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);color:var(--color-foreground-secondary)">Pricing</a>
+    <a href="#" class="button button-secondary button-sm">Sign in</a>
+    <a href="#" class="button button-primary button-sm">Book a call</a>
+  </nav>
+</header>
+
+<main class="lander">
+
+  <!-- 1 · Hero -->
+  <section class="lander-hero">
+    <div class="lander-content">
+      <div>
+        <p class="lander-hero-eyebrow">Offshore staffing, done right</p>
+        <h1 class="lander-hero-title">Build your global team in weeks, not months.</h1>
+        <p class="lander-hero-subtitle">Cloudstaff helps you hire, onboard and manage dedicated offshore staff across the Philippines — with timesheets, payroll and HR handled for you.</p>
+        <div class="cluster" style="margin-top:var(--space-lg)">
+          <a href="#" class="button button-primary button-lg">Book a discovery call</a>
+          <a href="#" class="button button-tertiary button-lg">See how it works <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        </div>
+      </div>
+      <div class="lander-hero-image">
+        <div style="width:100%;aspect-ratio:4/3;border-radius:var(--radius-3xl);background:var(--gradient-brand);display:grid;place-items:center;box-shadow:var(--shadow-lg)">
+          <img src="../../assets/logos/cloudstaff-logo-emblem-mono-reversed.svg" width="180" alt="">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · Feature tile row -->
+  <section class="lander-tile-row-section">
+    <div class="lander-content">
+      <div class="lander-tile-row-header">
+        <h2>Everything you need to run a remote team</h2>
+        <p>One partner for sourcing, compliance, and the day-to-day.</p>
+      </div>
+      <div class="lander-tile-row">
+        <article class="lander-feature-tile">
+          <span class="lander-feature-tile-icon" style="background:var(--color-brand-primary-soft);color:var(--color-brand-primary)"><i class="fa-solid fa-magnifying-glass"></i></span>
+          <h3 class="lander-feature-tile-title">Source &amp; shortlist</h3>
+          <p class="lander-feature-tile-desc">Tap a vetted talent pool of 8,000+ professionals and get a shortlist matched to your role.</p>
+        </article>
+        <article class="lander-feature-tile">
+          <span class="lander-feature-tile-icon" style="background:var(--color-feature-01-soft);color:var(--color-feature-01-bold)"><i class="fa-solid fa-clock"></i></span>
+          <h3 class="lander-feature-tile-title">Timesheets &amp; payroll</h3>
+          <p class="lander-feature-tile-desc">Approve hours, manage leave, and pay your team in local currency — all from one portal.</p>
+        </article>
+        <article class="lander-feature-tile">
+          <span class="lander-feature-tile-icon" style="background:var(--color-feature-05-soft);color:var(--color-feature-05-bold)"><i class="fa-solid fa-shield-halved"></i></span>
+          <h3 class="lander-feature-tile-title">Compliance handled</h3>
+          <p class="lander-feature-tile-desc">Contracts, benefits and statutory requirements are managed for you, end to end.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3a · Content section (image right) -->
+  <section class="lander-section lander-section-image-right">
+    <div class="lander-content">
+      <div>
+        <h2 class="lander-section-title">A staff portal your managers will actually use.</h2>
+        <ul class="list-checked stack-sm">
+          <li>Review and approve timesheets in a click</li>
+          <li>See who's available, busy or on leave at a glance</li>
+          <li>Ask Cloudstaff AI to summarise the week or draft a reminder</li>
+        </ul>
+        <div class="cluster" style="margin-top:var(--space-lg)">
+          <a href="#" class="button button-primary">Explore the portal</a>
+        </div>
+      </div>
+      <div class="lander-section-image">
+        <image-slot id="cs-lander-portal" shape="rounded" radius="20" placeholder="Drop a product screenshot" style="display:block;width:100%;aspect-ratio:4/3"></image-slot>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3b · Content section (image left, tinted) -->
+  <section class="lander-section lander-section-tinted lander-section-image-left">
+    <div class="lander-content">
+      <div>
+        <h2 class="lander-section-title">Rated the #1 Workplace in the Philippines.</h2>
+        <p class="text-secondary text-lg">Great people stay where they're looked after. Our culture, benefits and offices in Manila, Cebu and Davao mean lower attrition for you and a better experience for your team.</p>
+        <div class="cluster" style="margin-top:var(--space-lg);gap:var(--space-2xl)">
+          <div><div class="weight-bold" style="font-family:var(--font-family-heading);font-size:var(--font-size-3xl);color:var(--color-brand-primary)">8,000+</div><div class="text-secondary text-sm">team members</div></div>
+          <div><div class="weight-bold" style="font-family:var(--font-family-heading);font-size:var(--font-size-3xl);color:var(--color-brand-primary)">15+</div><div class="text-secondary text-sm">years operating</div></div>
+          <div><div class="weight-bold" style="font-family:var(--font-family-heading);font-size:var(--font-size-3xl);color:var(--color-brand-primary)">300+</div><div class="text-secondary text-sm">global clients</div></div>
+        </div>
+      </div>
+      <div class="lander-section-image">
+        <image-slot id="cs-lander-office" shape="rounded" radius="20" placeholder="Drop an office / team photo" style="display:block;width:100%;aspect-ratio:4/3"></image-slot>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · Closing CTA -->
+  <section class="lander-cta lander-cta-brand">
+    <div class="lander-content">
+      <div>
+        <h2 class="lander-cta-title">Ready to build your team?</h2>
+        <p class="lander-cta-subtitle">Tell us the roles you need. We'll have a shortlist to you within a week.</p>
+      </div>
+      <div class="cluster justify-end">
+        <a href="#" class="button button-secondary button-lg">Book a discovery call</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+</x-dc>
+</body>
+</html>

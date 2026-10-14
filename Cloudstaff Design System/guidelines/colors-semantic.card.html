@@ -1,0 +1,22 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Semantic / utility" subtitle="Success, warning, danger, info, muted" -->
+<!DOCTYPE html>
+<html lang="en-AU"><head><meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:20px;background:var(--color-background-page);font-family:var(--font-family-body)}
+  .row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+  .sw{border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--color-border-subtle);background:var(--color-background-primary)}
+  .chip{height:64px}
+  .lbl{padding:8px 10px;font-size:12px}
+  .lbl b{font-family:var(--font-family-heading);font-weight:600;display:block}
+  .lbl span{color:var(--color-foreground-muted);font-family:var(--font-family-mono);font-size:10px}
+</style></head>
+<body>
+  <div class="row">
+    <div class="sw"><div class="chip" style="background:var(--color-utility-success)"></div><div class="lbl"><b>Success</b><span>#00ab9c</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-utility-warning)"></div><div class="lbl"><b>Warning</b><span>#ffc426</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-utility-danger)"></div><div class="lbl"><b>Danger</b><span>#f22c46</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-utility-info)"></div><div class="lbl"><b>Info</b><span>#007aff</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-utility-muted)"></div><div class="lbl"><b>Muted</b><span>#99a1b3</span></div></div>
+  </div>
+</body></html>

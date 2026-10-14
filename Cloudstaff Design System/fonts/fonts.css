@@ -1,0 +1,91 @@
+/*
+ * Cloudstaff Design System — Self-hosted fonts
+ * Source: fontsource (https://fontsource.org) — SIL Open Font License 1.1
+ *
+ * Font roles (from tokens.css):
+ *   --font-family-heading : Poppins    — h1–h6, card titles, stat values
+ *   --font-family-body    : Manrope    — all body copy, UI text (variable)
+ *   --font-family-mono    : Chivo Mono — code blocks, data tables, timestamps (variable)
+ *   --font-family-script  : Pacifico   — decorative / script accent only
+ *   --font-family-accent  : Google Sans Flex — accent / display (variable, 100–900)
+ */
+
+/* ─── Poppins (heading font) ─────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('poppins/poppins-latin-300-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('poppins/poppins-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('poppins/poppins-latin-400-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('poppins/poppins-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('poppins/poppins-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('poppins/poppins-latin-700-normal.woff2') format('woff2');
+}
+
+/* ─── Manrope (body / UI font — variable 200–800) ────────────────────────── */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('manrope/manrope-latin-wght-normal.woff2') format('woff2');
+}
+
+/* ─── Chivo Mono (code / data / timestamps — variable 100–900) ───────────── */
+@font-face {
+  font-family: 'Chivo Mono';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('chivo-mono/chivo-mono-latin-wght-normal.woff2') format('woff2');
+}
+
+/* ─── Pacifico (script / decorative accent) ──────────────────────────────── */
+@font-face {
+  font-family: 'Pacifico';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('pacifico/pacifico-latin-400-normal.woff2') format('woff2');
+}
+
+/* ─── Google Sans Flex (accent / display — variable 100–900) ─────────────── */
+@font-face {
+  font-family: 'Google Sans Flex';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('google-sans-flex/google-sans-flex-variable.ttf') format('truetype');
+}

@@ -18,6 +18,7 @@ export const TAB_ROUTES: { tab: ActiveTab; path: string; title: string }[] = [
   { tab: 'tracker-decommissioned', path: '/assessment-tracker/decommissioned', title: 'Decommissioned Apps' },
   { tab: 'tracker-sync', path: '/assessment-tracker/uberticket-sync', title: 'UberTicket Sync' },
   { tab: 'tracker-import', path: '/assessment-tracker/import', title: 'Import Assessment Excel' },
+  { tab: 'users', path: '/users', title: 'Users & Roles' },
 ];
 
 // Extra paths that should open an existing tab.
@@ -37,6 +38,9 @@ function normalizePath(pathname: string): string {
   const trimmed = pathname.replace(/\/+$/, '').toLowerCase();
   return trimmed || '/';
 }
+
+// Pages only admins can open (the server enforces the matching actions as well).
+export const ADMIN_TABS: ActiveTab[] = ['jira', 'tracker-sync', 'tracker-import', 'users'];
 
 export function getTabFromPath(pathname: string): ActiveTab | undefined {
   const path = normalizePath(pathname);

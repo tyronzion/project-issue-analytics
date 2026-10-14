@@ -1,23 +1,54 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
+/* Cloudstaff Design System (../Cloudstaff Design System) is the visual foundation: its self-hosted fonts
+   and design tokens are loaded here, and the app's --cs-* variables and overrides read from them.
+   Layer order: the design-system token layers come BEFORE Tailwind's, so where both define the same
+   variable name (--container-*, --blur-*, --breakpoint-* ...) Tailwind's value wins and utilities such as
+   max-w-md keep working. Radii, shadows and fonts are opted in explicitly in @theme below. */
+@layer reset, foundation, semantic, component-tokens, theme, base, components, utilities;
+
+@import "../Cloudstaff Design System/fonts/fonts.css";
+@import "../Cloudstaff Design System/css/tokens.css";
 @import "tailwindcss";
 
+/* Tailwind utilities (rounded-*, shadow-*, font-sans/mono) resolve to the design-system values.
+   Values mirror Cloudstaff Design System css/tokens.css (--radius-*, --shadow-*). */
+@theme {
+	--font-sans: var(--font-family-body);
+	--font-mono: var(--font-family-mono);
+	--radius-xs: 0.25rem;
+	--radius-sm: 0.5rem;
+	--radius-md: 0.625rem;
+	--radius-lg: 0.75rem;
+	--radius-xl: 0.875rem;
+	--radius-2xl: 1rem;
+	--radius-3xl: 1.25rem;
+	--shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
+	--shadow-sm: 0 2px 8px rgba(16, 24, 40, 0.06);
+	--shadow-md: 0 8px 18px rgba(16, 24, 40, 0.08);
+	--shadow-lg: 0 16px 32px rgba(16, 24, 40, 0.12);
+	--shadow-xl: 0 24px 48px rgba(16, 24, 40, 0.16);
+}
+
+/* App palette, mapped onto design-system tokens. Tracker (tracker.css) and other components use these. */
 :root {
-	--cs-bg: #eef4ff;
-	--cs-surface-0: #f5f8ff;
-	--cs-surface-1: #ffffff;
-	--cs-surface-2: #eaf1ff;
-	--cs-border: #d5e2fb;
-	--cs-text: #112347;
-	--cs-muted: #486188;
-	--cs-soft: #6f86ac;
-	--cs-primary: #0b63ce;
-	--cs-primary-strong: #094da0;
-	--cs-accent: #79b9ff;
-	--cs-blue-50: #f2f8ff;
-	--cs-blue-100: #e6f1ff;
-	--cs-blue-200: #cfe4ff;
-	--cs-blue-300: #9cc6ff;
-	--cs-blue-400: #4b9cff;
+	--cs-bg: var(--color-surface-page);
+	--cs-surface-0: var(--color-surface-page-soft);
+	--cs-surface-1: var(--color-surface-canvas);
+	--cs-surface-2: var(--color-surface-secondary);
+	--cs-border: var(--color-border-primary);
+	--cs-text: var(--color-text-base-primary);
+	--cs-muted: var(--color-text-base-secondary);
+	--cs-soft: var(--color-text-base-muted);
+	--cs-primary: var(--color-action-primary);
+	--cs-primary-strong: var(--color-action-primary-hover);
+	--cs-accent: var(--color-brand-primary-accent);
+	--cs-blue-50: var(--color-brand-primary-hover);
+	--cs-blue-100: var(--color-brand-primary-selected);
+	--cs-blue-200: var(--color-brand-primary-active);
+	--cs-blue-300: var(--color-brand-primary-accent);
+	--cs-blue-400: var(--color-brand-primary);
+	--cs-danger: var(--color-feedback-danger);
+	--cs-danger-soft: var(--color-feedback-danger-soft);
+	--cs-danger-border: var(--color-border-danger);
 }
 
 html,
@@ -28,158 +59,39 @@ body,
 
 body {
 	margin: 0;
-	background: #ffffff;
-}
-
-.login-screen {
-	min-height: 100vh;
-	display: grid;
-	place-items: center;
-	padding: 24px;
-	background: #f5f8ff;
-}
-
-.login-panel {
-	width: min(100%, 400px);
-	padding: 32px;
-	display: grid;
-	gap: 20px;
-	border: 1px solid var(--cs-border);
-	border-radius: 8px;
-	background: #ffffff;
-	box-shadow: 0 16px 40px rgba(17, 35, 71, 0.1);
-	color: var(--cs-text);
-}
-
-.login-logo {
-	height: 40px;
-	width: auto;
-}
-
-.login-panel h1,
-.login-panel p {
-	margin: 0;
-}
-
-.login-panel h1 {
-	font-family: 'Space Grotesk', 'Manrope', sans-serif;
-	font-size: 22px;
-}
-
-.login-panel p,
-.login-panel label span {
-	font-size: 13px;
-	color: var(--cs-muted);
-}
-
-.login-panel label {
-	display: grid;
-	gap: 7px;
-	font-weight: 700;
-}
-
-.login-input {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 10px 12px;
-	border: 1px solid var(--cs-border);
-	border-radius: 6px;
-	color: var(--cs-muted);
-}
-
-.login-input input {
-	width: 100%;
-	border: 0;
-	outline: 0;
-	font: inherit;
-	color: var(--cs-text);
-}
-
-.login-error {
-	color: #b42318 !important;
-}
-
-.login-error-alert {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 10px 12px;
-	border: 1px solid #f6b2ad;
-	border-radius: 6px;
-	background: #fff4f2;
-	color: #b42318;
-	font-size: 13px;
-	font-weight: 600;
-}
-
-.login-input-error {
-	border-color: #d92d20;
-	box-shadow: 0 0 0 3px rgba(217, 45, 32, 0.1);
-	color: #b42318;
-}
-
-.login-submit {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: 8px;
-	padding: 11px;
-	border: 1px solid var(--cs-primary-strong);
-	border-radius: 6px;
-	background: var(--cs-primary);
-	color: #ffffff;
-	font: inherit;
-	font-size: 14px;
-	font-weight: 700;
-	cursor: pointer;
+	background: var(--color-surface-page);
+	font-family: var(--font-family-body);
 }
 
 .cloudstaff-theme {
 	color: var(--cs-text);
-	font-family: 'Manrope', 'Segoe UI', sans-serif;
+	font-family: var(--font-family-body);
 	position: relative;
 	isolation: isolate;
 }
 
+/* Page background is the design-system page surface; panels and cards sit on it in white. */
 .cloudstaff-theme,
 .cloudstaff-theme[class*='bg-'] {
-	background-color: #ffffff !important;
-}
-
-.cloudstaff-theme::before {
-	content: '';
-	position: fixed;
-	inset: 0;
-	pointer-events: none;
-	background:
-		linear-gradient(120deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.34) 35%, transparent 68%),
-		repeating-linear-gradient(135deg, rgba(17, 35, 71, 0.012) 0 1px, transparent 1px 24px);
-	z-index: -1;
+	background-color: var(--color-surface-page) !important;
 }
 
 .cloudstaff-theme h1,
 .cloudstaff-theme h2,
 .cloudstaff-theme h3,
 .cloudstaff-theme .font-bold.tracking-tight {
-	font-family: 'Space Grotesk', 'Manrope', sans-serif;
+	font-family: var(--font-family-heading);
 }
 
 .cloudstaff-theme .bg-slate-950,
 .cloudstaff-theme .bg-slate-950\/60,
-.cloudstaff-theme .bg-slate-950\/40 {
-	background-color: #ffffff !important;
-}
-
+.cloudstaff-theme .bg-slate-950\/40,
 .cloudstaff-theme .bg-slate-900,
 .cloudstaff-theme .bg-slate-900\/80,
-.cloudstaff-theme .bg-slate-900\/60 {
-	background-color: #ffffff !important;
-}
-
+.cloudstaff-theme .bg-slate-900\/60,
 .cloudstaff-theme .bg-slate-800,
 .cloudstaff-theme .bg-slate-800\/80 {
-	background-color: #ffffff !important;
+	background-color: var(--color-surface-canvas) !important;
 }
 
 .cloudstaff-theme .border-slate-800,
@@ -188,7 +100,7 @@ body {
 .cloudstaff-theme .border-slate-700,
 .cloudstaff-theme .border-slate-700\/60,
 .cloudstaff-theme .border-slate-700\/50 {
-	border-color: var(--cs-border) !important;
+	border-color: var(--color-border-subtle) !important;
 }
 
 .cloudstaff-theme .text-slate-100,
@@ -217,21 +129,22 @@ body {
 .cloudstaff-theme .bg-emerald-600.text-white,
 .cloudstaff-theme .bg-purple-600.text-white,
 .cloudstaff-theme .bg-indigo-600.text-white {
-	color: #ffffff !important;
+	color: var(--color-action-primary-contrast) !important;
 }
 
 .cloudstaff-theme [class*='hover:bg-slate-900']:hover,
 .cloudstaff-theme [class*='hover:bg-slate-800']:hover,
 .cloudstaff-theme [class*='hover:bg-slate-700']:hover {
-	background-color: #dde8ff !important;
+	background-color: var(--color-brand-primary-hover) !important;
 }
 
 .cloudstaff-theme [class*='hover:text-white']:hover {
 	color: var(--cs-text) !important;
 }
 
+/* Inputs show focus with the border colour only (design-system rule for text inputs). */
 .cloudstaff-theme [class*='focus:border-blue-500']:focus {
-	border-color: var(--cs-primary) !important;
+	border-color: var(--component-input-focus-border) !important;
 }
 
 .cloudstaff-theme [class*='bg-purple-'],
@@ -240,7 +153,7 @@ body {
 .cloudstaff-theme [class*='bg-emerald-'],
 .cloudstaff-theme [class*='bg-orange-'],
 .cloudstaff-theme [class*='bg-indigo-'] {
-	background-color: #ffffff !important;
+	background-color: var(--color-surface-canvas) !important;
 }
 
 .cloudstaff-theme [class*='hover:bg-purple-']:hover,
@@ -249,11 +162,11 @@ body {
 .cloudstaff-theme [class*='hover:bg-emerald-']:hover,
 .cloudstaff-theme [class*='hover:bg-orange-']:hover,
 .cloudstaff-theme [class*='hover:bg-indigo-']:hover {
-	background-color: #ffffff !important;
+	background-color: var(--color-surface-canvas) !important;
 }
 
 .cloudstaff-theme [class*='bg-'] {
-	background-color: #ffffff !important;
+	background-color: var(--color-surface-canvas) !important;
 }
 
 .cloudstaff-theme [class*='text-purple-'],
@@ -272,7 +185,7 @@ body {
 .cloudstaff-theme [class*='border-emerald-'],
 .cloudstaff-theme [class*='border-orange-'],
 .cloudstaff-theme [class*='border-indigo-'] {
-	border-color: var(--cs-blue-300) !important;
+	border-color: var(--color-brand-primary-accent) !important;
 }
 
 .cloudstaff-theme [class*='focus:ring-purple-'],
@@ -280,7 +193,7 @@ body {
 .cloudstaff-theme [class*='focus:ring-red-'],
 .cloudstaff-theme [class*='focus:ring-emerald-'],
 .cloudstaff-theme [class*='focus:ring-indigo-'] {
-	--tw-ring-color: rgba(11, 99, 206, 0.35) !important;
+	--tw-ring-color: var(--color-brand-primary-accent) !important;
 }
 
 .cloudstaff-theme [class*='bg-purple-'].text-white,
@@ -289,9 +202,9 @@ body {
 .cloudstaff-theme [class*='bg-emerald-'].text-white,
 .cloudstaff-theme [class*='bg-indigo-'].text-white,
 .cloudstaff-theme [class*='bg-orange-'].text-white {
-	background-color: var(--cs-primary) !important;
-	color: #ffffff !important;
-	border-color: var(--cs-primary-strong) !important;
+	background-color: var(--component-button-primary-background) !important;
+	color: var(--component-button-primary-foreground) !important;
+	border-color: transparent !important;
 }
 
 .cloudstaff-theme [class*='shadow-purple-'],
@@ -300,13 +213,13 @@ body {
 .cloudstaff-theme [class*='shadow-emerald-'],
 .cloudstaff-theme [class*='shadow-indigo-'],
 .cloudstaff-theme [class*='shadow-orange-'] {
-	--tw-shadow-color: rgba(11, 99, 206, 0.2) !important;
+	--tw-shadow-color: rgba(16, 24, 40, 0.06) !important;
 }
 
 .cloudstaff-theme .selection\:bg-blue-600 ::selection,
 .cloudstaff-theme.selection\:bg-blue-600 ::selection {
-	background: var(--cs-primary);
-	color: #ffffff;
+	background: var(--color-brand-primary-active);
+	color: var(--cs-text);
 }
 
 @keyframes sectionRise {
@@ -321,19 +234,38 @@ body {
 }
 
 .cloudstaff-theme main > * {
-	animation: sectionRise 420ms ease-out;
+	animation: sectionRise var(--duration-slower) cubic-bezier(0.2, 0, 0.2, 1);
 }
 
+@media (prefers-reduced-motion: reduce) {
+	.cloudstaff-theme main > * {
+		animation: none;
+	}
+}
+
+/* Filled buttons: design-system primary button (pill, AA-safe brand fill, 1px press). */
 .cloudstaff-theme button[class*='bg-'][class*='rounded'] {
-	background-color: var(--cs-primary) !important;
-	color: #ffffff !important;
+	background-color: var(--component-button-primary-background) !important;
+	color: var(--component-button-primary-foreground) !important;
 	font-weight: 700 !important;
-	border-color: var(--cs-primary-strong) !important;
+	border-color: transparent !important;
+	border-radius: var(--component-button-radius) !important;
+	transition: background-color var(--duration-fast) ease, transform var(--duration-instant) ease;
+}
+
+/* Compact 10px buttons can wrap onto two lines, where a pill turns into a blob. */
+.cloudstaff-theme button[class*='bg-'][class*='rounded'][class*='text-[10px]'] {
+	border-radius: var(--radius-sm) !important;
 }
 
 .cloudstaff-theme button[class*='bg-'][class*='rounded']:hover {
-	background-color: var(--cs-primary-strong) !important;
-	color: #ffffff !important;
+	background-color: var(--component-button-primary-hover-background) !important;
+	color: var(--component-button-primary-foreground) !important;
+}
+
+.cloudstaff-theme button[class*='bg-'][class*='rounded']:active:not(:disabled) {
+	background-color: var(--component-button-primary-active-background) !important;
+	transform: translateY(1px);
 }
 
 .cloudstaff-theme button[class*='bg-'][class*='rounded']:disabled {
@@ -342,7 +274,36 @@ body {
 }
 
 .cloudstaff-theme button[class*='bg-'][class*='rounded'] svg {
-	color: #ffffff !important;
+	color: var(--component-button-primary-foreground) !important;
+}
+
+/* Sidebar: design-system menu items (transparent, tinted on hover, soft brand when active) instead of
+   the filled-button style above (the [class*='bg-'] selector outranks it). */
+.cloudstaff-theme aside button[class*='rounded'],
+.cloudstaff-theme aside button[class*='bg-'][class*='rounded'] {
+	background-color: var(--component-menu-item-background) !important;
+	color: var(--component-menu-item-foreground) !important;
+	font-weight: 600 !important;
+	border: 1px solid transparent !important;
+	border-radius: var(--radius-lg) !important;
+	box-shadow: none !important;
+}
+
+.cloudstaff-theme aside button[class*='rounded'] svg {
+	color: inherit !important;
+}
+
+.cloudstaff-theme aside button[class*='rounded']:hover,
+.cloudstaff-theme aside button[class*='bg-'][class*='rounded']:hover {
+	background-color: var(--component-menu-item-hover-background) !important;
+	color: var(--component-menu-item-hover-foreground) !important;
+}
+
+.cloudstaff-theme aside button[class*='rounded'].bg-blue-600,
+.cloudstaff-theme aside button[class*='rounded'].bg-blue-600:hover {
+	background-color: var(--component-menu-item-active-background) !important;
+	color: var(--component-menu-item-active-foreground) !important;
+	border-color: var(--component-menu-item-active-border) !important;
 }
 
 .cloudstaff-theme .security-seal-tone {
@@ -352,9 +313,9 @@ body {
 }
 
 .cloudstaff-theme .cs-table-shell {
-	border: 1px solid var(--cs-border);
-	border-radius: 14px;
-	background: #ffffff;
+	border: 1px solid var(--component-table-border);
+	border-radius: var(--component-card-radius);
+	background: var(--component-table-background);
 }
 
 .cloudstaff-theme .cs-data-table {
@@ -372,20 +333,20 @@ body {
 .dashboard-total-card {
 	min-height: 156px;
 	padding: 20px;
-	border: 1px solid var(--cs-border);
-	border-radius: 8px;
-	background: #ffffff;
+	border: 1px solid var(--component-card-border);
+	border-radius: var(--component-card-radius);
+	background: var(--component-card-background);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: space-between;
 	text-align: center;
-	box-shadow: 0 2px 8px rgba(17, 35, 71, 0.05);
+	box-shadow: var(--component-card-shadow);
 }
 
 .dashboard-total-card h2 {
 	margin: 0;
-	font-family: 'Manrope', 'Segoe UI', sans-serif;
+	font-family: var(--font-family-body);
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 1.35;
@@ -394,7 +355,7 @@ body {
 
 .dashboard-total-card strong {
 	margin: auto 0;
-	font-family: 'Space Grotesk', 'Manrope', sans-serif;
+	font-family: var(--font-family-heading);
 	font-size: 44px;
 	font-weight: 700;
 	line-height: 1;
@@ -410,14 +371,14 @@ body {
 .issues-kpi-card {
 	min-height: 118px;
 	padding: 16px 18px;
-	border: 1px solid var(--cs-border);
-	border-radius: 8px;
-	background: #ffffff;
+	border: 1px solid var(--component-card-border);
+	border-radius: var(--component-card-radius);
+	background: var(--component-card-background);
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
 	gap: 12px;
-	box-shadow: 0 2px 8px rgba(17, 35, 71, 0.05);
+	box-shadow: var(--component-card-shadow);
 }
 
 .issues-kpi-card span,
@@ -439,7 +400,7 @@ body {
 }
 
 .issues-kpi-card strong {
-	font-family: 'Space Grotesk', 'Manrope', sans-serif;
+	font-family: var(--font-family-heading);
 	font-size: 38px;
 	font-weight: 700;
 	line-height: 1;
@@ -448,10 +409,10 @@ body {
 
 .severity-scorecard {
 	padding: 16px 18px;
-	border: 1px solid var(--cs-border);
-	border-radius: 8px;
-	background: #ffffff;
-	box-shadow: 0 2px 8px rgba(17, 35, 71, 0.05);
+	border: 1px solid var(--component-card-border);
+	border-radius: var(--component-card-radius);
+	background: var(--component-card-background);
+	box-shadow: var(--component-card-shadow);
 }
 
 .severity-scorecard-header {
@@ -486,7 +447,7 @@ body {
 }
 
 .severity-risk-score strong {
-	font-family: 'Space Grotesk', 'Manrope', sans-serif;
+	font-family: var(--font-family-heading);
 	font-size: 30px;
 	font-weight: 700;
 	line-height: 1.1;
@@ -507,10 +468,10 @@ body {
 
 .severity-card {
 	padding: 12px 14px;
-	border: 1px solid var(--cs-border);
+	border: 1px solid var(--component-card-border);
 	border-top-width: 4px;
-	border-radius: 8px;
-	background: #fbfdff;
+	border-radius: var(--radius-lg);
+	background: var(--color-surface-page-soft);
 }
 
 .severity-card-top {
@@ -535,7 +496,7 @@ body {
 .severity-card > strong {
 	display: block;
 	margin-top: 6px;
-	font-family: 'Space Grotesk', 'Manrope', sans-serif;
+	font-family: var(--font-family-heading);
 	font-size: 32px;
 	font-weight: 700;
 	line-height: 1;
@@ -554,7 +515,7 @@ body {
 	height: 6px;
 	margin: 10px 0;
 	border-radius: 999px;
-	background: #e8eef7;
+	background: var(--color-surface-tertiary);
 	overflow: hidden;
 }
 
@@ -624,29 +585,29 @@ body {
 	position: sticky;
 	top: 0;
 	z-index: 2;
-	background: #edf4ff !important;
-	color: #355178 !important;
+	background: var(--component-table-header-background) !important;
+	color: var(--component-table-header-foreground) !important;
 	border-bottom: 1px solid var(--cs-border) !important;
 }
 
 .cloudstaff-theme .cs-data-table tbody td {
-	color: #1f3a64 !important;
-	border-color: #e1ebfb !important;
+	color: var(--cs-text) !important;
+	border-color: var(--color-border-subtle) !important;
 }
 
 .cloudstaff-theme .cs-data-table tbody tr:nth-child(odd) {
-	background: #ffffff;
+	background: var(--component-table-background);
 }
 
 .cloudstaff-theme .cs-data-table tbody tr:nth-child(even) {
-	background: #f8fbff;
+	background: var(--color-surface-page-soft);
 }
 
 .cloudstaff-theme .cs-data-table tbody tr:hover {
-	background: #eaf2ff !important;
+	background: var(--component-table-row-hover) !important;
 }
 
 .cloudstaff-theme .cs-data-table tfoot tr {
-	background: #edf4ff !important;
+	background: var(--color-surface-secondary) !important;
 	border-top: 1px solid var(--cs-border) !important;
 }

@@ -13,3 +13,6 @@ monitor/data/
 
 # Assessment Tracker database (live data; back it up, never commit)
 tracker/data/
+
+# Users and roles (live data; back it up, never commit)
+auth/data/

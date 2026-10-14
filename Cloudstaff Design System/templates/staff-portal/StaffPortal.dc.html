@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Staff portal" description="Interactive HR/operations portal — login → dashboard → timesheet approvals, with a review drawer and Cloudstaff AI panel. Built on the DS component bundle." -->
+<helmet>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script src="../../_ds_bundle.js"></script>
+  <script src="./ds-base.js"></script>
+  <style>html,body{margin:0;background:var(--color-background-page)}</style>
+</helmet>
+<x-import component="Portal" from="./Portal.jsx" hint-size="100%,860px"></x-import>
+
+</x-dc>
+</body>
+</html>

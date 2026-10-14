@@ -19,8 +19,9 @@ const list = (s, d) => (s ?? d).split(',').map((x) => x.trim()).filter(Boolean);
 //   root     folder that holds public/ (pages) and data/ (encrypted token, activity cache)
 //   env      settings (process.env)
 //   envFile  .env file to clean if it still holds a plain-text UBERTICKET_TOKEN
-//   settingsLogin  optional (username, password) => boolean; when given, changing the token always needs that login
-export async function createMonitor({ root, env = process.env, envFile = path.join(root, '.env.local'), embedded = false, analyticsUrl = 'http://10.6.99.208/', settingsLogin = null, log = (m) => console.log(`[monitor] ${m}`) }) {
+//   settingsUser   optional (req) => user allowed to change the token, or null; when given (inside Security
+//                  Issues Analytics, which signs users in with Microsoft), only that user may change it (admins)
+export async function createMonitor({ root, env = process.env, envFile = path.join(root, '.env.local'), embedded = false, analyticsUrl = 'http://10.6.99.208/', settingsUser = null, log = (m) => console.log(`[monitor] ${m}`) }) {
   const dataDir = path.join(root, 'data');
   const settingsPassword = String(env.MONITOR_SETTINGS_PASSWORD || '');
 
@@ -288,12 +289,14 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
     return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
   }
   function settingsAllowed(req, res) {
-    // Inside Security Issues Analytics: the app's own login, from any machine.
-    if (settingsLogin) {
-      const user = decodeURIComponent(String(req.get('x-monitor-user') || ''));
-      const pass = decodeURIComponent(String(req.get('x-monitor-password') || ''));
-      if (settingsLogin(user, pass)) return true;
-      res.status(403).json({ error: 'Wrong username or password. Use your Security Issues Analytics login.', needsPassword: true });
+    // Inside Security Issues Analytics: the user signed in with Microsoft, from any machine.
+    if (settingsUser) {
+      const user = settingsUser(req);
+      if (user) {
+        log(`token settings changed by ${user.email || user.name || 'signed-in user'}`);
+        return true;
+      }
+      res.status(403).json({ error: 'Only admins can change the UberTicket token.' });
       return false;
     }
     if (isLocal(req)) return true;
@@ -318,7 +321,7 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
     errorKind: state.errorKind,
   });
 
-  app.get('/api/token', (req, res) => res.json({ ...tokenStatus(), loginRequired: !!settingsLogin, passwordRequired: !settingsLogin && !isLocal(req), passwordConfigured: !!settingsPassword }));
+  app.get('/api/token', (req, res) => res.json({ ...tokenStatus(), canChange: settingsUser ? !!settingsUser(req) : true, passwordRequired: !settingsUser && !isLocal(req), passwordConfigured: !!settingsPassword }));
 
   app.post('/api/token', async (req, res) => {
     if (!settingsAllowed(req, res)) return;

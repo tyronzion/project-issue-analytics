@@ -1,0 +1,21 @@
+/*! Cloudstaff Design System — global entry point
+ *  Consumers link THIS one file. It establishes the cascade-layer order,
+ *  then imports the self-hosted fonts, design tokens, reset, components,
+ *  and layout/utility classes — in that order.
+ *
+ *  Cascade layers (later wins; anything outside a layer beats all layers,
+ *  which is how a consuming app overrides the system without !important):
+ *    reset → foundation → theme → semantic → component-tokens
+ *          → layout → typography → components → utilities
+ *
+ *  Icons: Font Awesome 6.5.2 Free (loaded from CDN by each consumer page).
+ *  Brand logos: assets/logos/*.svg + assets/icons.svg (dynamic <use> sprite).
+ */
+
+@layer reset, foundation, theme, semantic, component-tokens, layout, typography, components, utilities;
+
+@import url("fonts/fonts.css");
+@import url("css/tokens.css");
+@import url("css/base.css");
+@import url("css/components.css");
+@import url("css/utilities.css");

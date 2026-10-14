@@ -1,0 +1,22 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Brand gradients" subtitle="Five canonical gradients for heroes & CTAs" -->
+<!DOCTYPE html>
+<html lang="en-AU"><head><meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:20px;background:var(--color-background-page);font-family:var(--font-family-body)}
+  .row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+  .sw{border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--color-border-subtle)}
+  .chip{height:74px;display:flex;align-items:flex-end;padding:8px 10px}
+  .chip b{font-family:var(--font-family-heading);font-weight:700;color:#fff;font-size:13px}
+  .chip.s b{color:var(--color-foreground-primary)}
+  .lbl{padding:7px 10px;font-size:10px;font-family:var(--font-family-mono);color:var(--color-foreground-muted);background:var(--color-background-primary)}
+</style></head>
+<body>
+  <div class="row">
+    <div class="sw"><div class="chip" style="background:var(--gradient-brand)"><b>Brand</b></div><div class="lbl">--gradient-brand</div></div>
+    <div class="sw"><div class="chip" style="background:var(--gradient-vibrant)"><b>Vibrant</b></div><div class="lbl">--gradient-vibrant</div></div>
+    <div class="sw"><div class="chip" style="background:var(--gradient-warm)"><b>Warm</b></div><div class="lbl">--gradient-warm</div></div>
+    <div class="sw"><div class="chip" style="background:var(--gradient-cool)"><b>Cool</b></div><div class="lbl">--gradient-cool</div></div>
+    <div class="sw"><div class="chip s" style="background:var(--gradient-subtle)"><b>Subtle</b></div><div class="lbl">--gradient-subtle</div></div>
+  </div>
+</body></html>

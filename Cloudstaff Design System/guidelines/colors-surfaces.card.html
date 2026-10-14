@@ -1,0 +1,23 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Surfaces" subtitle="Layered backgrounds from page to inverse" -->
+<!DOCTYPE html>
+<html lang="en-AU"><head><meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:20px;background:var(--color-background-page);font-family:var(--font-family-body)}
+  .row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+  .sw{border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--color-border-subtle)}
+  .chip{height:62px}
+  .lbl{padding:7px 9px;font-size:11px;background:var(--color-background-primary)}
+  .lbl b{font-family:var(--font-family-heading);font-weight:600;display:block}
+  .lbl span{color:var(--color-foreground-muted);font-family:var(--font-family-mono);font-size:9px}
+</style></head>
+<body>
+  <div class="row">
+    <div class="sw"><div class="chip" style="background:var(--color-surface-page)"></div><div class="lbl"><b>Page</b><span>surface-page</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-surface-canvas)"></div><div class="lbl"><b>Canvas</b><span>surface-canvas</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-surface-secondary)"></div><div class="lbl"><b>Secondary</b><span>surface-secondary</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-surface-tertiary)"></div><div class="lbl"><b>Tertiary</b><span>surface-tertiary</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-surface-brand)"></div><div class="lbl"><b>Brand tint</b><span>surface-brand</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-surface-inverse)"></div><div class="lbl"><b>Inverse</b><span>surface-inverse</span></div></div>
+  </div>
+</body></html>

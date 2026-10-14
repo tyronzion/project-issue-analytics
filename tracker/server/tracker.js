@@ -7,7 +7,8 @@ import { TRACKS, SEALS, matchKey } from '../shared/logic.js';
 
 // Assessment Tracker API, mounted by vite.config.ts at /api/tracker.
 // getTickets() returns { full, roe } normalized UberTicket tickets (from the monitor).
-export async function createTracker({ root, getTickets = null, ticketStatus = () => null, offsetHours = 8, log = (m) => console.log(`[tracker] ${m}`) }) {
+// isAdmin(req), when given, limits setup routes (Excel import, UberTicket sync and links) to admins.
+export async function createTracker({ root, getTickets = null, ticketStatus = () => null, offsetHours = 8, isAdmin = null, log = (m) => console.log(`[tracker] ${m}`) }) {
   const router = express.Router();
   let db = null;
   let unavailable = null;
@@ -35,7 +36,9 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
   router.use(express.json({ limit: '2mb' }));
   router.use((_req, res, next) => (unavailable ? res.status(503).json({ error: unavailable }) : next()));
 
-  const userOf = (req) => String(req.get('x-user') || '').slice(0, 80) || 'Unknown';
+  // Who made a change: the signed-in user when there is one (set by auth/auth.js), else the name the page sent.
+  const userOf = (req) => String(req.user?.name || req.user?.email || req.get('x-user') || '').slice(0, 80) || 'Unknown';
+  const adminOnly = (req, res, next) => (!isAdmin || isAdmin(req) ? next() : res.status(403).json({ error: 'Only admins can do this.' }));
 
   router.get('/cycles', (_req, res) => {
     const rows = db.prepare(`
@@ -137,29 +140,29 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
 
   // UberTicket sync status, unmatched tickets and manual links.
   router.get('/sync', (_req, res) => res.json({ enabled: !!getTickets, uberticket: ticketStatus(), last: lastSync, links: db.prepare('SELECT product_key AS productKey, product, project, linked_by AS linkedBy, linked_at AS linkedAt FROM ticket_links ORDER BY product').all() }));
-  router.post('/sync', (_req, res) => res.json(sync()));
-  router.post('/links', (req, res) => {
+  router.post('/sync', adminOnly, (_req, res) => res.json(sync()));
+  router.post('/links', adminOnly, (req, res) => {
     const { product, project } = req.body || {};
     if (!product || !project) return res.status(400).json({ error: 'product and project are required' });
     db.prepare('INSERT INTO ticket_links (product_key, product, project, linked_by) VALUES (?, ?, ?, ?) ON CONFLICT(product_key) DO UPDATE SET project = excluded.project, linked_by = excluded.linked_by, linked_at = datetime(\'now\')')
       .run(matchKey(product), product, project, userOf(req));
     res.json(sync());
   });
-  router.delete('/links/:productKey', (req, res) => {
+  router.delete('/links/:productKey', adminOnly, (req, res) => {
     db.prepare('DELETE FROM ticket_links WHERE product_key = ?').run(req.params.productKey);
     res.json(sync());
   });
 
   // Excel import: the browser sends the .xlsx bytes as the request body.
   const raw = express.raw({ type: () => true, limit: '50mb' });
-  router.post('/import/preview', raw, (req, res) => {
+  router.post('/import/preview', adminOnly, raw, (req, res) => {
     try {
       res.json(previewOf(parseWorkbook(req.body)));
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
   });
-  router.post('/import', raw, (req, res) => {
+  router.post('/import', adminOnly, raw, (req, res) => {
     try {
       const selected = req.query.cycles ? JSON.parse(String(req.query.cycles)) : null;
       const result = importCycles(db, parseWorkbook(req.body), selected, `${userOf(req)} (Excel import)`);

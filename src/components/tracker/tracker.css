@@ -21,10 +21,10 @@
 .at-link:hover { text-decoration: underline; }
 
 .at-card {
-  border: 1px solid var(--cs-border);
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(17, 35, 71, 0.05);
+  border: 1px solid var(--component-card-border);
+  border-radius: var(--component-card-radius);
+  background: var(--component-card-background);
+  box-shadow: var(--component-card-shadow);
 }
 
 /* Buttons & inputs */
@@ -35,46 +35,47 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border: 1px solid var(--cs-primary-strong);
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--component-button-radius);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 .at-btn { background: var(--cs-primary); color: #fff; }
 .at-btn:hover { background: var(--cs-primary-strong); }
+.at-btn:active:not(:disabled) { transform: translateY(1px); }
 .at-btn:disabled, .at-btn-ghost:disabled { opacity: 0.55; cursor: not-allowed; }
-.at-btn-ghost { background: #fff; color: var(--cs-text); border-color: var(--cs-border); }
-.at-btn-ghost:hover { background: #dde8ff; }
-.at-btn-danger { background: #fff; color: #b42318; border-color: #f6b2ad; }
-.at-btn-danger:hover { background: #fff4f2; }
+.at-btn-ghost { background: var(--component-button-secondary-background); color: var(--component-button-secondary-foreground); border-color: var(--component-button-secondary-border); }
+.at-btn-ghost:hover { background: var(--component-button-secondary-hover-background); }
+.at-btn-danger { background: var(--color-surface-canvas); color: var(--cs-danger); border-color: var(--cs-danger-border); }
+.at-btn-danger:hover { background: var(--cs-danger-soft); }
 
 .at-input {
   height: 34px;
-  border: 1px solid var(--cs-border);
-  border-radius: 6px;
-  background: #fff;
+  border: 1px solid var(--component-input-border);
+  border-radius: var(--component-input-radius);
+  background: var(--component-input-background);
   padding: 0 10px;
   font-size: 13px;
   color: var(--cs-text);
 }
 textarea.at-input { height: auto; padding: 8px 10px; }
-.at-input:focus { outline: none; border-color: var(--cs-primary); box-shadow: 0 0 0 3px rgba(11, 99, 206, 0.15); }
+.at-input:focus { outline: none; border-color: var(--component-input-focus-border); }
 .at-input.at-has-icon { padding-left: 2rem; }
 
 /* Period chips (same as the issues date-range presets) */
 .at-chip {
   padding: 4px 12px;
-  border: 1px solid var(--cs-primary-strong);
-  border-radius: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
   background: var(--cs-primary);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
 }
 .at-chip:hover { background: var(--cs-primary-strong); }
-.at-chip[aria-pressed='true'] { background: var(--cs-primary-strong); box-shadow: 0 0 0 2px rgba(121, 185, 255, 0.7); }
+.at-chip[aria-pressed='true'] { background: var(--cs-primary-strong); box-shadow: 0 0 0 2px var(--cs-blue-300); }
 
 /* Status pills */
 .at-pill {
@@ -110,7 +111,7 @@ textarea.at-input { height: auto; padding: 8px 10px; }
   gap: 4px;
   padding: 1px 7px;
   border: 1px solid var(--seal-border);
-  border-radius: 6px;
+  border-radius: var(--radius-pill);
   background: var(--seal-bg);
   color: var(--seal-text);
   font-size: 11px;
@@ -133,7 +134,7 @@ textarea.at-input { height: auto; padding: 8px 10px; }
 }
 .at-ticket:hover { border-color: var(--cs-primary); }
 
-.at-progress { height: 6px; width: 64px; border-radius: 999px; overflow: hidden; background: #e8eef7; }
+.at-progress { height: 6px; width: 64px; border-radius: 999px; overflow: hidden; background: var(--color-surface-tertiary); }
 .at-progress > div { height: 100%; border-radius: 999px; }
 
 /* KPI and severity cards reuse the app's .issues-kpi-card / .severity-* styles. */
@@ -145,12 +146,12 @@ textarea.at-input { height: auto; padding: 8px 10px; }
 .at-root .severity-bar { display: flex; gap: 2px; }
 .at-root .severity-bar > div { border-radius: 0; }
 
-.at-seal-tile { border: 1px solid var(--cs-border); border-radius: 8px; overflow: hidden; }
+.at-seal-tile { border: 1px solid var(--color-border-subtle); border-radius: var(--radius-lg); overflow: hidden; }
 .at-seal-tile > div:first-child { padding: 6px 12px; font-size: 13px; font-weight: 700; }
 .at-seal-tile strong {
   display: block;
   padding: 10px 12px;
-  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+  font-family: var(--font-family-heading);
   font-size: 28px;
   line-height: 1;
 }
@@ -158,7 +159,7 @@ textarea.at-input { height: auto; padding: 8px 10px; }
 /* Tables reuse .cs-table-shell / .cs-data-table; add spacing. */
 .at-root .cs-data-table { width: 100%; font-size: 13px; }
 .at-root .cs-data-table th { padding: 8px 12px; font-size: 11px; font-weight: 700; text-align: left; white-space: nowrap; }
-.at-root .cs-data-table td { padding: 8px 12px; border-bottom: 1px solid #e1ebfb; vertical-align: middle; }
+.at-root .cs-data-table td { padding: 8px 12px; border-bottom: 1px solid var(--color-border-subtle); vertical-align: middle; }
 .at-root .cs-data-table tbody tr.at-row { cursor: pointer; }
 .at-root .cs-data-table tbody tr.at-row--dim td { opacity: 0.6; }
 
@@ -169,9 +170,9 @@ textarea.at-input { height: auto; padding: 8px 10px; }
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: 1px solid #9cc6ff;
-  border-radius: 6px;
-  background: #fff;
+  border: 1px solid var(--cs-blue-300);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-canvas);
   color: transparent;
   transition: background 0.1s;
 }
@@ -182,17 +183,17 @@ textarea.at-input { height: auto; padding: 8px 10px; }
 .at-root .cs-data-table thead th.at-sticky-col { z-index: 3; }
 
 /* Alerts */
-.at-alert { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid; border-radius: 8px; font-size: 13px; }
-.at-alert--warn { border-color: #fcd34d; background: #fffbeb; color: #78350f; }
-.at-alert--error { border-color: #f6b2ad; background: #fff4f2; color: #b42318; }
+.at-alert { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid; border-radius: var(--radius-lg); font-size: 13px; }
+.at-alert--warn { border-color: var(--color-border-warning); background: var(--color-feedback-warning-soft); color: var(--at-warn-ink); }
+.at-alert--error { border-color: var(--cs-danger-border); background: var(--cs-danger-soft); color: var(--cs-danger); }
 .at-alert--info { border-color: var(--cs-border); background: var(--cs-surface-0); color: var(--cs-text); }
 
 /* Edit drawer */
-.at-overlay { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: flex-end; background: rgba(17, 35, 71, 0.3); }
-.at-drawer { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 44rem; background: #fff; box-shadow: -12px 0 40px rgba(17, 35, 71, 0.18); }
+.at-overlay { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: flex-end; background: var(--color-surface-scrim); }
+.at-drawer { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 44rem; background: var(--color-surface-canvas); box-shadow: var(--shadow-overlay); }
 .at-label { display: block; margin-bottom: 4px; font-size: 11px; font-weight: 700; color: var(--cs-muted); }
-.at-check-option { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--cs-border); border-radius: 8px; font-size: 13px; cursor: pointer; }
+.at-check-option { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--cs-border); border-radius: var(--radius-lg); font-size: 13px; cursor: pointer; }
 .at-check-option--on { border-color: rgba(12, 163, 12, 0.35); background: var(--at-good-wash); }
-.at-dropzone { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px; border: 2px dashed #9cc6ff; border-radius: 12px; background: var(--cs-surface-0); text-align: center; cursor: pointer; }
+.at-dropzone { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px; border: 2px dashed var(--cs-blue-300); border-radius: var(--component-card-radius); background: var(--cs-surface-0); text-align: center; cursor: pointer; }
 .at-dropzone:hover { border-color: var(--cs-primary); }
 .at-section-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }

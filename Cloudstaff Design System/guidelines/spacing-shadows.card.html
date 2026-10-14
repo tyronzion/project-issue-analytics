@@ -1,0 +1,20 @@
+<!-- @dsCard group="Spacing" viewport="700x170" name="Elevation / shadows" subtitle="--shadow-xs → xl + overlay" -->
+<!DOCTYPE html>
+<html lang="en-AU"><head><meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;padding:26px;background:var(--color-background-page)}
+  .row{display:flex;gap:24px;flex-wrap:wrap}
+  .b{display:flex;flex-direction:column;gap:9px;align-items:center}
+  .sq{width:78px;height:60px;background:var(--color-background-primary);border-radius:var(--radius-lg)}
+  .b small{font-family:var(--font-family-mono);font-size:10px;color:var(--color-foreground-muted)}
+</style></head>
+<body>
+  <div class="row">
+    <div class="b"><div class="sq" style="box-shadow:var(--shadow-xs)"></div><small>xs</small></div>
+    <div class="b"><div class="sq" style="box-shadow:var(--shadow-sm)"></div><small>sm</small></div>
+    <div class="b"><div class="sq" style="box-shadow:var(--shadow-md)"></div><small>md</small></div>
+    <div class="b"><div class="sq" style="box-shadow:var(--shadow-lg)"></div><small>lg</small></div>
+    <div class="b"><div class="sq" style="box-shadow:var(--shadow-xl)"></div><small>xl</small></div>
+    <div class="b"><div class="sq" style="box-shadow:var(--shadow-overlay)"></div><small>overlay</small></div>
+  </div>
+</body></html>

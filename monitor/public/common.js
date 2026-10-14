@@ -228,8 +228,6 @@ document.body.insertAdjacentHTML('beforeend', `
     <div id="tokenState" class="token-state">Loading…</div>
     <form id="tokenForm" autocomplete="off">
       <div id="pwRow" hidden>
-        <div id="userRow" hidden><label for="settingsUser">Username</label>
-        <input id="settingsUser" type="text" autocomplete="username" placeholder="Security Issues Analytics username"></div>
         <label for="settingsPw" id="pwLabel">Settings password</label>
         <input id="settingsPw" type="password" placeholder="MONITOR_SETTINGS_PASSWORD on the server">
         <p class="settings-note" id="pwNote"></p>
@@ -252,7 +250,7 @@ document.body.insertAdjacentHTML('beforeend', `
 </dialog>`);
 
 // Login for Settings, sent as headers (URI-encoded so any characters are allowed).
-const authHeaders = () => ({ 'X-Monitor-User': encodeURIComponent($('#settingsUser').value), 'X-Monitor-Password': encodeURIComponent($('#settingsPw').value) });
+const authHeaders = () => ({ 'X-Monitor-Password': encodeURIComponent($('#settingsPw').value) });
 
 async function renderTokenState(st) {
   st = st ?? await (await fetch('api/token')).json();
@@ -272,12 +270,14 @@ async function renderTokenState(st) {
   $('#tokenState').innerHTML = html;
   $('#tokenClear').hidden = !st.set;
   // Changing the token from another machine needs the server's settings password.
-  if (st.loginRequired) {
-    $('#pwRow').hidden = false;
-    $('#userRow').hidden = false;
-    $('#pwLabel').textContent = 'Password';
-    $('#settingsPw').placeholder = 'Security Issues Analytics password';
-    $('#pwNote').textContent = 'Use the same login as Security Issues Analytics.';
+  // Inside Security Issues Analytics only admins may change the token (the server enforces it too).
+  $('#tokenForm').hidden = st.canChange === false;
+  if (st.canChange === false) {
+    $('#tokenClear').hidden = true;
+    $('#tokenState').insertAdjacentHTML('beforeend', '<div class="muted">Only admins can change the UberTicket token.</div>');
+  }
+  if (st.canChange === true && !st.passwordRequired) {
+    $('#pwRow').hidden = true;
   } else if (st.passwordRequired !== undefined) {
     $('#pwRow').hidden = !st.passwordRequired;
     $('#pwNote').textContent = st.passwordConfigured ? 'Required because you are not on the server itself.' : 'Not set on the server yet: add MONITOR_SETTINGS_PASSWORD to its .env.local, or change the token on the server itself.';

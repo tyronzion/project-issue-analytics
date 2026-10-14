@@ -16,6 +16,7 @@ import {
   Archive,
   RefreshCcw,
   FileUp,
+  UserCog,
 } from 'lucide-react';
 import { 
   IssueRecord, 
@@ -52,8 +53,8 @@ import { DataMergeModal } from './components/DataMergeModal';
 import { SettingsModal } from './components/SettingsModal';
 import { TargetProjectListModal } from './components/TargetProjectListModal';
 import { ClearDataModal } from './components/ClearDataModal';
-import { LoginScreen } from './components/LoginScreen';
-import { getTabFromPath, getPathForTab, getTitleForTab } from './utils/routes';
+import { getTabFromPath, getPathForTab, getTitleForTab, ADMIN_TABS } from './utils/routes';
+import { UsersPage } from './components/UsersPage';
 import { JiraIntegrationPage, JiraCredentials } from './components/JiraIntegrationPage';
 import { MonitorFrame, isMonitorTab } from './components/MonitorFrame';
 import AssessmentTracker from './components/tracker/AssessmentTracker.jsx';
@@ -71,17 +72,8 @@ const TRACKER_TABS = [
 ] as const;
 const trackerSection = (tab: ActiveTab) => TRACKER_TABS.find(t => t.tab === tab)?.section;
 
-const AUTH_SESSION_KEY = 'project_issue_analytics_authenticated_v1';
 const AUTO_SYNC_INTERVAL_MS = 15 * 60 * 1000;
 const FILTERABLE_TABS: ActiveTab[] = ['dashboard', 'charts', 'seal', 'dependabots', 'issues', 'projects'];
-
-function hasAuthenticationSession(): boolean {
-  try {
-    return localStorage.getItem(AUTH_SESSION_KEY) === 'true' || sessionStorage.getItem(AUTH_SESSION_KEY) === 'true';
-  } catch {
-    return false;
-  }
-}
 
 // Global project filter: an exact project name selects just that project; any other text is a
 // case-insensitive "contains" search (e.g. "Genesis" matches "Genesis IOS" and "Genesis AOS").
@@ -104,7 +96,10 @@ function removeCancelledIssues(rows: IssueRecord[], config: FormulaConfig): Issu
 
 export default function App() {
   // 1. Permanent State & Data Initialization
-  const [isAuthenticated, setIsAuthenticated] = useState(hasAuthenticationSession);
+  // Sign-in is handled by the server (Microsoft, auth/auth.js); this page only loads for a signed-in user.
+  // The role decides what is shown; the server enforces the same rules on every admin-only action.
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; role: 'admin' | 'user' } | null>(null);
+  const isAdmin = currentUser?.role === 'admin';
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
   const [issues, setIssues] = useState<IssueRecord[]>(() => {
     const saved = loadSavedData();
@@ -196,7 +191,8 @@ export default function App() {
 
     savePersistedData(issues);
 
-    if (!isRemoteHydrated || !isRemotePersistenceConfigured) return;
+    // Only admins change the shared dataset; a user's changes stay in their own browser.
+    if (!isAdmin || !isRemoteHydrated || !isRemotePersistenceConfigured) return;
 
     if (remoteSaveTimeoutRef.current) {
       clearTimeout(remoteSaveTimeoutRef.current);
@@ -214,7 +210,7 @@ export default function App() {
         remoteSaveTimeoutRef.current = null;
       }
     };
-  }, [issues, settings.autoSaveData, isRemoteHydrated, isRemotePersistenceConfigured]);
+  }, [issues, settings.autoSaveData, isRemoteHydrated, isRemotePersistenceConfigured, isAdmin]);
 
   // Cancelled records are excluded from the permanent local dataset.
   useEffect(() => {
@@ -671,7 +667,7 @@ export default function App() {
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     const runAutoSync = async () => {
-      if (isCancelled) return;
+      if (isCancelled || !isAdmin) return;
       const profile = loadJiraIntegrationProfile();
       if (!profile.autoSyncEnabled) return;
       if (!profile.baseUrl || !profile.email || !profile.apiToken || (!profile.filterId && !profile.jql)) return;
@@ -701,7 +697,7 @@ export default function App() {
       isCancelled = true;
       if (intervalId) clearInterval(intervalId);
     };
-  }, [handleSyncFromJira]);
+  }, [handleSyncFromJira, isAdmin]);
 
   // Handler: Restore Full Backup
   const handleRestoreBackup = (backup: { settings: AppSettings; issues: IssueRecord[] }) => {
@@ -709,29 +705,26 @@ export default function App() {
     setIssues(removeCancelledIssues(backup.issues, backup.settings.formulaConfig));
   };
 
-  const handleAuthenticated = () => {
-    try {
-      localStorage.setItem(AUTH_SESSION_KEY, 'true');
-      sessionStorage.setItem(AUTH_SESSION_KEY, 'true');
-    } catch (error) {
-      console.warn('Could not persist authentication session:', error);
-    }
-    setIsAuthenticated(true);
-  };
+  useEffect(() => {
+    fetch('/auth/me')
+      .then(response => (response.ok ? response.json() : null))
+      .then(user => setCurrentUser(user ? { name: user.name || '', email: user.email || '', role: user.role === 'admin' ? 'admin' : 'user' } : null))
+      .catch(() => setCurrentUser(null));
+  }, []);
 
+  // Users can't open admin pages (e.g. from a bookmarked URL); wait until the role is known.
+  useEffect(() => {
+    if (currentUser && !isAdmin && ADMIN_TABS.includes(activeTab)) setActiveTab('dashboard');
+  }, [currentUser, isAdmin, activeTab]);
+
+  // Sign out is a POST (a form submit), so another site can't sign people out with a link.
   const handleSignOut = () => {
-    try {
-      localStorage.removeItem(AUTH_SESSION_KEY);
-      sessionStorage.removeItem(AUTH_SESSION_KEY);
-    } catch (error) {
-      console.warn('Could not clear authentication session:', error);
-    }
-    setIsAuthenticated(false);
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/auth/logout';
+    document.body.appendChild(form);
+    form.submit();
   };
-
-  if (!isAuthenticated) {
-    return <LoginScreen onAuthenticated={handleAuthenticated} />;
-  }
 
   return (
     <div className="cloudstaff-theme min-h-screen bg-white text-slate-100 flex flex-col selection:bg-blue-600 selection:text-white">
@@ -739,15 +732,16 @@ export default function App() {
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenImport={() => setIsImportOpen(true)}
-        onOpenMerge={() => setIsMergeOpen(true)}
+        onOpenImport={isAdmin ? () => setIsImportOpen(true) : undefined}
+        onOpenMerge={isAdmin ? () => setIsMergeOpen(true) : undefined}
         onExportExcel={handleExportExcel}
         onOpenFormulas={() => setIsFormulasOpen(true)}
         onOpenProjects={() => setIsProjectsOpen(true)}
         onOpenTargetList={() => setIsTargetListOpen(true)}
-        onOpenClearData={() => setIsClearDataOpen(true)}
+        onOpenClearData={isAdmin ? () => setIsClearDataOpen(true) : undefined}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onSignOut={handleSignOut}
+        signedInAs={currentUser ? `${currentUser.name || currentUser.email}${isAdmin ? ' · Admin' : ''}` : ''}
         totalIssuesCount={issues.length}
         activeProjectsCount={summaries.length}
         customProjectListCount={settings.customProjectList?.length || 0}
@@ -824,7 +818,7 @@ export default function App() {
                 <span>Dependabots Issues</span>
               </button>
 
-              <button
+              {isAdmin && <button
                 id="tab-jira-btn"
                 onClick={() => setActiveTab('jira')}
                 className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
@@ -835,7 +829,7 @@ export default function App() {
               >
                 <Bot className="w-4 h-4" />
                 <span>Jira Integration</span>
-              </button>
+              </button>}
 
               <button
                 id="tab-issues-btn"
@@ -898,7 +892,7 @@ export default function App() {
               ))}
 
               <p className="px-3 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Assessment Tracker</p>
-              {TRACKER_TABS.map(({ tab, label, Icon }) => (
+              {TRACKER_TABS.filter(({ tab }) => isAdmin || !ADMIN_TABS.includes(tab)).map(({ tab, label, Icon }) => (
                 <button
                   key={tab}
                   id={`tab-${tab}-btn`}
@@ -913,6 +907,24 @@ export default function App() {
                   <span>{label}</span>
                 </button>
               ))}
+
+              {isAdmin && (
+                <>
+                  <p className="px-3 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Administration</p>
+                  <button
+                    id="tab-users-btn"
+                    onClick={() => setActiveTab('users')}
+                    className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                      activeTab === 'users'
+                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-900/20'
+                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/50'
+                    }`}
+                  >
+                    <UserCog className="w-4 h-4" />
+                    <span>Users & Roles</span>
+                  </button>
+                </>
+              )}
 
             </div>
           </aside>
@@ -932,8 +944,8 @@ export default function App() {
             onOpenFormulas={() => setIsFormulasOpen(true)}
             onOpenProjects={() => setIsProjectsOpen(true)}
             onOpenTargetList={() => setIsTargetListOpen(true)}
-            onOpenClearData={() => setIsClearDataOpen(true)}
-            onOpenImport={() => setIsImportOpen(true)}
+            onOpenClearData={isAdmin ? () => setIsClearDataOpen(true) : undefined}
+            onOpenImport={isAdmin ? () => setIsImportOpen(true) : undefined}
             onMergeProjects={handleBatchMergeProjects}
             onUnmergeProjects={handleBatchUnmergeProjects}
           />
@@ -956,7 +968,7 @@ export default function App() {
             formulaConfig={settings.formulaConfig}
             dateFilter={settings.dateFilter}
             selectedPlatform={drilldownPlatform}
-            onOpenClearData={() => setIsClearDataOpen(true)}
+            onOpenClearData={isAdmin ? () => setIsClearDataOpen(true) : undefined}
           />
         )}
 
@@ -1107,8 +1119,8 @@ export default function App() {
               onOpenFormulas={() => setIsFormulasOpen(true)}
               onOpenProjects={() => setIsProjectsOpen(true)}
               onOpenTargetList={() => setIsTargetListOpen(true)}
-              onOpenClearData={() => setIsClearDataOpen(true)}
-              onOpenImport={() => setIsImportOpen(true)}
+              onOpenClearData={isAdmin ? () => setIsClearDataOpen(true) : undefined}
+              onOpenImport={isAdmin ? () => setIsImportOpen(true) : undefined}
               onMergeProjects={handleBatchMergeProjects}
               onUnmergeProjects={handleBatchUnmergeProjects}
             />
@@ -1119,12 +1131,12 @@ export default function App() {
               formulaConfig={settings.formulaConfig}
               dateFilter={settings.dateFilter}
               selectedPlatform={drilldownPlatform}
-              onOpenClearData={() => setIsClearDataOpen(true)}
+              onOpenClearData={isAdmin ? () => setIsClearDataOpen(true) : undefined}
             />
           </div>
         )}
 
-        {activeTab === 'jira' && (
+        {activeTab === 'jira' && isAdmin && (
           <JiraIntegrationPage
             onSync={handleSyncFromJira}
             isSyncing={isJiraSyncing}
@@ -1133,9 +1145,11 @@ export default function App() {
 
         {isMonitorTab(activeTab) && <MonitorFrame tab={activeTab} />}
 
-        {trackerSection(activeTab) && (
+        {trackerSection(activeTab) && (isAdmin || !ADMIN_TABS.includes(activeTab)) && (
           <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} />
         )}
+
+        {activeTab === 'users' && isAdmin && <UsersPage />}
           </main>
         </div>
       </div>
@@ -1209,8 +1223,8 @@ export default function App() {
         settings={settings}
         issues={issues}
         onUpdateSettings={setSettings}
-        onResetDataToSample={handleResetDataToSample}
-        onRestoreBackup={handleRestoreBackup}
+        onResetDataToSample={isAdmin ? handleResetDataToSample : undefined}
+        onRestoreBackup={isAdmin ? handleRestoreBackup : undefined}
       />
     </div>
   );

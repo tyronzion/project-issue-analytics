@@ -22,8 +22,9 @@ import { ActiveTab } from '../types';
 interface NavbarProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
-  onOpenImport: () => void;
-  onOpenMerge: () => void;
+  // Admin-only actions: omitted for users, which hides their buttons.
+  onOpenImport?: () => void;
+  onOpenMerge?: () => void;
   onExportExcel: () => void;
   onOpenFormulas: () => void;
   onOpenProjects: () => void;
@@ -31,6 +32,7 @@ interface NavbarProps {
   onOpenClearData?: () => void;
   onOpenSettings: () => void;
   onSignOut: () => void;
+  signedInAs?: string;
   totalIssuesCount: number;
   activeProjectsCount: number;
   customProjectListCount?: number;
@@ -48,6 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenClearData,
   onOpenSettings,
   onSignOut,
+  signedInAs = '',
   totalIssuesCount,
   activeProjectsCount,
   customProjectListCount = 0,
@@ -78,7 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               {activeProjectsCount} Projects Active &bull; {totalIssuesCount} Total Records
             </p>
 
-            <button
+            {onOpenImport && <button
               id="btn-import-data"
               onClick={onOpenImport}
               className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition shadow-sm"
@@ -86,7 +89,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Upload className="w-3.5 h-3.5 text-blue-400" />
               <span className="hidden sm:inline">Import Data</span>
-            </button>
+            </button>}
 
             <button
               id="btn-export-excel"
@@ -126,14 +129,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
                   )}
 
-                  <button
+                  {onOpenMerge && <button
                     id="menu-merge-data"
                     onClick={() => handleMoreAction(onOpenMerge)}
                     className="w-full flex items-center space-x-1.5 px-2.5 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-lg border border-transparent hover:border-slate-700 transition"
                   >
                     <GitMerge className="w-3.5 h-3.5 text-blue-500" />
                     <span>Merge Data</span>
-                  </button>
+                  </button>}
 
                   {onOpenClearData && (
                     <button
@@ -157,6 +160,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <SlidersHorizontal className="w-4 h-4" />
             </button>
+
+            {signedInAs && (
+              <span className="hidden md:inline text-xs text-slate-500 max-w-[180px] truncate" title={`Signed in as ${signedInAs}`}>
+                {signedInAs}
+              </span>
+            )}
 
             <button
               id="btn-sign-out"

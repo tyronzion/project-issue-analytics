@@ -76,5 +76,5 @@ Pushed to `main` on 2026-10-14. The self-hosted deploy runner was queued, appare
 1. Register the app in Entra (steps in README).
 2. Test a real sign-in locally with `AUTH_REDIRECT_URI=http://localhost:5199/auth/callback`.
 3. Arrange HTTPS on the server.
-4. Put the four `AUTH_*` settings and `AUTH_ADMIN_EMAILS=zionm@cloudstaff.com` in the server's `.env.local`, then restart.
+4. Put the four `AUTH_*` settings and `AUTH_ADMIN_EMAILS=zionm@cloudstaff.com` in GitHub Actions secrets/variables (2026-10-15: `deploy.yml` merges them into the server's `.env.local` via `auth/envFromCi.js`; needs the runner registered on the CT), or directly in the server's `.env.local`, then restart.
 5. Optional: set a strong `AUTH_CLASSIC_PASSWORD`, or `AUTH_CLASSIC_LOGIN=0` once everyone uses Microsoft.

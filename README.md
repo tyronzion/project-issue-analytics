@@ -56,6 +56,12 @@ Code: `auth/auth.js` (tests: `npm run test:auth`).
    - `AUTH_REDIRECT_URI`: exactly the redirect URI registered above.
    - `AUTH_ADMIN_EMAILS`: the permanent admins, for example `zionm@cloudstaff.com`.
 
+   Or keep them in GitHub instead: Settings → Secrets and variables → **Actions**. Put `AUTH_CLIENT_SECRET` (and
+   `AUTH_CLASSIC_PASSWORD`, if used) under **Secrets**; the others can be **Variables** or Secrets. On each deploy the
+   workflow runs `auth/envFromCi.js`, which writes only these keys into the server's `.env.local` (mode 600) and keeps
+   the rest of the file. This needs the self-hosted runner on the server. After changing a value in GitHub, re-run
+   the Deploy workflow. When the Entra secret is renewed, update it in GitHub too.
+
 ### Roles
 
 There are two roles:

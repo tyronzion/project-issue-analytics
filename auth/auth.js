@@ -398,8 +398,10 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
 
     let result;
     try {
+      // state is passed in the request too: msal-node then only compares it with the payload's (already checked above)
+      // instead of decoding it as its own state format, which our random state is not (fails with invalid_state).
       result = await cca.acquireTokenByCode(
-        { code, scopes: SCOPES, redirectUri, codeVerifier: entry.verifier },
+        { code, scopes: SCOPES, redirectUri, codeVerifier: entry.verifier, state },
         { code, state, nonce: entry.nonce },
       );
     } catch (err) {

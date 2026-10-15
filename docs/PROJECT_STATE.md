@@ -7,7 +7,7 @@ The app is in production use and gets features added incrementally. The Assessme
 
 ## Current focus
 The sign-in page offers two options, "Sign in with Microsoft" and the classic team login (D7 amended).
-- The Microsoft button is disabled until the four `AUTH_*` settings are on the server, which needs HTTPS and the Entra app registration.
+- **Enabled on production 2026-10-15.** The server's `.env.local` has all `AUTH_*` settings (redirect URI `https://security-analytics.cloudstaff.tech/callback`, as registered in Entra), and the log says `sign-in options: Microsoft + classic`. Set by hand with `auth/envFromCi.js` because no GitHub runner is registered (runner unpacked but not configured in `~/actions-runner`). The first real sign-in failed with `token exchange failed: invalid_state` (msal-node decodes a payload state it was not given in the request); fixed by passing `state` in the `acquireTokenByCode` request. Confirm with a real sign-in after deploying the fix.
 - Classic login keeps working throughout.
 
 ## Recently completed

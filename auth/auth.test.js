@@ -21,6 +21,9 @@ function fakeMsal({ tid = TENANT, nonce = null, fail = false } = {}) {
     },
     async acquireTokenByCode(req, payload) {
       calls.token = { req, payload };
+      // Like msal-node: a payload state is only accepted when the request carries the same state; otherwise msal
+      // tries to decode it as its own state format and throws invalid_state.
+      if (payload?.state && req.state !== payload.state) throw Object.assign(new Error('State was not the expected format'), { errorCode: 'invalid_state' });
       if (fail) throw Object.assign(new Error('AADSTS50105: not assigned'), { errorCode: 'invalid_grant' });
       return {
         account: { name: 'Grace Cruz', username: 'grace@cloudstaff.com' },

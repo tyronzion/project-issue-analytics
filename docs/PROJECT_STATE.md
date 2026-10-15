@@ -26,7 +26,7 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 These are recorded only, not fixed.
 - **Production still runs the old build** until a deploy. That build has client-only login, an exposed `/tracker/data/tracker.db`, and probably exposed `monitor/data` key files. Treat the old password (`csdatasec` login) as public: change it anywhere else it is used. Consider rotating the UberTicket token after deploying.
 - **Entra client secret expires.** Renew it in Entra before the expiry date, or sign-in stops working.
-- **Production** has been the Proxmox CT since 2026-10-14, currently at 10.6.99.208 and moving to **10.6.99.213** (see the session file). It was moved from the old VM; see `docs/sessions/server-migration.md`.
+- **Production** has been the Proxmox CT since 2026-10-14, at **10.6.99.213** (final address; .208 belonged to the old VM and is not reused, see the session file). It was moved from the old VM; see `docs/sessions/server-migration.md`.
   - Debian 12, Node 22, PostgreSQL 16 native on localhost.
   - systemd unit `security-issues-analytics` (`npm run dev` = `vite dev` on port 80, user csdatasec, starts on boot). No pm2, no Docker.
   - There's no `sudo`; use `su -c`.

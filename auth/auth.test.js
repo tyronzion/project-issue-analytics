@@ -61,7 +61,7 @@ test('data folders are blocked however the path is written', () => {
 
 test('returnTo only allows paths on this site', () => {
   assert.equal(safeReturnTo('/issues?x=1'), '/issues?x=1');
-  for (const bad of ['https://evil.example', '//evil.example', '/\\evil.example', 'issues', '', '/auth/login', '/x\r\nSet-Cookie: a=b']) {
+  for (const bad of ['https://evil.example', '//evil.example', '/\\evil.example', 'issues', '', '/auth/login', '/callback?code=x', '/x\r\nSet-Cookie: a=b']) {
     assert.equal(safeReturnTo(bad), '/', bad);
   }
 });
@@ -85,7 +85,8 @@ test('invalid Microsoft settings switch Microsoft sign-in off (classic stays); w
     { ...ENV, AUTH_TENANT_ID: 'common' },
     { ...ENV, AUTH_TENANT_ID: 'contoso.onmicrosoft.com' },
     { ...ENV, AUTH_REDIRECT_URI: 'http://10.6.99.208/auth/callback' },
-    { ...ENV, AUTH_REDIRECT_URI: 'https://analytics.example/callback' },
+    { ...ENV, AUTH_REDIRECT_URI: 'https://analytics.example/oauth/callback' },
+    { ...ENV, AUTH_REDIRECT_URI: 'https://analytics.example/callback/x' },
   ];
   for (const env of cases) {
     const auth = createAuth({ env, log: () => {} });
@@ -356,4 +357,25 @@ test('HTTPS through the trusted proxy gives Secure session cookies', async () =>
   assert.equal(ok.status, 303);
   assert.match(String(ok.headers['set-cookie']), /HttpOnly; SameSite=Lax; Secure/);
   auth.stop();
+});
+
+test('a redirect URI ending in /callback works, and only the configured callback path answers', async () => {
+  const msal = fakeMsal();
+  const auth = createAuth({ env: { ...ENV, AUTH_REDIRECT_URI: 'https://analytics.example/callback' }, msalClient: msal, log: () => {} });
+  assert.equal(auth.methods.microsoft, true);
+  const start = await call(auth, { url: '/auth/microsoft?returnTo=%2Fissues' });
+  const state = new URL(start.headers.location).searchParams.get('state');
+  const cookie = cookiesFrom(start.headers['set-cookie']);
+  assert.equal((await call(auth, { url: `/auth/callback?code=abc&state=${state}`, cookie })).status, 404);
+  const done = await call(auth, { url: `/callback?code=abc&state=${state}`, cookie });
+  assert.equal(done.headers.location, '/issues');
+  assert.equal(msal.calls.token.req.redirectUri, 'https://analytics.example/callback');
+  auth.stop();
+
+  // With the default /auth/callback, /callback is an ordinary app path behind sign-in.
+  const other = createAuth({ env: ENV, msalClient: fakeMsal(), log: () => {} });
+  const r = await call(other, { url: '/callback?code=abc&state=x' });
+  assert.equal(r.next, false);
+  assert.match(r.headers.location, /^\/auth\/login/);
+  other.stop();
 });

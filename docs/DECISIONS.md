@@ -55,7 +55,7 @@ Add a new entry only for decisions a future developer might otherwise reconsider
 
 ### D7: Server-side sign-in with two options, Microsoft SSO and classic login
 - **Amended 2026-10-14:** at the user's request, both options are offered side by side on `/auth/login`.
-  - **"Sign in with Microsoft"** goes to `/auth/microsoft`, then `/auth/callback`. It's enabled when all four `AUTH_*` settings are valid; otherwise the button is shown disabled and the problems are logged.
+  - **"Sign in with Microsoft"** goes to `/auth/microsoft`, then the callback (`/auth/callback` or `/callback`, see D9). It's enabled when all four `AUTH_*` settings are valid; otherwise the button is shown disabled and the problems are logged.
   - **Classic form** (POST `/auth/login`):
     - Uses the original shared account, verified server-side against a salted scrypt hash (`BUILT_IN_CLASSIC`), or `AUTH_CLASSIC_USERNAME`/`AUTH_CLASSIC_PASSWORD` instead.
     - Brute-force limit: 10 failures per IP per 15 minutes.
@@ -97,7 +97,7 @@ Add a new entry only for decisions a future developer might otherwise reconsider
   - The forwarded headers are forgeable unless they come from the proxy.
 - **Impact:**
   - Both settings live in the server's `.env.local`.
-  - Microsoft sign-in can use `https://security-analytics.cloudstaff.tech/auth/callback` as its redirect URI.
+  - Microsoft sign-in uses `https://security-analytics.cloudstaff.tech/callback` as its redirect URI (2026-10-15: that is what is registered in Entra). `AUTH_REDIRECT_URI` may end in `/auth/callback` or `/callback`; only the configured path answers, and `/callback` is public only when it is that path.
 
 ### D6: Cloudstaff Design System is the visual foundation, applied through tokens
 - **Date:** 2026-10-14

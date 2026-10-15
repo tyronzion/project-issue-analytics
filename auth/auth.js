@@ -14,7 +14,8 @@
 //   AUTH_TENANT_ID      Directory (tenant) ID. Must be a single tenant (not common/organizations/consumers).
 //   AUTH_CLIENT_ID      Application (client) ID of the app registration.
 //   AUTH_CLIENT_SECRET  Client secret of the app registration.
-//   AUTH_REDIRECT_URI   Exactly the redirect URI registered in Entra, e.g. https://analytics.example/auth/callback
+//   AUTH_REDIRECT_URI   Exactly the redirect URI registered in Entra, e.g. https://analytics.example/auth/callback.
+//                       Its path must be /auth/callback or /callback; only that one path accepts the sign-in reply.
 //   AUTH_DEV_BYPASS=1   Local development only, when the four settings above are not set: requests from this
 //                       machine (127.0.0.1 / ::1) are signed in as "Local developer"; everyone else is refused.
 //   AUTH_DEV_ROLE=user  With the bypass, act as a "user" instead of an "admin" (to test what users see).
@@ -53,6 +54,8 @@ const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Paths that are reachable without a session.
 const PUBLIC_PREFIXES = ['/auth/', '/design-system/'];
+// Paths AUTH_REDIRECT_URI may use. /callback matches an Entra registration made without the /auth prefix.
+const CALLBACK_PATHS = ['/auth/callback', '/callback'];
 
 // Live data and secrets inside the project folder. The Vite dev server serves project files directly, so
 // these are refused for everyone, signed in or not (tracker database, encrypted UberTicket token + its key,
@@ -71,7 +74,7 @@ export function isBlockedPath(pathname) {
 // Where to go after sign-in: only a path on this site, never another origin (no open redirect).
 export function safeReturnTo(value) {
   const v = String(value || '');
-  if (!v.startsWith('/') || v.startsWith('//') || v.startsWith('/\\') || v.startsWith('/auth/')) return '/';
+  if (!v.startsWith('/') || v.startsWith('//') || v.startsWith('/\\') || v.startsWith('/auth/') || v === '/callback' || v.startsWith('/callback?')) return '/';
   if (/[\r\n]/.test(v)) return '/';
   return v;
 }
@@ -265,7 +268,7 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
   } catch {
     problems.push('AUTH_REDIRECT_URI is not set to a full URL');
   }
-  if (callbackPath !== '/auth/callback') problems.push('AUTH_REDIRECT_URI must end in /auth/callback');
+  if (!CALLBACK_PATHS.includes(callbackPath)) problems.push('AUTH_REDIRECT_URI must end in /auth/callback or /callback');
 
   const configured = problems.length === 0; // Microsoft sign-in available
   const devBypass = !configured && env.AUTH_DEV_BYPASS === '1';
@@ -493,7 +496,7 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
     }
     if (methods.classic && mode === 'login' && path === '/auth/login' && method === 'POST') return classicLogin(req, res);
     if (methods.microsoft && path === '/auth/microsoft' && method === 'GET') return startLogin(req, res, url);
-    if (methods.microsoft && path === '/auth/callback' && method === 'GET') return finishLogin(req, res, url);
+    if (methods.microsoft && path === callbackPath && method === 'GET') return finishLogin(req, res, url);
     return json(res, 404, { error: 'Not found' });
   }
 
@@ -554,7 +557,8 @@ export function createAuth({ env = process.env, users = null, msalClient = null,
         }
       }
 
-      if (path.startsWith('/auth/')) return await handleAuthRoute(req, res, url);
+      // The sign-in reply arrives before there is a session. /callback is let through only when it is the configured path.
+      if (path.startsWith('/auth/') || (methods.microsoft && path === callbackPath)) return await handleAuthRoute(req, res, url);
       if (isPublic) return next();
       if (mode === 'unconfigured') return refuseUnconfigured(res);
       if (req.user) return next();

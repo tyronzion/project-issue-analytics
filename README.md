@@ -43,7 +43,7 @@ Code: `auth/auth.js` (tests: `npm run test:auth`).
 
 1. **Register the app.** In the Entra admin center, go to App registrations → New registration:
    - Supported account types: **this organizational directory only (single tenant)**.
-   - Redirect URI: platform **Web**, `https://<server>/auth/callback`. Add `http://localhost:5199/auth/callback` for local testing.
+   - Redirect URI: platform **Web**, `https://<server>/auth/callback` (or `https://<server>/callback`; the app accepts either). Add `http://localhost:5199/auth/callback` for local testing.
 2. **Copy the IDs.** From Overview, copy the **Application (client) ID** and the **Directory (tenant) ID**.
 3. **Create a secret.** Certificates & secrets → New client secret. Copy its **Value**, and note when it expires.
 4. **Limit access.** Enterprise applications → this app:
@@ -141,7 +141,7 @@ pm2 save
 Go to: Settings -> Secrets and variables -> Actions -> New repository secret
 
 Add these secrets:
-- `SERVER_HOST` = `10.6.99.208`
+- `SERVER_HOST` = `10.6.99.213`
 - `SERVER_USER` = `csdatasec`
 - `SERVER_PORT` = `22`
 - `SERVER_SSH_KEY` = private SSH key content for that server user

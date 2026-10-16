@@ -4,7 +4,7 @@ import { enrich, isDecommissioned } from '../../../tracker/shared/logic.js';
 import { api, getUser, setUser } from './api.js';
 import { Chips } from './ui.jsx';
 import Monitoring from './Monitoring.jsx';
-import TimeReport from './TimeReport.jsx';
+import TimeReport, { PeriodComparison } from './TimeReport.jsx';
 import Assessments from './Assessments.jsx';
 import Checklist from './Checklist.jsx';
 import Decommissioned from './Decommissioned.jsx';
@@ -36,7 +36,7 @@ function currentPeriod(cycle) {
 
 /**
  * Assessment Tracker (the "Security Full Assessment Tracker" workbook as pages).
- * section: 'monitoring' | 'assessment' | 'time' | 'checklist' | 'decommissioned' | 'sync' | 'import'
+ * section: 'monitoring' | 'assessment' | 'time' | 'comparison' | 'checklist' | 'decommissioned' | 'sync' | 'import'
  * sealForProject(name): the app's current Security Seal, or null when unknown / issues still loading.
  */
 export default function AssessmentTracker({ section, sealForProject }) {
@@ -188,8 +188,9 @@ export default function AssessmentTracker({ section, sealForProject }) {
       {cycle && section === 'monitoring' && <Monitoring rows={active} period={period} onOpen={setEditing} />}
       {cycle && section === 'assessment' && <Assessments rows={active} period={allPeriods ? null : period} onOpen={setEditing} onAdd={() => setEditing({ period })} />}
       {cycle && section === 'time' && (
-        <TimeReport rows={active} period={allPeriods ? null : period} scopeLabel={`${cycle.label}, ${allPeriods ? 'all periods' : period}`} cycles={cycles} onOpen={setEditing} />
+        <TimeReport rows={active} period={allPeriods ? null : period} scopeLabel={`${cycle.label}, ${allPeriods ? 'all periods' : period}`} onOpen={setEditing} />
       )}
+      {cycles?.length > 0 && section === 'comparison' && <PeriodComparison cycles={cycles} />}
       {cycle && section === 'checklist' && <Checklist rows={active} period={period} onToggle={quickUpdate} onOpen={setEditing} />}
       {cycle && section === 'decommissioned' && (
         <Decommissioned rows={retired} onOpen={setEditing} onRestore={(r) => quickUpdate(r, { isActive: 'Active', decommissionedAt: null, decommissionReason: null })} />

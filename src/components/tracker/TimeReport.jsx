@@ -130,7 +130,7 @@ function usePeriodComparison(cycles) {
   return { data, error };
 }
 
-function PeriodComparison({ cycles }) {
+export function PeriodComparison({ cycles }) {
   const { data, error } = usePeriodComparison(cycles);
   if (error) return <div className="at-alert at-alert--error">{error}</div>;
   if (!data) return <div className="at-card p-6 text-center at-muted">Loading periods…</div>;
@@ -193,9 +193,9 @@ function PeriodComparison({ cycles }) {
   );
 }
 
-// Time spent report: summary, per application size (priority), per security tester, per app,
-// then a comparison between periods. Read-only; time comes from UberTicket or the editor.
-export default function TimeReport({ rows, period, scopeLabel, cycles, onOpen }) {
+// Time spent report: summary, per application size (priority), per security tester, per app.
+// The comparison between periods is its own page (PeriodComparison). Read-only; time comes from UberTicket or the editor.
+export default function TimeReport({ rows, period, scopeLabel, onOpen }) {
   const scope = useMemo(() => rows.filter((r) => !period || r.period === period), [rows, period]);
   const overall = useMemo(() => timeStats(scope), [scope]);
   const testers = useMemo(() => timeByGroup(scope, (r) => r.securityTester), [scope]);
@@ -302,8 +302,6 @@ export default function TimeReport({ rows, period, scopeLabel, cycles, onOpen })
           </tbody>
         </table>
       </Section>
-
-      <PeriodComparison cycles={cycles} />
     </div>
   );
 }

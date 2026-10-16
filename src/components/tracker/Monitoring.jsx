@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { monitoringSummary, timeByPriority, SEALS } from '../../../tracker/shared/logic.js';
+import { monitoringSummary, SEALS } from '../../../tracker/shared/logic.js';
+import { TimeByPriorityTable } from './TimeReport.jsx';
 import { StatusPill, SealBadge, PriorityTag, TicketLink, SEAL_STYLE, SEVERITY_ACCENT, Select, fmtDate, fmtMinutes, pct } from './ui.jsx';
 
 const SEGMENTS = [
@@ -34,7 +35,6 @@ export default function Monitoring({ rows, period, onOpen }) {
   const [sevFilter, setSevFilter] = useState('');
   const scope = useMemo(() => rows.filter((r) => r.period === period), [rows, period]);
   const s = useMemo(() => monitoringSummary(scope), [scope]);
-  const time = useMemo(() => timeByPriority(scope), [scope]);
   const list = scope.filter((r) => (!statusFilter || r.status === statusFilter) && (!sevFilter || r.priority === sevFilter));
   const linked = scope.filter((r) => r.ticketKey).length;
 
@@ -118,42 +118,11 @@ export default function Monitoring({ rows, period, onOpen }) {
         <div className="p-3" style={{ borderBottom: '1px solid var(--cs-border)' }}>
           <h2 className="text-base font-bold">Time Spent by Priority</h2>
           <p className="text-xs at-muted">
-            Actual hours per application in {period}, from the UberTicket time spent or the editor. Apps with no time recorded are left out of the range.
+            Actual hours per application in {period}, from the UberTicket time spent or the editor. Apps with no time recorded are left out of the range. More breakdowns are on Time Report.
           </p>
         </div>
         <div className="overflow-x-auto">
-          <table className="cs-data-table">
-            <thead>
-              <tr>
-                <th>Priority</th>
-                <th className="text-right">Apps with time</th>
-                <th className="text-right">Hours range</th>
-                <th className="text-right">Average</th>
-                <th className="text-right">Total time</th>
-                <th className="text-right">Man hours (estimate)</th>
-              </tr>
-            </thead>
-            <tbody className="tabular-nums">
-              {time.byPriority.map((x) => (
-                <tr key={x.priority}>
-                  <td><PriorityTag value={x.priority} /></td>
-                  <td className="text-right">{x.recorded} <span className="at-soft">/ {x.apps}</span></td>
-                  <td className="text-right whitespace-nowrap">{x.recorded ? (x.min === x.max ? fmtMinutes(x.min) : `${fmtMinutes(x.min)} – ${fmtMinutes(x.max)}`) : '—'}</td>
-                  <td className="text-right whitespace-nowrap">{fmtMinutes(x.avg) || '—'}</td>
-                  <td className="text-right whitespace-nowrap font-semibold">{fmtMinutes(x.total) || '—'}</td>
-                  <td className="text-right whitespace-nowrap at-muted">{x.manHours ? `${x.manHours} h` : '—'}</td>
-                </tr>
-              ))}
-              <tr className="font-bold">
-                <td>Overall</td>
-                <td className="text-right">{time.overall.recorded} <span className="at-soft">/ {time.overall.apps}</span></td>
-                <td className="text-right whitespace-nowrap">{time.overall.recorded ? `${fmtMinutes(time.overall.min)} – ${fmtMinutes(time.overall.max)}` : '—'}</td>
-                <td className="text-right whitespace-nowrap">{fmtMinutes(time.overall.avg) || '—'}</td>
-                <td className="text-right whitespace-nowrap">{fmtMinutes(time.overall.total) || '—'}</td>
-                <td />
-              </tr>
-            </tbody>
-          </table>
+          <TimeByPriorityTable rows={scope} />
         </div>
       </section>
 

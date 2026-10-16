@@ -17,6 +17,7 @@ import {
   RefreshCcw,
   FileUp,
   UserCog,
+  Timer,
 } from 'lucide-react';
 import { 
   IssueRecord, 
@@ -65,6 +66,7 @@ import { getProjectSecuritySeal } from './utils/securitySeal';
 const TRACKER_TABS = [
   { tab: 'tracker', section: 'monitoring', label: 'Monitoring', Icon: LayoutDashboard },
   { tab: 'tracker-assessment', section: 'assessment', label: 'Assessment List', Icon: Table2 },
+  { tab: 'tracker-time', section: 'time', label: 'Time Report', Icon: Timer },
   { tab: 'tracker-checklist', section: 'checklist', label: 'Checklist', Icon: ListChecks },
   { tab: 'tracker-decommissioned', section: 'decommissioned', label: 'Decommissioned', Icon: Archive },
   { tab: 'tracker-sync', section: 'sync', label: 'UberTicket Sync', Icon: RefreshCcw },

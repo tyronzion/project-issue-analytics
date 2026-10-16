@@ -42,7 +42,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `src/components/JiraIntegrationPage.tsx` | Jira connection UI. Posts its config to `/api/jira/issues`. | storage (Jira profile) |
 | `src/components/UsersPage.tsx` | Users & Roles page (admins only): list, add by email, change role, remove | `/auth/users` |
 | `src/components/MonitorFrame.tsx` | Embeds the `/monitor/*` pages as tabs | routes |
-| `src/components/tracker/*` | Assessment Tracker UI. `AssessmentTracker.jsx` is the shell; `api.js` is the `/api/tracker` client; `SyncPage.jsx` handles UberTicket links; `tracker.css` holds the `at-*` styles. | `tracker/shared/logic.js` |
+| `src/components/tracker/*` | Assessment Tracker UI. `AssessmentTracker.jsx` is the shell; `api.js` is the `/api/tracker` client; `SyncPage.jsx` handles UberTicket links; `TimeReport.jsx` is the time-spent report (also exports `TimeByPriorityTable` for Monitoring); `tracker.css` holds the `at-*` styles. | `tracker/shared/logic.js` |
 
 ## UberTicket monitor (`monitor/`)
 | File | Purpose | Relationships |

@@ -14,6 +14,7 @@ export const TAB_ROUTES: { tab: ActiveTab; path: string; title: string }[] = [
   { tab: 'roe', path: '/rules-of-engagement', title: 'Rules of Engagement' },
   { tab: 'tracker', path: '/assessment-tracker', title: 'Assessment Tracker' },
   { tab: 'tracker-assessment', path: '/assessment-tracker/assessments', title: 'Assessment List' },
+  { tab: 'tracker-time', path: '/assessment-tracker/time-report', title: 'Time Spent Report' },
   { tab: 'tracker-checklist', path: '/assessment-tracker/checklist', title: 'Assessment Checklist' },
   { tab: 'tracker-decommissioned', path: '/assessment-tracker/decommissioned', title: 'Decommissioned Apps' },
   { tab: 'tracker-sync', path: '/assessment-tracker/uberticket-sync', title: 'UberTicket Sync' },

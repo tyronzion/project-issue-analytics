@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CHECKS, appStatus, completion, overallStatus, monitoringScore, monitoringSummary, timeStats, timeByPriority } from '../shared/logic.js';
+import { CHECKS, appStatus, completion, overallStatus, monitoringScore, monitoringSummary, timeStats, timeByPriority, timeByGroup } from '../shared/logic.js';
 
 const all = Object.fromEntries(CHECKS.map((c) => [c.key, true]));
 const app = (over) => ({ checks: {}, dependabots: 'Not Started', codeReview: 'Not Started', report: 'Not Started', priority: 'High', ...over });
@@ -52,4 +52,17 @@ test('time spent: range ignores apps with no time recorded', () => {
   assert.equal(t.byPriority[1].min, null);
   assert.equal(t.overall.recorded, 2);
   assert.equal(t.overall.total, 2960);
+});
+
+test('time spent per group: most total time first, blank key kept', () => {
+  const rows = [
+    { securityTester: 'NasQ', timeSpent: 120 },
+    { securityTester: 'ZionM', timeSpent: 600 },
+    { securityTester: 'NasQ', timeSpent: 60 },
+    { securityTester: '', timeSpent: null },
+  ];
+  const g = timeByGroup(rows, (r) => r.securityTester);
+  assert.deepEqual(g.map((x) => [x.key, x.apps, x.recorded, x.total]), [['ZionM', 1, 1, 600], ['NasQ', 2, 2, 180], ['', 1, 0, 0]]);
+  assert.equal(g[1].min, 60);
+  assert.equal(g[1].max, 120);
 });

@@ -142,6 +142,18 @@ export function timeByPriority(rows) {
   return { byPriority, overall: timeStats(rows) };
 }
 
+// Time stats per group (e.g. per security tester), most total time first.
+export function timeByGroup(rows, keyOf) {
+  const groups = new Map();
+  for (const r of rows) {
+    const k = keyOf(r) || '';
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  }
+  return [...groups].map(([key, list]) => ({ key, ...timeStats(list) }))
+    .sort((a, b) => b.total - a.total || b.apps - a.apps || a.key.localeCompare(b.key));
+}
+
 // Everything the Monitoring sheet's summary block shows, for one set of apps.
 export function monitoringSummary(rows) {
   const enriched = rows.map((r) => (r.status ? r : enrich(r)));

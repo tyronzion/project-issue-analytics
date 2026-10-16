@@ -146,3 +146,11 @@ test('an ignored ticket (its app was deleted) is not re-created', async () => {
   assert.equal(res.created.length, 0);
   assert.equal(res.unmatched.length, 1);
 });
+
+test('Full Assessment time spent is synced too; an empty field keeps the recorded time', async () => {
+  const db = await setup();
+  syncTickets(db, { full: [ticket({ product: 'MyStaff', timeSpent: '500' })], roe: [] });
+  assert.equal(row(db, 'MyStaff', '2nd Half').time_spent, 500);
+  syncTickets(db, { full: [ticket({ product: 'MyStaff', timeSpent: '' })], roe: [] });
+  assert.equal(row(db, 'MyStaff', '2nd Half').time_spent, 500);
+});

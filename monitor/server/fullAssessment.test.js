@@ -71,6 +71,14 @@ test('readField handles flat (Full Assessment) and grouped (Rules of Engagement)
   assert.equal(readField(roe.data, ROE_FIELDS.size), 'Medium');
 });
 
+test('Full Assessment ticket reads Time Spent (MM) and Size, flat or under private fields', () => {
+  const flat = normalizeFull({ ...base, data: { ...base.data, 22570: '500', 43044: 'Low' } }, opts(parseUtc('2026-10-12 03:00:00')));
+  assert.equal(flat.timeSpent, '500');
+  assert.equal(flat.size, 'Low');
+  const grouped = normalizeFull({ ...base, data: { ...base.data, private: { 'field_Time Spent (MM)': { label: 'Time Spent (MM)', type: 'number', value: '500' } } } }, opts(parseUtc('2026-10-12 03:00:00')));
+  assert.equal(grouped.timeSpent, '500');
+});
+
 test('Rules of Engagement ticket: product, priority SLA, derived quarter', () => {
   const t = normalizeFull(roe, { ...opts(parseUtc('2026-10-12 03:00:00')), fields: ROE_FIELDS });
   assert.equal(t.product, 'Nexus V2');

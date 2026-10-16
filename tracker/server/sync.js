@@ -145,7 +145,8 @@ export function syncTickets(db, tickets, { offsetHours = 8, createApps = true } 
         next.tester_frozen = resolved ? 1 : 0;
       }
       const minutes = Number(String(t.timeSpent ?? '').replace(/[^\d.]/g, ''));
-      if (source === 'roe' && minutes > 0) next.time_spent = Math.round(minutes);
+      // Time Spent (MM) from either ticket type; an empty field never clears a recorded time.
+      if (minutes > 0) next.time_spent = Math.round(minutes);
       if (source === 'roe' && t.targetLink && !r.testing_url) next.testing_url = t.targetLink;
       // A seal already recorded (Excel / by hand) belongs to this resolved test.
       if (resolved && r.seal && !r.seal_ticket_key && r.seal_source !== 'auto') next.seal_ticket_key = t.key;

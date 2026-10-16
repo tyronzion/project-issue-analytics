@@ -10,6 +10,9 @@ export const FULL_FIELDS = {
   startDate: { id: 28972, label: 'Start Time' },
   endDate: { id: 28973, label: 'End Time' },
   occurrence: { id: 36034, label: 'Occurrence' },
+  // Private fields, shared with the Rules of Engagement template (same ids and labels).
+  timeSpent: { id: 22570, label: 'Time Spent (MM)' },
+  size: { id: 43044, label: 'Size' },
 };
 
 // "[PB-0933] Security Test - Rules of Engagement" (72913) stores grouped fields:

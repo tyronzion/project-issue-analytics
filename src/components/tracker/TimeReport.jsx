@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, AlertTriangle, CheckCircle2, ArrowDown, ArrowUp } from 'lucide-react';
+import { Download, AlertTriangle, CheckCircle2, ArrowDown, ArrowUp, BarChart3 } from 'lucide-react';
+import { FilterSelect } from '../FilterChips';
 import { PRIORITIES, MAN_HOURS, enrich, isDecommissioned, timeStats, timeByPriority, timeByGroup, estimateMinutes, vsEstimate } from '../../../tracker/shared/logic.js';
 import { api } from './api.js';
 import { useFilters } from './Assessments.jsx';
-import { PriorityTag, StatusPill, TicketLink, Chips, SEVERITY_ACCENT, fmtMinutes } from './ui.jsx';
+import { PriorityTag, StatusPill, TicketLink, SEVERITY_ACCENT, fmtMinutes } from './ui.jsx';
 
 const range = (x) => (!x.recorded ? '—' : x.min === x.max ? fmtMinutes(x.min) : `${fmtMinutes(x.min)} – ${fmtMinutes(x.max)}`);
 // Headline numbers: whole hours from 10h up ("596h"), exact below ("4h 30m").
@@ -282,8 +283,7 @@ export function PeriodComparison({ cycles }) {
           <h2 className="text-base font-bold">How time changes between periods</h2>
           <p className="text-xs at-muted">Bi-Annual and Quarterly are shown separately and never compared with each other. Apps with no time recorded are left out.</p>
         </div>
-        <span className="text-xs font-bold at-muted">Show:</span>
-        <Chips value={metric} onChange={setMetric} options={METRICS} />
+        <FilterSelect icon={BarChart3} label="Show" value={metric} onChange={setMetric} options={METRICS} />
       </div>
       {tracks.map((t) => <TrackComparison key={t} track={t} periods={data.filter((x) => x.track === t)} metric={metric} />)}
     </div>

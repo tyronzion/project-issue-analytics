@@ -467,6 +467,38 @@ body {
 .settings-btn--danger { margin-top: 0; border-color: var(--color-feedback-danger); background: var(--color-surface-canvas); color: var(--color-feedback-danger); }
 .settings-btn--danger:hover { background: var(--color-feedback-danger); color: var(--color-surface-canvas); }
 
+/* Filter chips: the one filter look used on every page (global filter bar, tracker, issues). */
+.cs-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cs-filter-title { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; font-size: 12px; font-weight: 600; color: var(--cs-muted); }
+.cs-filter-title svg { width: 14px; height: 14px; color: var(--cs-primary); }
+.cs-filter-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 32px;
+	padding: 6px 10px;
+	border: 1px solid var(--component-card-border);
+	border-radius: var(--component-input-radius);
+	background: var(--color-surface-canvas);
+	box-shadow: var(--component-card-shadow);
+	font-size: 12px;
+	color: var(--cs-text);
+}
+.cs-filter-chip:focus-within { border-color: var(--cs-primary); }
+.cs-filter-chip--wide { flex: 1 1 260px; max-width: 420px; }
+.cs-filter-icon { width: 12px; height: 12px; flex: none; color: var(--cs-primary); }
+.cs-filter-label { color: var(--cs-muted); white-space: nowrap; }
+.cs-filter-chip select,
+.cs-filter-chip input { min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 12px; color: var(--cs-text); cursor: pointer; }
+.cs-filter-chip input[type='search'],
+.cs-filter-chip input[type='text'] { flex: 1; cursor: text; }
+.cs-filter-chip input::placeholder { color: var(--cs-soft); }
+.cs-filter-clear { display: inline-flex; color: var(--cs-soft); }
+.cs-filter-clear:hover { color: var(--cs-text); }
+.cs-filter-reset { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 6px 10px; border: 1px solid var(--color-border-warning); border-radius: var(--component-input-radius); background: var(--color-feedback-warning-soft); font-size: 12px; font-weight: 600; color: var(--color-feedback-warning-contrast); }
+.cs-filter-count { font-size: 12px; color: var(--cs-muted); }
+.cs-filter-count strong { color: var(--cs-text); }
+
 .issues-kpi-grid {
 	display: grid;
 	grid-template-columns: repeat(5, minmax(0, 1fr));

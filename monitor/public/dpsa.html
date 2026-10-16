@@ -24,20 +24,10 @@
 </header>
 
 <div class="filterbar">
-  <div class="fgroup">
-    <span class="flabel"><svg class="i"><use href="#i-cal"/></svg>Date Range:</span>
-    <div class="seg" id="period">
-      <button data-v="all">All Time</button><button data-v="today">Today</button><button data-v="week">This Week</button><button data-v="mtd">This Month</button><button data-v="7">Last 7 Days</button><button data-v="30">Last 30 Days</button><button data-v="90">Last 90 Days</button><button data-v="year">This Year</button><button data-v="custom">Custom</button>
-    </div>
-  </div>
-  <div class="fgroup">
-    <span class="flabel"><svg class="i"><use href="#i-cal"/></svg>Submitted between:</span>
-    <label class="selectbox" id="rangeBox">From: <input type="date" id="dateFrom" aria-label="From date"> to <input type="date" id="dateTo" aria-label="To date"></label>
-  </div>
-  <div class="fgroup">
-    <span class="flabel"><svg class="i"><use href="#i-layers"/></svg>Environment:</span>
-    <div class="seg" id="envSeg"></div>
-  </div>
+  <span class="ftitle"><svg class="i"><use href="#i-funnel"/></svg>Filters</span>
+  <label class="selectbox"><svg class="i"><use href="#i-cal"/></svg>Date: <select id="period" aria-label="Date"><option value="all">All Time</option><option value="today">Today</option><option value="week">This Week</option><option value="mtd">This Month</option><option value="7">Last 7 Days</option><option value="30">Last 30 Days</option><option value="90">Last 90 Days</option><option value="year">This Year</option><option value="custom">Custom</option></select></label>
+  <label class="selectbox" id="rangeBox"><svg class="i"><use href="#i-cal"/></svg>From: <input type="date" id="dateFrom" aria-label="From date"> to <input type="date" id="dateTo" aria-label="To date"></label>
+  <label class="selectbox"><svg class="i"><use href="#i-layers"/></svg>Environment: <select id="env" aria-label="Environment"><option value="">All</option></select></label>
   <label class="selectbox"><svg class="i"><use href="#i-user"/></svg>Assignee: <select id="assignee"><option value="">Everyone</option></select></label>
   <span class="chip" id="matching"><svg class="i"><use href="#i-funnel"/></svg><span></span></span>
 </div>
@@ -137,6 +127,8 @@ const envTag = (env) => `<span class="env"><i style="background:${envColor(env)}
 async function load() {
   const res = await fetch('api/dpsa');
   data = await res.json();
+  // Rejected tickets never count: not in totals, tiles, charts or tables.
+  data.tickets = data.tickets.filter((t) => t.state !== 'rejected');
   buildControls();
   render();
 }
@@ -147,10 +139,10 @@ function filtered() {
 }
 
 function buildControls() {
-  const seg = $('#envSeg');
-  if (!seg.childElementCount) {
-    seg.innerHTML = [`<button data-v="" aria-pressed="true">All</button>`, ...data.templates.map((t) => `<button data-v="${esc(t.env)}">${esc(t.env)}</button>`)].join('');
-    seg.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; ui.env = b.dataset.v; press(seg, b); render(); });
+  const env = $('#env');
+  if (env.options.length === 1) {
+    env.insertAdjacentHTML('beforeend', data.templates.map((t) => `<option value="${esc(t.env)}">${esc(t.env)}</option>`).join(''));
+    env.addEventListener('change', () => { ui.env = env.value; render(); });
   }
   const sel = $('#assignee');
   const people = [...new Set(data.tickets.map((t) => t.assignee))].sort();

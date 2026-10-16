@@ -154,3 +154,25 @@ test('Full Assessment time spent is synced too; an empty field keeps the recorde
   syncTickets(db, { full: [ticket({ product: 'MyStaff', timeSpent: '' })], roe: [] });
   assert.equal(row(db, 'MyStaff', '2nd Half').time_spent, 500);
 });
+
+test('a linked ticket that is rejected later is unlinked and stops counting', async () => {
+  const db = await setup();
+  syncTickets(db, { full: [ticket({ product: 'MyStaff', timeSpent: '500', state: 'resolved', resolvedAt: ms('2026-07-10') })], roe: [] });
+  assert.equal(row(db, 'MyStaff', '2nd Half').ticket_key, 'UB-1');
+  const res = syncTickets(db, { full: [ticket({ product: 'MyStaff', timeSpent: '500', state: 'rejected' })], roe: [] });
+  const r = row(db, 'MyStaff', '2nd Half');
+  assert.equal(r.ticket_key, null);
+  assert.equal(r.ticket_state, null);
+  assert.equal(r.actual_end, null);
+  assert.equal(r.time_spent, null);
+  assert.equal(res.updated, 1);
+  assert.equal(enrich({ checks: {}, ticketState: r.ticket_state }).status, 'Not Started');
+});
+
+test('unlinking a rejected ticket keeps a time spent entered by hand', async () => {
+  const db = await setup();
+  syncTickets(db, { full: [ticket({ product: 'MyStaff', timeSpent: '500' })], roe: [] });
+  db.prepare("UPDATE assessments SET time_spent = 720 WHERE project = 'MyStaff'").run();
+  syncTickets(db, { full: [ticket({ product: 'MyStaff', timeSpent: '500', state: 'rejected' })], roe: [] });
+  assert.equal(row(db, 'MyStaff', '2nd Half').time_spent, 720);
+});

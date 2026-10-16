@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { UserRound, RefreshCw } from 'lucide-react';
+import { UserRound, RefreshCw, CalendarRange, Calendar } from 'lucide-react';
+import { FilterSelect } from '../FilterChips';
 import { enrich, isDecommissioned } from '../../../tracker/shared/logic.js';
 import { api, getUser, setUser } from './api.js';
-import { Chips } from './ui.jsx';
 import Monitoring from './Monitoring.jsx';
 import TimeReport, { PeriodComparison } from './TimeReport.jsx';
 import Assessments from './Assessments.jsx';
@@ -138,23 +138,25 @@ export default function AssessmentTracker({ section, sealForProject }) {
       <div className="at-card flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <h1 className="text-lg font-bold">Assessment Tracker</h1>
         {cycles?.length > 0 && (
-          <select value={cycleId ?? ''} onChange={(e) => (e.target.value === 'new' ? addCycle() : setCycleId(Number(e.target.value)))} className="at-input font-bold" aria-label="Assessment cycle">
-            {cycles.map((c) => <option key={c.id} value={c.id}>{c.label} ({c.apps})</option>)}
-            <option value="new">+ New cycle…</option>
-          </select>
+          <FilterSelect
+            icon={CalendarRange}
+            label="Cycle"
+            value={String(cycleId ?? '')}
+            onChange={(v) => (v === 'new' ? addCycle() : setCycleId(Number(v)))}
+            options={[...cycles.map((c) => ({ value: String(c.id), label: `${c.label} (${c.apps})` })), { value: 'new', label: '+ New cycle…' }]}
+          />
         )}
         {showPeriods && cycle && (
-          <>
-            <span className="text-xs font-bold at-muted">Period:</span>
-            <Chips
-              value={allowAll && allPeriods ? 'all' : period}
-              onChange={(v) => {
-                setAllPeriods(v === 'all');
-                if (v !== 'all') setPeriod(v);
-              }}
-              options={allowAll ? [...cycle.periods, { value: 'all', label: 'All' }] : cycle.periods}
-            />
-          </>
+          <FilterSelect
+            icon={Calendar}
+            label="Period"
+            value={allowAll && allPeriods ? 'all' : period}
+            onChange={(v) => {
+              setAllPeriods(v === 'all');
+              if (v !== 'all') setPeriod(v);
+            }}
+            options={allowAll ? [...cycle.periods, { value: 'all', label: 'All periods' }] : cycle.periods}
+          />
         )}
         <span className="ml-auto text-xs at-muted">{active.length} active · {retired.length} decommissioned</span>
         <button type="button" onClick={loadRows} className="at-btn-ghost" title="Reload">

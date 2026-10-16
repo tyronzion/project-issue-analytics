@@ -11,6 +11,7 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 - Classic login keeps working throughout.
 
 ## Recently completed
+- **One filter design + rejected tickets never count** (2026-10-16; pushed to `main`, **not deployed**). Every page's filters now use the global filter bar's chip (`FilterChips.tsx`): tracker cycle/period header, Assessment List, Monitoring, Time Report, Period Comparison, Decommissioned, All Issues, and the UberTicket monitor pages (their segmented date / environment / priority buttons became dropdown chips). Rejected UberTicket tickets are excluded everywhere (D3 note).
 - **UI clean-up from MichaelC's review** (2026-10-16; pushed to `main`, **not deployed**).
   - Time Report and Period Comparison redesigned to read at a glance: a plain-language headline, size cards with range strip vs the man-hours estimate (`estimateMinutes`/`vsEstimate` in `logic.js`), tester bars, an "Above/Within/Below estimate" badge per app, and period columns per track.
   - Dashboard: colour-coded icons plus a 12-month sparkline behind each total.

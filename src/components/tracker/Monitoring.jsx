@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
+import { AlertTriangle, CircleDot } from 'lucide-react';
+import { FilterSelect } from '../FilterChips';
 import { monitoringSummary, SEALS } from '../../../tracker/shared/logic.js';
 import { TimeByPriorityTable } from './TimeReport.jsx';
-import { StatusPill, SealBadge, PriorityTag, TicketLink, SEAL_STYLE, SEVERITY_ACCENT, Select, fmtDate, fmtMinutes, pct } from './ui.jsx';
+import { StatusPill, SealBadge, PriorityTag, TicketLink, SEAL_STYLE, SEVERITY_ACCENT, fmtDate, fmtMinutes, pct } from './ui.jsx';
 
 const SEGMENTS = [
   { key: 'done', label: 'Done', color: 'var(--at-good)' },
@@ -131,8 +133,8 @@ export default function Monitoring({ rows, period, onOpen }) {
           <h2 className="mr-auto text-base font-bold">
             Applications <span className="text-xs font-medium at-muted">({list.length} listed)</span>
           </h2>
-          <Select value={sevFilter} onChange={setSevFilter} placeholder="All severities" options={s.bySeverity.map((x) => x.severity)} />
-          <Select value={statusFilter} onChange={setStatusFilter} placeholder="All statuses" options={['Done', 'In Progress', 'Not Started']} />
+          <FilterSelect icon={AlertTriangle} label="Severity" value={sevFilter} onChange={setSevFilter} allLabel="All" options={s.bySeverity.map((x) => x.severity)} />
+          <FilterSelect icon={CircleDot} label="Status" value={statusFilter} onChange={setStatusFilter} allLabel="All" options={['Done', 'In Progress', 'Not Started']} />
         </div>
         <div className="overflow-x-auto">
           <table className="cs-data-table">

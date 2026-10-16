@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Archive, ArchiveRestore, Search } from 'lucide-react';
+import { Archive, ArchiveRestore } from 'lucide-react';
+import { FilterSearch } from '../FilterChips';
 import { StatusPill, PriorityTag, SealBadge, fmtDate } from './ui.jsx';
 
 // Apps retired from the cycle: excluded from Monitoring, Full Assessment and Checklist.
@@ -13,10 +14,7 @@ export default function Decommissioned({ rows, onOpen, onRestore }) {
     <section className="cs-table-shell overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 p-3" style={{ borderBottom: '1px solid var(--cs-border)' }}>
         <h2 className="mr-auto text-base font-bold">Decommissioned applications ({rows.length})</h2>
-        <label className="relative">
-          <Search className="pointer-events-none absolute top-2.5 left-2.5 w-4 h-4 at-soft" aria-hidden />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="at-input at-has-icon w-56" />
-        </label>
+        <FilterSearch value={q} onChange={setQ} placeholder="Search project, reason, tester…" />
       </div>
       {!rows.length ? (
         <div className="flex flex-col items-center gap-2 p-12 text-center at-muted">

@@ -21,6 +21,7 @@ Add a new entry only for decisions a future developer might otherwise reconsider
   - Tester: the assignee, frozen once the ticket resolves
   - Actual start and end: the submitted and resolved dates
   - Time Spent (MM) from RoE and, since 2026-10-16, Full Assessment tickets (private field 22570; an empty field never clears a recorded time)
+  - Rejected tickets never count (2026-10-16): sync skips them, and an app linked to a ticket that is rejected later is unlinked (status, actual dates and the synced time spent cleared, logged in history; a hand-entered time is kept). The monitor pages drop rejected tickets as soon as they load.
   - Seal: snapshotted from the client-side Security Seal when the ticket resolves
 
   Products are matched by name, ignoring case, punctuation and a leading "Cloudstaff". Products that don't match are linked manually through `ticket_links`.

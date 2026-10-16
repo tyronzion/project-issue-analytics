@@ -33,22 +33,10 @@
 </header>
 
 <div class="filterbar">
-  <div class="fgroup">
-    <span class="flabel"><svg class="i"><use href="#i-cal"/></svg>Date Range:</span>
-    <div class="seg" id="period">
-      <button data-v="all">All Time</button><button data-v="today">Today</button><button data-v="week">This Week</button><button data-v="mtd">This Month</button><button data-v="7">Last 7 Days</button><button data-v="30">Last 30 Days</button><button data-v="90">Last 90 Days</button><button data-v="year">This Year</button><button data-v="custom">Custom</button>
-    </div>
-  </div>
-  <div class="fgroup">
-    <span class="flabel"><svg class="i"><use href="#i-cal"/></svg>Submitted between:</span>
-    <label class="selectbox">From: <input type="date" id="dateFrom" aria-label="From date"> to <input type="date" id="dateTo" aria-label="To date"></label>
-  </div>
-  <div class="fgroup">
-    <span class="flabel"><svg class="i"><use href="#i-alert"/></svg>Priority:</span>
-    <div class="seg" id="prioSeg">
-      <button data-v="" aria-pressed="true">All</button><button data-v="critical">Critical</button><button data-v="high">High</button><button data-v="medium">Medium</button><button data-v="low">Low</button>
-    </div>
-  </div>
+  <span class="ftitle"><svg class="i"><use href="#i-funnel"/></svg>Filters</span>
+  <label class="selectbox"><svg class="i"><use href="#i-cal"/></svg>Date: <select id="period" aria-label="Date"><option value="all">All Time</option><option value="today">Today</option><option value="week">This Week</option><option value="mtd">This Month</option><option value="7">Last 7 Days</option><option value="30">Last 30 Days</option><option value="90">Last 90 Days</option><option value="year">This Year</option><option value="custom">Custom</option></select></label>
+  <label class="selectbox" id="rangeBox"><svg class="i"><use href="#i-cal"/></svg>From: <input type="date" id="dateFrom" aria-label="From date"> to <input type="date" id="dateTo" aria-label="To date"></label>
+  <label class="selectbox"><svg class="i"><use href="#i-alert"/></svg>Priority: <select id="prio" aria-label="Priority"><option value="">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
   <label class="selectbox"><svg class="i"><use href="#i-app"/></svg>Product: <select id="product"><option value="">All Products</option></select></label>
   <span class="chip" id="matching"><svg class="i"><use href="#i-funnel"/></svg><span></span></span>
 </div>
@@ -138,6 +126,8 @@ const DAYMS = 86400e3;
 
 async function load() {
   data = await (await fetch(`api/assess/${MON.key}`)).json();
+  // Rejected tickets never count: not in totals, tiles, charts or tables.
+  data.tickets = data.tickets.filter((t) => t.state !== 'rejected');
   const sel = $('#product'), cur = sel.value;
   const products = [...new Map(data.tickets.map((t) => [t.productKey, t.product])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
   sel.innerHTML = `<option value="">All Products</option>` + products.map(([k, n]) => `<option value="${esc(k)}"${k === cur ? ' selected' : ''}>${esc(n)}</option>`).join('');
@@ -321,7 +311,7 @@ function renderAll(T) {
   });
 }
 
-$('#prioSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; ui.priority = b.dataset.v; press($('#prioSeg'), b); render(); });
+$('#prio').addEventListener('change', (e) => { ui.priority = e.target.value; render(); });
 $('#product').addEventListener('change', (e) => { ui.product = e.target.value; render(); });
 $('#search').addEventListener('input', (e) => { ui.search = e.target.value; renderAll(filtered()); });
 // Which monitor is this page? Decided by the URL (/FullAssessment, /RulesOfEngagement, …).

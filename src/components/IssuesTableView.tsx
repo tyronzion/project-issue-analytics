@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { IssueRecord, FormulaConfig, DateFilter } from '../types';
 import { 
-  Search, 
-  X, 
   Apple, 
   Smartphone, 
   Monitor, 
@@ -13,11 +11,14 @@ import {
   Tag, 
   Download,
   AlertTriangle,
-  Trash2
+  Trash2,
+  CircleDot,
+  Bot
 } from 'lucide-react';
 import { isIssueSecurityOverdue, getNormalizedSeverity, isDependabotsIssue } from '../utils/metricsEngine';
 import { exportRowsToCsv } from '../utils/excelParser';
 import { SeverityLevel } from '../types';
+import { FilterSelect, FilterSearch, FilterReset } from './FilterChips';
 
 const SEVERITY_LEVELS: {
   key: SeverityLevel;
@@ -413,78 +414,70 @@ export const IssuesTableView: React.FC<IssuesTableViewProps> = ({
         </div>
 
         {/* Table-only refinements (date, project and severity live in the global filter bar) */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <div className="relative flex-1 min-w-[220px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search key, summary, assignee..."
-              value={search}
-              onChange={e => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
-            />
-          </div>
+        <div className="cs-filter-row pt-1">
+          <FilterSearch
+            wide
+            value={search}
+            onChange={v => {
+              setSearch(v);
+              setPage(1);
+            }}
+            placeholder="Search key, summary, assignee…"
+          />
 
-          <select
-            aria-label="Status"
+          <FilterSelect
+            icon={CircleDot}
+            label="Status"
             value={statusFilter}
-            onChange={e => {
-              setStatusFilter(e.target.value);
+            onChange={v => {
+              setStatusFilter(v as typeof statusFilter);
               setPage(1);
             }}
-            className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
-          >
-            <option value="ALL">Status: All</option>
-            <option value="OUTSTANDING">Status: Outstanding</option>
-            <option value="SECURITY_OVERDUE">Status: Overdue</option>
-            <option value="DONE">Status: Done</option>
-            <option value="RISK_ACCEPTED">Status: Risk Accepted</option>
-            <option value="CANCELLED">Status: Cancelled</option>
-          </select>
+            options={[
+              { value: 'ALL', label: 'All' },
+              { value: 'OUTSTANDING', label: 'Outstanding' },
+              { value: 'SECURITY_OVERDUE', label: 'Overdue' },
+              { value: 'DONE', label: 'Done' },
+              { value: 'RISK_ACCEPTED', label: 'Risk Accepted' },
+              { value: 'CANCELLED', label: 'Cancelled' },
+            ]}
+          />
 
-          <select
-            aria-label="Platform"
+          <FilterSelect
+            icon={Smartphone}
+            label="Platform"
             value={platformFilter}
-            onChange={e => {
-              setPlatformFilter(e.target.value);
+            onChange={v => {
+              setPlatformFilter(v as typeof platformFilter);
               setPage(1);
             }}
-            className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
-          >
-            <option value="ALL">Platform: All</option>
-            <option value="IOS">Platform: iOS</option>
-            <option value="AOS">Platform: Android</option>
-            <option value="GENERAL">Platform: General</option>
-          </select>
+            options={[
+              { value: 'ALL', label: 'All' },
+              { value: 'IOS', label: 'iOS' },
+              { value: 'AOS', label: 'Android' },
+              { value: 'GENERAL', label: 'General' },
+            ]}
+          />
 
           {!hideSourceFilter && (
-            <select
-              aria-label="Source"
+            <FilterSelect
+              icon={Bot}
+              label="Source"
               value={sourceFilter}
-              onChange={e => {
-                setSourceFilter(e.target.value as typeof sourceFilter);
+              onChange={v => {
+                setSourceFilter(v as typeof sourceFilter);
                 setPage(1);
               }}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">Source: All</option>
-              <option value="DEPENDABOTS">Source: Dependabots only</option>
-              <option value="NON_DEPENDABOTS">Source: Exclude Dependabots</option>
-            </select>
+              options={[
+                { value: 'ALL', label: 'All' },
+                { value: 'DEPENDABOTS', label: 'Dependabots only' },
+                { value: 'NON_DEPENDABOTS', label: 'Exclude Dependabots' },
+              ]}
+            />
           )}
 
           {hasTableFilters && (
-            <button
-              onClick={clearTableFilters}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-300 rounded-lg hover:bg-amber-200 transition"
-              title="Clear search, status, platform and source"
-            >
-              <X className="w-3 h-3" />
-              <span>Clear</span>
-            </button>
+            <FilterReset onClick={clearTableFilters} />
           )}
         </div>
       </div>

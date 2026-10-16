@@ -101,6 +101,9 @@ function createAppsFromRoe(db, unmatched) {
   return created;
 }
 
+// "Time Spent (MM)" as minutes (0 when empty).
+const minutesOf = (t) => Number(String(t.timeSpent ?? '').replace(/[^\d.]/g, '')) || 0;
+
 // tickets: { full: [...], roe: [...] } as returned by the monitor's normalizeFull().
 export function syncTickets(db, tickets, { offsetHours = 8, createApps = true } = {}) {
   let created = [];
@@ -144,7 +147,7 @@ export function syncTickets(db, tickets, { offsetHours = 8, createApps = true } 
         if (t.assignee && t.assignee !== 'Unassigned') next.security_tester = t.assignee;
         next.tester_frozen = resolved ? 1 : 0;
       }
-      const minutes = Number(String(t.timeSpent ?? '').replace(/[^\d.]/g, ''));
+      const minutes = minutesOf(t);
       // Time Spent (MM) from either ticket type; an empty field never clears a recorded time.
       if (minutes > 0) next.time_spent = Math.round(minutes);
       if (source === 'roe' && t.targetLink && !r.testing_url) next.testing_url = t.targetLink;
@@ -162,6 +165,23 @@ export function syncTickets(db, tickets, { offsetHours = 8, createApps = true } 
         }
       }
       touch.run(id);
+    }
+
+    // A linked ticket that was rejected later no longer counts: unlink it and clear what came from it
+    // (status, actual dates, and the time spent if it is still the ticket's value).
+    const rejected = new Map([...(tickets.full || []), ...(tickets.roe || [])].filter((t) => t.state === 'rejected').map((t) => [t.key, t]));
+    for (const r of rows) {
+      const t = r.ticket_key && rejected.get(r.ticket_key);
+      if (!t || chosen.has(r.id)) continue;
+      const clear = { ticket_key: null, ticket_url: null, ticket_source: null, ticket_state: null, actual_start: null, actual_end: null, tester_frozen: 0 };
+      if (r.time_spent != null && r.time_spent === Math.round(minutesOf(t))) clear.time_spent = null;
+      db.prepare(`UPDATE assessments SET ${Object.keys(clear).map((c) => `${c} = ?`).join(', ')}, updated_at = datetime('now'), updated_by = ? WHERE id = ?`)
+        .run(...Object.values(clear), SYNC_USER, r.id);
+      logChange.run(r.id, 'ticket_key', r.ticket_key, `${r.ticket_key} rejected: unlinked`, SYNC_USER);
+      for (const col of ['actual_start', 'actual_end', 'time_spent']) {
+        if (col in clear && r[col] != null) logChange.run(r.id, col, String(r[col]), null, SYNC_USER);
+      }
+      updated++;
     }
     db.exec('COMMIT');
   } catch (err) {

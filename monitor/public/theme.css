@@ -45,18 +45,16 @@
   .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--r-pill); border: 1px solid var(--cs-blue-300); color: var(--cs-primary); background: var(--cs-blue-50); }
 
   /* Filter bar */
-  .filterbar { border-bottom: 1px solid var(--cs-border); background: rgba(255,255,255,0.9); padding: 12px 32px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; }
-  .fgroup { display: grid; gap: 6px; }
-  .flabel { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--cs-muted); }
-  .flabel svg { color: var(--cs-primary); }
-  .seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 2px; border: 1px solid var(--cs-border); border-radius: var(--r-pill); background: #fff; }
-  .seg button { border: 0; border-radius: var(--r-pill); padding: 4px 10px; background: var(--cs-primary); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
-  .seg button:hover { background: var(--cs-primary-strong); }
-  .seg button[aria-pressed="true"] { background: var(--cs-primary-strong); box-shadow: 0 0 0 2px var(--cs-blue-300); }
-  .selectbox { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--cs-border); border-radius: var(--r-control); background: #fff; font-size: 12px; color: var(--cs-muted); }
+  .filterbar { border-bottom: 1px solid var(--cs-border); background: rgba(255,255,255,0.9); padding: 12px 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  /* Filter chips: same look as the analytics app's filter bar (.cs-filter-chip). */
+  .ftitle { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; font-size: 12px; font-weight: 600; color: var(--cs-muted); }
+  .ftitle svg { color: var(--cs-primary); }
+  .filterbar #matching { margin-left: auto; }
+  .selectbox { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 6px 10px; border: 1px solid var(--component-card-border, var(--cs-border)); border-radius: var(--component-input-radius, var(--r-control)); background: var(--cs-surface-1); box-shadow: var(--shadow-sm); font-size: 12px; color: var(--cs-muted); }
+  .selectbox:focus-within, .search:focus-within { border-color: var(--cs-primary); }
   .selectbox svg { color: var(--cs-primary); }
   .selectbox input[type=date] { font-family: inherit; padding: 0; }
-  .selectbox select, .selectbox input { border: 0; outline: 0; background: transparent; font-size: 12px; color: var(--cs-text); font-weight: 600; }
+  .selectbox select, .selectbox input { border: 0; outline: 0; background: transparent; font-size: 12px; color: var(--cs-text); cursor: pointer; }
   .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--cs-border); border-radius: var(--r-pill); background: #fff; font-size: 12px; color: var(--cs-muted); box-shadow: var(--shadow-sm); }
   .chip svg { color: var(--cs-primary); } .chip strong { color: var(--cs-text); }
 
@@ -153,7 +151,8 @@
   .banner ol { margin: 8px 0 0; padding-left: 20px; color: var(--cs-text); }
   .banner form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   .banner input { flex: 1 1 260px; padding: 8px 10px; border: 1px solid var(--cs-border); border-radius: var(--r-control); background: #fff; color: var(--cs-text); }
-  .search { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--cs-border); border-radius: var(--r-control); background: #fff; color: var(--cs-muted); min-width: 240px; }
+  .search { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 6px 10px; border: 1px solid var(--component-card-border, var(--cs-border)); border-radius: var(--component-input-radius, var(--r-control)); background: var(--cs-surface-1); box-shadow: var(--shadow-sm); color: var(--cs-muted); min-width: 240px; }
+  .search svg { color: var(--cs-primary); }
   .search input { border: 0; outline: 0; background: transparent; font-size: 12px; color: var(--cs-text); width: 100%; }
   .method { font-size: 11px; color: var(--cs-soft); line-height: 1.5; }
   main > * { animation: sectionRise 480ms cubic-bezier(0.2, 0, 0.2, 1); }

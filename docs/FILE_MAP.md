@@ -39,6 +39,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `src/types.ts` | Shared TS types (`IssueRecord`, `ActiveTab`, `AppSettings`, …) | Everywhere |
 | `src/components/MetricsDashboard.tsx` | Project Metrics and Dependabots page: `MetricKpi` cards (formula in tooltip + "How are these counted?") and the main project metrics table. Large file. | metricsEngine |
 | `src/components/ChartsDashboard.tsx` | Dashboard totals with colour-coded icons and a 12-month sparkline (found / open at month end / resolved) | `index.css` `.dashboard-*` |
+| `src/components/FilterChips.tsx` | `FilterSelect` / `FilterSearch` / `FilterReset`: the one filter look (`.cs-filter-*` in index.css), used by the global bar, tracker and All Issues. The monitor pages mirror it in `monitor/public/theme.css` (`.selectbox`, `.search`, `.ftitle`). | DateRangeFilterBar and every page filter |
 | `src/components/SettingsPage.tsx` | Settings shell (`SETTINGS_SECTIONS`, `SettingsLayout`), dialog launcher panels, and the Danger Zone (the only Delete All Data entry point) | App.tsx renders each section |
 | `src/components/FormulaEditorModal.tsx` | User-defined metric formulas | settings |
 | `src/components/JiraIntegrationPage.tsx` | Jira connection UI. Posts its config to `/api/jira/issues`. | storage (Jira profile) |

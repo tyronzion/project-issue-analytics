@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Search, Plus, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Plus, ExternalLink, AlertTriangle, CircleDot, UserRound } from 'lucide-react';
+import { FilterSelect, FilterSearch } from '../FilterChips';
 import { PRIORITIES, CHECKS } from '../../../tracker/shared/logic.js';
-import { StatusPill, SealBadge, PriorityTag, TicketLink, Progress, Select, fmtDate, fmtMinutes } from './ui.jsx';
+import { StatusPill, SealBadge, PriorityTag, TicketLink, Progress, fmtDate, fmtMinutes } from './ui.jsx';
 
 export function useFilters(rows) {
   const [f, setF] = useState({ q: '', status: '', priority: '', tester: '' });
@@ -18,14 +19,11 @@ export function useFilters(rows) {
   });
   const set = (k) => (v) => setF((x) => ({ ...x, [k]: v }));
   const bar = (
-    <div className="flex flex-wrap items-center gap-2">
-      <label className="relative">
-        <Search className="pointer-events-none absolute top-2.5 left-2.5 w-4 h-4 at-soft" aria-hidden />
-        <input value={f.q} onChange={(e) => set('q')(e.target.value)} placeholder="Search project, URL, BA, UB-…" className="at-input at-has-icon w-60" />
-      </label>
-      <Select value={f.status} onChange={set('status')} placeholder="All statuses" options={['Done', 'In Progress', 'Not Started']} />
-      <Select value={f.priority} onChange={set('priority')} placeholder="All priorities" options={PRIORITIES} />
-      <Select value={f.tester} onChange={set('tester')} placeholder="All testers" options={testers} />
+    <div className="cs-filter-row">
+      <FilterSearch value={f.q} onChange={set('q')} placeholder="Search project, URL, BA, UB-…" />
+      <FilterSelect icon={CircleDot} label="Status" value={f.status} onChange={set('status')} allLabel="All" options={['Done', 'In Progress', 'Not Started']} />
+      <FilterSelect icon={AlertTriangle} label="Priority" value={f.priority} onChange={set('priority')} allLabel="All" options={PRIORITIES} />
+      <FilterSelect icon={UserRound} label="Tester" value={f.tester} onChange={set('tester')} allLabel="All" options={testers} />
     </div>
   );
   return { filtered, bar };

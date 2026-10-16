@@ -87,8 +87,6 @@ function filterByRange(tickets) {
   return tickets.filter((t) => (from == null || t.createdAt >= from) && (to == null || t.createdAt < to));
 }
 
-const press = (seg, b) => seg.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-
 // ---------- charts ----------
 function niceTicks(max) {
   const step = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500].find((s) => max / s <= 5) || Math.ceil(max / 5);
@@ -107,20 +105,20 @@ function hover(el, html) {
 }
 
 // ---------- wiring ----------
-// Date range: presets fill the From/To boxes; editing a box (or "Custom") switches to a custom range.
+// Date range: presets fill the From/To boxes; editing a box (or choosing "Custom") switches to a custom range.
 function wireDateRange(storageKey, onChange) {
+  const sel = $('#period');
   const save = () => { try { localStorage.setItem(storageKey, JSON.stringify({ period: ui.period, from: ui.from, to: ui.to })); } catch {} };
-  const setPeriod = (p) => { ui.period = p; press($('#period'), $(`#period button[data-v="${p}"]`)); save(); onChange(); };
-  $('#period').addEventListener('click', (e) => {
-    const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.v === 'custom') { ui.from = $('#dateFrom').value; ui.to = $('#dateTo').value; $('#dateFrom').focus(); }
-    setPeriod(b.dataset.v);
+  const setPeriod = (p) => { ui.period = p; sel.value = p; save(); onChange(); };
+  sel.addEventListener('change', () => {
+    if (sel.value === 'custom') { ui.from = $('#dateFrom').value; ui.to = $('#dateTo').value; $('#dateFrom').focus(); }
+    setPeriod(sel.value);
   });
   for (const id of ['dateFrom', 'dateTo']) $('#' + id).addEventListener('change', () => { ui.from = $('#dateFrom').value; ui.to = $('#dateTo').value; setPeriod('custom'); });
   try { Object.assign(ui, JSON.parse(localStorage.getItem(storageKey)) || {}); } catch {}
-  if (!$(`#period button[data-v="${ui.period}"]`)) ui.period = '90';
+  if (![...sel.options].some((o) => o.value === ui.period)) ui.period = '90';
   if (ui.period === 'custom') { $('#dateFrom').value = ui.from; $('#dateTo').value = ui.to; }
-  press($('#period'), $(`#period button[data-v="${ui.period}"]`));
+  sel.value = ui.period;
 }
 
 // Refresh with live progress. The server reports { running, percent, step, ok, error, … } at api/progress;

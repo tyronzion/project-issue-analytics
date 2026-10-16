@@ -70,30 +70,6 @@ export function Progress({ value }) {
   );
 }
 
-export function Select({ value, onChange, options, placeholder, className }) {
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className={cx('at-input', className)}>
-      {placeholder !== undefined && <option value="">{placeholder}</option>}
-      {options.map((o) => (typeof o === 'string' ? <option key={o} value={o}>{o}</option> : <option key={o.value} value={o.value}>{o.label}</option>))}
-    </select>
-  );
-}
-
-export function Chips({ value, onChange, options }) {
-  return (
-    <div className="inline-flex flex-wrap gap-1">
-      {options.map((o) => {
-        const v = typeof o === 'string' ? o : o.value;
-        return (
-          <button key={v} type="button" onClick={() => onChange(v)} aria-pressed={value === v} className="at-chip">
-            {typeof o === 'string' ? o : o.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 export const fmtDate = (iso) => {
   if (!iso) return '';
   const [y, m, d] = iso.split('-').map(Number);

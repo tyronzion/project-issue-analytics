@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Search, Plus, ExternalLink, AlertTriangle } from 'lucide-react';
 import { PRIORITIES, CHECKS } from '../../../tracker/shared/logic.js';
-import { StatusPill, SealBadge, PriorityTag, TicketLink, Progress, Select, fmtDate } from './ui.jsx';
+import { StatusPill, SealBadge, PriorityTag, TicketLink, Progress, Select, fmtDate, fmtMinutes } from './ui.jsx';
 
 export function useFilters(rows) {
   const [f, setF] = useState({ q: '', status: '', priority: '', tester: '' });
@@ -61,6 +61,7 @@ export default function Assessments({ rows, period, onOpen, onAdd }) {
               <th>Completion</th>
               <th>Status</th>
               <th>Actual end</th>
+              <th className="text-right">Time spent</th>
               <th>Seal</th>
             </tr>
           </thead>
@@ -100,12 +101,13 @@ export default function Assessments({ rows, period, onOpen, onAdd }) {
                   </div>
                 </td>
                 <td className="whitespace-nowrap at-muted">{fmtDate(r.actualEnd)}</td>
+                <td className="whitespace-nowrap tabular-nums text-right">{fmtMinutes(r.timeSpent) || <span className="at-soft">—</span>}</td>
                 <td><SealBadge value={r.seal} auto={r.sealSource === 'auto'} /></td>
               </tr>
             ))}
             {!filtered.length && (
               <tr>
-                <td colSpan={13} className="p-10 text-center at-muted">No applications match these filters.</td>
+                <td colSpan={14} className="p-10 text-center at-muted">No applications match these filters.</td>
               </tr>
             )}
           </tbody>

@@ -1,6 +1,6 @@
 # Project State
 
-_Last updated: 2026-10-14_
+_Last updated: 2026-10-16_
 
 ## Current phase
 The app is in production use and gets features added incrementally. The Assessment Tracker was merged in on 2026-10-13, which brings all three parts (analytics, monitors and tracker) into one app.
@@ -11,6 +11,7 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 - Classic login keeps working throughout.
 
 ## Recently completed
+- **Tracker time spent per app** (2026-10-16; pushed to `main`, **not deployed**). The existing `time_spent` (minutes; from the RoE ticket or the editor) is now shown per app: a Time spent column on Assessment List and Monitoring, plus a "Time Spent by Priority" table on Monitoring (apps with time, hours range, average, total, vs the workbook man-hours estimate). Apps without time are left out of the range. Logic is `timeStats`/`timeByPriority` in `tracker/shared/logic.js`; formatting is `fmtMinutes` in `ui.jsx`.
 - **User management with two roles** (2026-10-14, D8). Admins can do everything; users can't make data changes or monitor/tracker setup. Enforced on the server. `zionm@cloudstaff.com` is a permanent admin via `AUTH_ADMIN_EMAILS` in the local `.env.local`.
 - **Sign-in on the server** (2026-10-14, D7).
   - Two options: Microsoft SSO and the classic shared login, checked server-side (hash only) and rate-limited.

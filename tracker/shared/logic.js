@@ -120,6 +120,28 @@ export function periodForQuarter(track, quarter) {
   return track === 'biannual' ? periods[quarter <= 2 ? 0 : 1] : periods[quarter - 1];
 }
 
+// Recorded time spent (minutes) for a set of apps: how many have it, min / max / avg / total.
+// Apps with no time (null or 0) are left out of the range, not counted as 0.
+export function timeStats(rows) {
+  const mins = rows.map((r) => Number(r.timeSpent) || 0).filter((m) => m > 0);
+  const total = mins.reduce((s, m) => s + m, 0);
+  return {
+    apps: rows.length,
+    recorded: mins.length,
+    min: mins.length ? Math.min(...mins) : null,
+    max: mins.length ? Math.max(...mins) : null,
+    avg: mins.length ? total / mins.length : null,
+    total,
+  };
+}
+
+// Time stats per priority (only priorities that have apps) plus an overall row.
+export function timeByPriority(rows) {
+  const byPriority = PRIORITIES.map((p) => ({ priority: p, manHours: MAN_HOURS[p], ...timeStats(rows.filter((r) => r.priority === p)) }))
+    .filter((x) => x.apps > 0);
+  return { byPriority, overall: timeStats(rows) };
+}
+
 // Everything the Monitoring sheet's summary block shows, for one set of apps.
 export function monitoringSummary(rows) {
   const enriched = rows.map((r) => (r.status ? r : enrich(r)));

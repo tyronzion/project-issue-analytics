@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { X, Trash2, History, Archive, ArchiveRestore, Ticket, Lock, AlertTriangle } from 'lucide-react';
 import { CHECKS, PRIORITIES, TASK_STATUSES, SEALS, QUARTERS, CLASSIFICATIONS, enrich, isDecommissioned } from '../../../tracker/shared/logic.js';
 import { api } from './api.js';
-import { StatusPill, Progress, SealBadge, fmtDate, cx } from './ui.jsx';
+import { StatusPill, Progress, SealBadge, fmtDate, fmtMinutes, cx } from './ui.jsx';
 
 const BLANK = {
   project: '', quarter: '', isActive: 'Active', classification: 'New', repositories: '', testingUrl: '', priority: 'Medium',
@@ -232,7 +232,7 @@ export default function Editor({ row, periods, testers, onClose, onSaved, onDele
               <Field label="Planned end"><input type="date" value={draft.plannedEnd ?? ''} onChange={(e) => set('plannedEnd')(e.target.value)} className="at-input w-full" /></Field>
               <Field label="Actual start (ticket submitted)" locked={linked}><input type="date" value={draft.actualStart ?? ''} onChange={(e) => set('actualStart')(e.target.value)} className="at-input w-full" disabled={linked} /></Field>
               <Field label="Actual end (ticket resolved)" locked={linked}><input type="date" value={draft.actualEnd ?? ''} onChange={(e) => set('actualEnd')(e.target.value)} className="at-input w-full" disabled={linked} /></Field>
-              <Field label="Time spent (minutes)"><input type="number" min="0" value={draft.timeSpent ?? ''} onChange={(e) => set('timeSpent')(e.target.value)} className="at-input w-full" /></Field>
+              <Field label={`Time spent (minutes)${fmtMinutes(draft.timeSpent) ? ` · ${fmtMinutes(draft.timeSpent)}` : ''}`}><input type="number" min="0" value={draft.timeSpent ?? ''} onChange={(e) => set('timeSpent')(e.target.value)} className="at-input w-full" /></Field>
               <Field label="Seal">
                 <div className="flex items-center gap-2">
                   <Choice value={draft.seal} onChange={set('seal')} options={SEALS} blank="—" />

@@ -101,3 +101,12 @@ export const fmtDate = (iso) => {
 };
 
 export const pct = (x) => `${(x * 100).toFixed(x === 1 || x === 0 ? 0 : 1)}%`;
+
+// Minutes -> "13h 20m" / "45m" / "6h".
+export const fmtMinutes = (m) => {
+  if (m == null || !(Number(m) > 0)) return '';
+  const total = Math.round(Number(m));
+  const h = Math.floor(total / 60);
+  const min = total % 60;
+  return h ? (min ? `${h}h ${min}m` : `${h}h`) : `${min}m`;
+};

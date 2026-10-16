@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CHECKS, appStatus, completion, overallStatus, monitoringScore, monitoringSummary } from '../shared/logic.js';
+import { CHECKS, appStatus, completion, overallStatus, monitoringScore, monitoringSummary, timeStats, timeByPriority } from '../shared/logic.js';
 
 const all = Object.fromEntries(CHECKS.map((c) => [c.key, true]));
 const app = (over) => ({ checks: {}, dependabots: 'Not Started', codeReview: 'Not Started', report: 'Not Started', priority: 'High', ...over });
@@ -36,4 +36,20 @@ test('monitoring summary totals', () => {
   assert.equal(s.currentPoints, 5);
   assert.equal(s.done, 2);
   assert.equal(s.seals.Secure, 2);
+});
+
+test('time spent: range ignores apps with no time recorded', () => {
+  const rows = [
+    { priority: 'High', timeSpent: 360 },
+    { priority: 'High', timeSpent: 2600 },
+    { priority: 'High', timeSpent: null },
+    { priority: 'Low', timeSpent: 0 },
+  ];
+  assert.deepEqual(timeStats(rows.slice(0, 3)), { apps: 3, recorded: 2, min: 360, max: 2600, avg: 1480, total: 2960 });
+  const t = timeByPriority(rows);
+  assert.deepEqual(t.byPriority.map((x) => x.priority), ['High', 'Low']);
+  assert.equal(t.byPriority[1].recorded, 0);
+  assert.equal(t.byPriority[1].min, null);
+  assert.equal(t.overall.recorded, 2);
+  assert.equal(t.overall.total, 2960);
 });

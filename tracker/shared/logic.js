@@ -142,6 +142,19 @@ export function timeByPriority(rows) {
   return { byPriority, overall: timeStats(rows) };
 }
 
+// The workbook's man-hours estimate for a priority, in minutes: [low, high], or null.
+export function estimateMinutes(priority) {
+  const m = String(MAN_HOURS[priority] || '').match(/(\d+)\s*-\s*(\d+)/);
+  return m ? [Number(m[1]) * 60, Number(m[2]) * 60] : null;
+}
+
+// Time spent compared with that estimate: 'over' | 'within' | 'under', or null when unknown.
+export function vsEstimate(minutes, priority) {
+  const est = estimateMinutes(priority);
+  if (!est || !(Number(minutes) > 0)) return null;
+  return minutes > est[1] ? 'over' : minutes < est[0] ? 'under' : 'within';
+}
+
 // Time stats per group (e.g. per security tester), most total time first.
 export function timeByGroup(rows, keyOf) {
   const groups = new Map();

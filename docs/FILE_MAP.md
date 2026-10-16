@@ -28,7 +28,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | File | Purpose | Relationships |
 |---|---|---|
 | `src/App.tsx` | Root. Holds issue state and its load/save, signed-in user display and sign-out (POST `/auth/logout`), tab routing and sidebar, and every modal. Large file. | Uses everything below |
-| `src/utils/routes.ts` | Tab ↔ URL path map and aliases, plus `ADMIN_TABS` (pages hidden from users) | `types.ts` `ActiveTab` |
+| `src/utils/routes.ts` | Tab ↔ URL path map and aliases (old paths of pages moved into Settings, e.g. `/jira`, stay as aliases), plus `ADMIN_TABS` (pages hidden from users) | `types.ts` `ActiveTab` |
 | `src/utils/metricsEngine.ts` | Per-project summaries, severity normalisation, Dependabot detection | MetricsDashboard and the seal |
 | `src/utils/projectMatcher.ts` | Maps issues to projects using aliases and fuzzy matching | metricsEngine |
 | `src/utils/securitySeal.ts` | **Seal matrix** (Secure → Compromised) from outstanding severities | SecuritySealDashboard and the tracker seal snapshot |
@@ -37,7 +37,9 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `src/utils/excelParser.ts` | Excel/CSV import and export, and row → `IssueRecord` mapping | ImportModal, App |
 | `src/utils/sampleData.ts` | Default and sample data | Bootstrap |
 | `src/types.ts` | Shared TS types (`IssueRecord`, `ActiveTab`, `AppSettings`, …) | Everywhere |
-| `src/components/MetricsDashboard.tsx` | Main project metrics table. Large file. | metricsEngine |
+| `src/components/MetricsDashboard.tsx` | Project Metrics and Dependabots page: `MetricKpi` cards (formula in tooltip + "How are these counted?") and the main project metrics table. Large file. | metricsEngine |
+| `src/components/ChartsDashboard.tsx` | Dashboard totals with colour-coded icons and a 12-month sparkline (found / open at month end / resolved) | `index.css` `.dashboard-*` |
+| `src/components/SettingsPage.tsx` | Settings shell (`SETTINGS_SECTIONS`, `SettingsLayout`), dialog launcher panels, and the Danger Zone (the only Delete All Data entry point) | App.tsx renders each section |
 | `src/components/FormulaEditorModal.tsx` | User-defined metric formulas | settings |
 | `src/components/JiraIntegrationPage.tsx` | Jira connection UI. Posts its config to `/api/jira/issues`. | storage (Jira profile) |
 | `src/components/UsersPage.tsx` | Users & Roles page (admins only): list, add by email, change role, remove | `/auth/users` |

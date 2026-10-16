@@ -19,6 +19,7 @@ import {
   UserCog,
   Timer,
   GitCompareArrows,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { 
   IssueRecord, 
@@ -57,6 +58,7 @@ import { TargetProjectListModal } from './components/TargetProjectListModal';
 import { ClearDataModal } from './components/ClearDataModal';
 import { getTabFromPath, getPathForTab, getTitleForTab, ADMIN_TABS } from './utils/routes';
 import { UsersPage } from './components/UsersPage';
+import { SettingsLayout, SettingsPanel, DangerZone, isSettingsTab } from './components/SettingsPage';
 import { JiraIntegrationPage, JiraCredentials } from './components/JiraIntegrationPage';
 import { MonitorFrame, isMonitorTab } from './components/MonitorFrame';
 import AssessmentTracker from './components/tracker/AssessmentTracker.jsx';
@@ -742,8 +744,7 @@ export default function App() {
         onOpenFormulas={() => setIsFormulasOpen(true)}
         onOpenProjects={() => setIsProjectsOpen(true)}
         onOpenTargetList={() => setIsTargetListOpen(true)}
-        onOpenClearData={isAdmin ? () => setIsClearDataOpen(true) : undefined}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={() => setActiveTab('settings')}
         onSignOut={handleSignOut}
         signedInAs={currentUser ? `${currentUser.name || currentUser.email}${isAdmin ? ' · Admin' : ''}` : ''}
         totalIssuesCount={issues.length}
@@ -822,19 +823,6 @@ export default function App() {
                 <span>Dependabots Issues</span>
               </button>
 
-              {isAdmin && <button
-                id="tab-jira-btn"
-                onClick={() => setActiveTab('jira')}
-                className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                  activeTab === 'jira'
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-900/20'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/50'
-                }`}
-              >
-                <Bot className="w-4 h-4" />
-                <span>Jira Integration</span>
-              </button>}
-
               <button
                 id="tab-issues-btn"
                 onClick={() => setActiveTab('issues')}
@@ -861,19 +849,6 @@ export default function App() {
                 <span>Projects & Aliases</span>
               </button>
 
-              <button
-                id="tab-formulas-btn"
-                onClick={() => setActiveTab('formulas')}
-                className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                  activeTab === 'formulas'
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-900/20'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/50'
-                }`}
-              >
-                <Calculator className="w-4 h-4" />
-                <span>Formula Rules</span>
-              </button>
-
               <p className="px-3 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">UberTicket Monitoring</p>
               {([
                 ['dpsa', 'DPSA Monitoring', Gauge],
@@ -896,7 +871,7 @@ export default function App() {
               ))}
 
               <p className="px-3 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Assessment Tracker</p>
-              {TRACKER_TABS.filter(({ tab }) => isAdmin || !ADMIN_TABS.includes(tab)).map(({ tab, label, Icon }) => (
+              {TRACKER_TABS.filter(({ tab }) => !isSettingsTab(tab)).map(({ tab, label, Icon }) => (
                 <button
                   key={tab}
                   id={`tab-${tab}-btn`}
@@ -912,23 +887,21 @@ export default function App() {
                 </button>
               ))}
 
-              {isAdmin && (
-                <>
-                  <p className="px-3 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Administration</p>
-                  <button
-                    id="tab-users-btn"
-                    onClick={() => setActiveTab('users')}
-                    className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      activeTab === 'users'
-                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-900/20'
-                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/50'
-                    }`}
-                  >
-                    <UserCog className="w-4 h-4" />
-                    <span>Users & Roles</span>
-                  </button>
-                </>
-              )}
+
+              <div className="pt-2 mt-2" style={{ borderTop: '1px solid var(--cs-border)' }}>
+                <button
+                  id="tab-settings-btn"
+                  onClick={() => setActiveTab('settings')}
+                  className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    isSettingsTab(activeTab)
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-900/20'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/50'
+                  }`}
+                >
+                  <SettingsIcon className="w-4 h-4" />
+                  <span>Settings</span>
+                </button>
+              </div>
 
             </div>
           </aside>
@@ -948,8 +921,7 @@ export default function App() {
             onOpenFormulas={() => setIsFormulasOpen(true)}
             onOpenProjects={() => setIsProjectsOpen(true)}
             onOpenTargetList={() => setIsTargetListOpen(true)}
-            onOpenClearData={isAdmin ? () => setIsClearDataOpen(true) : undefined}
-            onOpenImport={isAdmin ? () => setIsImportOpen(true) : undefined}
+                onOpenImport={isAdmin ? () => setIsImportOpen(true) : undefined}
             onMergeProjects={handleBatchMergeProjects}
             onUnmergeProjects={handleBatchUnmergeProjects}
           />
@@ -972,8 +944,7 @@ export default function App() {
             formulaConfig={settings.formulaConfig}
             dateFilter={settings.dateFilter}
             selectedPlatform={drilldownPlatform}
-            onOpenClearData={isAdmin ? () => setIsClearDataOpen(true) : undefined}
-          />
+              />
         )}
 
         {activeTab === 'projects' && (
@@ -1048,7 +1019,66 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'formulas' && (
+        {activeTab === 'dependabots' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">Dependabots Issues</h2>
+                <p className="text-xs text-slate-400">
+                  Counts only records containing <code className="text-blue-500 font-semibold">[github-dependabots]</code> and applies all active formulas.
+                </p>
+              </div>
+            </div>
+
+            <MetricsDashboard
+              summaries={scopedDependabotsSummaries}
+              allFilteredIssues={scopedDependabotsIssues}
+              formulaConfig={settings.formulaConfig}
+              dateFilter={settings.dateFilter}
+              projectAliases={settings.projectAliases}
+              customProjectList={settings.customProjectList}
+              useCustomProjectListOnly={settings.useCustomProjectListOnly}
+              onDeleteProject={handleDeleteProject}
+              onDrilldownProject={handleDrilldown}
+              onOpenFormulas={() => setIsFormulasOpen(true)}
+              onOpenProjects={() => setIsProjectsOpen(true)}
+              onOpenTargetList={() => setIsTargetListOpen(true)}
+                    onOpenImport={isAdmin ? () => setIsImportOpen(true) : undefined}
+              onMergeProjects={handleBatchMergeProjects}
+              onUnmergeProjects={handleBatchUnmergeProjects}
+            />
+
+            <IssuesTableView
+              issues={scopedDependabotsIssues}
+              hideSourceFilter
+              formulaConfig={settings.formulaConfig}
+              dateFilter={settings.dateFilter}
+              selectedPlatform={drilldownPlatform}
+                  />
+          </div>
+        )}
+
+        {isMonitorTab(activeTab) && <MonitorFrame tab={activeTab} />}
+
+        {trackerSection(activeTab) && !isSettingsTab(activeTab) && (
+          <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} />
+        )}
+
+        {isSettingsTab(activeTab) && (isAdmin || !ADMIN_TABS.includes(activeTab)) && (
+          <SettingsLayout activeTab={activeTab} onSelect={setActiveTab} isAdmin={isAdmin}>
+            {activeTab === 'settings' && (
+              <SettingsPanel
+                title="Application Settings & Data Persistence"
+                description="Where issue data is saved, the date range defaults, and backup / restore of your configuration."
+                facts={[
+                  ['Issues loaded', issues.length],
+                  ['Merge rules', settings.projectAliases?.length || 0],
+                ]}
+                actionLabel="Open application settings"
+                onAction={() => setIsSettingsOpen(true)}
+              />
+            )}
+            {activeTab === 'formulas' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -1097,63 +1127,48 @@ export default function App() {
               </div>
             </div>
           </div>
-        )}
-
-        {activeTab === 'dependabots' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">Dependabots Issues</h2>
-                <p className="text-xs text-slate-400">
-                  Counts only records containing <code className="text-blue-500 font-semibold">[github-dependabots]</code> and applies all active formulas.
-                </p>
-              </div>
-            </div>
-
-            <MetricsDashboard
-              summaries={scopedDependabotsSummaries}
-              allFilteredIssues={scopedDependabotsIssues}
-              formulaConfig={settings.formulaConfig}
-              dateFilter={settings.dateFilter}
-              projectAliases={settings.projectAliases}
-              customProjectList={settings.customProjectList}
-              useCustomProjectListOnly={settings.useCustomProjectListOnly}
-              onDeleteProject={handleDeleteProject}
-              onDrilldownProject={handleDrilldown}
-              onOpenFormulas={() => setIsFormulasOpen(true)}
-              onOpenProjects={() => setIsProjectsOpen(true)}
-              onOpenTargetList={() => setIsTargetListOpen(true)}
-              onOpenClearData={isAdmin ? () => setIsClearDataOpen(true) : undefined}
-              onOpenImport={isAdmin ? () => setIsImportOpen(true) : undefined}
-              onMergeProjects={handleBatchMergeProjects}
-              onUnmergeProjects={handleBatchUnmergeProjects}
-            />
-
-            <IssuesTableView
-              issues={scopedDependabotsIssues}
-              hideSourceFilter
-              formulaConfig={settings.formulaConfig}
-              dateFilter={settings.dateFilter}
-              selectedPlatform={drilldownPlatform}
-              onOpenClearData={isAdmin ? () => setIsClearDataOpen(true) : undefined}
-            />
-          </div>
-        )}
-
-        {activeTab === 'jira' && isAdmin && (
+            )}
+            {activeTab === 'settings-targets' && (
+              <SettingsPanel
+                title="Target Project List"
+                description="The list of applications you report on. When “target list only” is on, metrics show just these apps."
+                facts={[
+                  ['Apps in list', settings.customProjectList?.length || 0],
+                  ['Target list only', settings.useCustomProjectListOnly ? 'On' : 'Off'],
+                ]}
+                actionLabel="Edit target project list"
+                onAction={() => setIsTargetListOpen(true)}
+              />
+            )}
+            {activeTab === 'jira' && (
           <JiraIntegrationPage
             onSync={handleSyncFromJira}
             isSyncing={isJiraSyncing}
           />
+            )}
+            {activeTab === 'settings-merge' && (
+              <SettingsPanel
+                title="Merge Data"
+                description="Add issues from another Excel or CSV file to the data already loaded, without replacing it."
+                facts={[['Issues loaded', issues.length]]}
+                actionLabel="Merge a file"
+                onAction={() => setIsMergeOpen(true)}
+              />
+            )}
+            {(activeTab === 'tracker-import' || activeTab === 'tracker-sync') && (
+              <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} />
+            )}
+            {activeTab === 'users' && <UsersPage />}
+            {activeTab === 'settings-danger' && (
+              <DangerZone
+                issuesCount={issues.length}
+                targetListCount={settings.customProjectList?.length || 0}
+                aliasesCount={settings.projectAliases?.length || 0}
+                onDeleteAll={() => setIsClearDataOpen(true)}
+              />
+            )}
+          </SettingsLayout>
         )}
-
-        {isMonitorTab(activeTab) && <MonitorFrame tab={activeTab} />}
-
-        {trackerSection(activeTab) && (isAdmin || !ADMIN_TABS.includes(activeTab)) && (
-          <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} />
-        )}
-
-        {activeTab === 'users' && isAdmin && <UsersPage />}
           </main>
         </div>
       </div>

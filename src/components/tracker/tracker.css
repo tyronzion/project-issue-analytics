@@ -140,6 +140,7 @@ textarea.at-input { height: auto; padding: 8px 10px; }
 /* KPI and severity cards reuse the app's .issues-kpi-card / .severity-* styles. */
 .at-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 @media (min-width: 1900px) { .at-kpi-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .at-kpi-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .at-kpi-grid { grid-template-columns: 1fr; } }
 .at-root .issues-kpi-card { min-height: 96px; }
 .at-root .issues-kpi-card strong em { font-style: normal; font-size: 18px; color: var(--cs-soft); }
@@ -197,3 +198,33 @@ textarea.at-input { height: auto; padding: 8px 10px; }
 .at-dropzone { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px; border: 2px dashed var(--cs-blue-300); border-radius: var(--component-card-radius); background: var(--cs-surface-0); text-align: center; cursor: pointer; }
 .at-dropzone:hover { border-color: var(--cs-primary); }
 .at-section-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+
+/* Time Report / Period Comparison: plain-language headline, range strips, bars, columns. */
+.at-headline { padding: 16px 20px; font-size: 15px; line-height: 1.6; }
+.at-headline b { font-weight: 800; color: var(--cs-primary-strong); }
+.at-size-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; padding: 16px; }
+.at-size-card { padding: 14px 16px; border: 1px solid var(--color-border-subtle); border-top: 3px solid var(--size-accent); border-radius: var(--radius-lg); background: var(--color-surface-canvas); }
+.at-size-card .at-big { display: block; margin: 6px 0 2px; font-family: var(--font-family-heading); font-size: 28px; font-weight: 800; line-height: 1.1; }
+.at-strip { position: relative; height: 14px; margin: 14px 0 4px; border-radius: 999px; background: var(--color-surface-tertiary); }
+.at-strip-est { position: absolute; top: -3px; bottom: -3px; border: 1px dashed var(--cs-muted); border-radius: 4px; }
+.at-strip-range { position: absolute; top: 3px; bottom: 3px; border-radius: 999px; background: var(--size-accent); opacity: 0.45; }
+.at-strip-avg { position: absolute; top: -2px; width: 18px; height: 18px; margin-left: -9px; border: 2px solid var(--color-surface-canvas); border-radius: 999px; background: var(--size-accent); }
+.at-strip-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--cs-soft); }
+.at-badge { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border: 1px solid; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.at-badge--over { border-color: var(--color-border-warning); background: var(--at-warn-wash); color: var(--at-warn-ink); }
+.at-badge--within { border-color: rgba(12, 163, 12, 0.35); background: var(--at-good-wash); color: var(--at-good-ink); }
+.at-badge--under { border-color: var(--cs-border); background: var(--at-idle-wash); color: var(--at-idle-ink); }
+.at-hbars { display: grid; gap: 10px; padding: 16px; }
+.at-hbar { display: grid; grid-template-columns: minmax(90px, 140px) 1fr minmax(150px, auto); align-items: center; gap: 12px; font-size: 13px; }
+.at-hbar-track { height: 14px; border-radius: 4px; background: var(--color-surface-tertiary); }
+.at-hbar-track > div { height: 100%; min-width: 4px; border-radius: 0 4px 4px 0; background: var(--cs-primary); }
+.at-columns { display: flex; align-items: flex-end; gap: 12px; height: 200px; padding: 24px 16px 0; }
+.at-column { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+.at-column > b { margin-bottom: 4px; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.at-column > div { width: 100%; max-width: 72px; min-height: 4px; border-radius: 4px 4px 0 0; background: var(--cs-primary); }
+.at-column--empty > div { background: var(--color-surface-tertiary); }
+.at-column-labels { display: flex; gap: 12px; padding: 8px 16px 16px; border-top: 1px solid var(--color-border-subtle); }
+.at-column-labels > div { flex: 1; min-width: 0; text-align: center; font-size: 11px; line-height: 1.4; color: var(--cs-muted); }
+.at-column-labels > div strong { display: block; font-size: 12px; color: var(--cs-text); }
+.at-inline-bar { display: inline-block; width: 80px; height: 8px; margin-right: 8px; vertical-align: middle; border-radius: 4px; background: var(--color-surface-tertiary); overflow: hidden; }
+.at-inline-bar > span { display: block; height: 100%; background: var(--cs-primary); }

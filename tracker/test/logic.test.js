@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CHECKS, appStatus, completion, overallStatus, monitoringScore, monitoringSummary, timeStats, timeByPriority, timeByGroup } from '../shared/logic.js';
+import { CHECKS, appStatus, completion, overallStatus, monitoringScore, monitoringSummary, timeStats, timeByPriority, timeByGroup, estimateMinutes, vsEstimate } from '../shared/logic.js';
 
 const all = Object.fromEntries(CHECKS.map((c) => [c.key, true]));
 const app = (over) => ({ checks: {}, dependabots: 'Not Started', codeReview: 'Not Started', report: 'Not Started', priority: 'High', ...over });
@@ -65,4 +65,13 @@ test('time spent per group: most total time first, blank key kept', () => {
   assert.deepEqual(g.map((x) => [x.key, x.apps, x.recorded, x.total]), [['ZionM', 1, 1, 600], ['NasQ', 2, 2, 180], ['', 1, 0, 0]]);
   assert.equal(g[1].min, 60);
   assert.equal(g[1].max, 120);
+});
+
+test('time spent vs the man-hours estimate', () => {
+  assert.deepEqual(estimateMinutes('High'), [900, 1260]); // 15 - 21 h
+  assert.equal(estimateMinutes('Unknown'), null);
+  assert.equal(vsEstimate(1300, 'High'), 'over');
+  assert.equal(vsEstimate(1260, 'High'), 'within');
+  assert.equal(vsEstimate(899, 'High'), 'under');
+  assert.equal(vsEstimate(null, 'High'), null);
 });

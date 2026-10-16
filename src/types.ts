@@ -120,4 +120,6 @@ export type ActiveTab = 'dashboard' | 'seal' | 'charts' | 'issues' | 'formulas' 
   // Assessment Tracker (the Security Full Assessment Tracker workbook)
   | 'tracker' | 'tracker-assessment' | 'tracker-time' | 'tracker-comparison' | 'tracker-checklist' | 'tracker-decommissioned' | 'tracker-sync' | 'tracker-import'
   // Users & roles (admins only)
-  | 'users';
+  | 'users'
+  // Settings sections that have no page of their own elsewhere
+  | 'settings' | 'settings-targets' | 'settings-merge' | 'settings-danger';

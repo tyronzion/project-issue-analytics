@@ -13,7 +13,6 @@ import {
   Smartphone,
   Apple,
   ArrowUpDown,
-  Calculator,
   GitMerge,
   CheckSquare,
   Layers,
@@ -26,8 +25,45 @@ import {
   ChevronDown,
   ChevronUp,
   SlidersHorizontal,
+  Search,
+  CircleAlert,
+  Clock,
+  ShieldCheck,
+  Info,
+  LucideIcon,
 } from 'lucide-react';
 import { MergeProjectsModal } from './MergeProjectsModal';
+
+type KpiTone = 'info' | 'success' | 'warning' | 'danger' | 'muted';
+
+// One KPI: colour-coded icon (never colour alone), number, one short line; the formula is the tooltip.
+const MetricKpi: React.FC<{
+  tone: KpiTone;
+  Icon: LucideIcon;
+  label: string;
+  value: number;
+  hint: string;
+  help: string;
+  onClick?: () => void;
+  children?: React.ReactNode;
+}> = ({ tone, Icon, label, value, hint, help, onClick, children }) => {
+  const body = (
+    <>
+      <div className="metric-kpi-head">
+        <span className="metric-kpi-icon"><Icon className="w-4 h-4" aria-hidden /></span>
+        <span>{label}</span>
+      </div>
+      <strong>{value}</strong>
+      <small>{hint}</small>
+      {children}
+    </>
+  );
+  return onClick ? (
+    <button type="button" onClick={onClick} className={`metric-kpi metric-kpi--${tone} metric-kpi--link`} title={`${help} Click to see all apps.`}>{body}</button>
+  ) : (
+    <article className={`metric-kpi metric-kpi--${tone}`} title={help}>{body}</article>
+  );
+};
 
 interface MetricsDashboardProps {
   summaries: ProjectSummary[];
@@ -389,178 +425,47 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
         </div>
       )}
 
-      {/* Top KPI Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
-        {/* Card 1: Total Found Issues */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Found Issues</span>
-            <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20">
-              Created in Range
-            </span>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-3xl font-bold text-white tracking-tight">{totals.totalFound}</span>
-            <span className="text-xs text-slate-400">Total Filtered</span>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-            <span>Formula: Count in Created range</span>
-          </div>
-          {viewPrefs.showCardSeverity && <div className="mt-2">{renderSeverityBreakdown(totals.foundBySeverity)}</div>}
-        </div>
-
-        {/* Card 2: Resolved Issues */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Resolved Issues</span>
-            <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
-              Done & In Range
-            </span>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-3xl font-bold text-emerald-400 tracking-tight">{totals.resolved}</span>
-            <span className="text-xs font-medium text-emerald-500">{overallResolutionRate.toFixed(1)}% Velocity</span>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-800/80">
-            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-              <div
-                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, Math.max(0, overallResolutionRate))}%` }}
-              />
-            </div>
-          </div>
-          {viewPrefs.showCardSeverity && <div className="mt-2">{renderSeverityBreakdown(totals.resolvedBySeverity)}</div>}
-        </div>
-
-        {/* Card 3: Outstanding / Backlog */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Outstanding / Backlogs</span>
-            <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20">
-              Not Done / Not Cancelled
-            </span>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-3xl font-bold text-amber-400 tracking-tight">{totals.outstanding}</span>
-            <span className="text-xs text-slate-400">Open Workload</span>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-            <span>Formula: Status ≠ Done & ≠ Cancelled</span>
-          </div>
-          {viewPrefs.showCardSeverity && <div className="mt-2">{renderSeverityBreakdown(totals.outstandingBySeverity)}</div>}
-        </div>
-
-        {/* Card 4: Risk Accepted */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Risk Accepted</span>
-            <span className="text-[10px] bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded border border-purple-500/20">
-              Accepted Risk
-            </span>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-3xl font-bold text-purple-300 tracking-tight">{totals.riskAccepted}</span>
-            <span className="text-xs text-slate-400">Excluded from Backlog</span>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-            <span>Formula: Status = Risk Accepted</span>
-          </div>
-        </div>
-
-        {/* Card 5: Security Overdue */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Security Overdue</span>
-            <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded border border-red-500/20">
-              Due Date &lt; Today
-            </span>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-3xl font-bold text-red-400 tracking-tight">{totals.securityOverdue}</span>
-            <span className="text-xs text-slate-400">Past Due Security</span>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-            <span>Formula: Due date &lt; today & not done/cancelled</span>
-          </div>
-        </div>
-
-        {/* Card 6: Tracked Applications */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tracked Applications</span>
-            <div className="flex items-center space-x-1">
-              {onOpenTargetList && (
-                <button
-                  onClick={onOpenTargetList}
-                  className="text-[10px] bg-blue-950/80 hover:bg-blue-900 text-blue-300 px-2 py-0.5 rounded border border-blue-800 transition"
-                  title="Manage user-defined target project watchlist"
-                >
-                  Target List ({customProjectList.length})
-                </button>
-              )}
-              <button
-                onClick={onOpenProjects}
-                className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 transition"
-              >
-                All Apps
-              </button>
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-3xl font-bold text-white tracking-tight">{summaries.length}</span>
-            <span className="text-xs text-slate-400">{useCustomProjectListOnly ? 'Target List Active' : `${totals.allTime} All-Time Records`}</span>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-            <span>{useCustomProjectListOnly ? 'Showing custom watchlist' : 'Auto-detected & split projects'}</span>
-          </div>
-        </div>
+      {/* Top KPI cards: icon, number, one short line. Formulas live in the "How are these counted?" section below. */}
+      <div className="metric-kpi-grid">
+        <MetricKpi tone="info" Icon={Search} label="Found" value={totals.totalFound} hint="Created in the date range" help="Count of issues whose Created date is in the date range.">
+          {viewPrefs.showCardSeverity && renderSeverityBreakdown(totals.foundBySeverity)}
+        </MetricKpi>
+        <MetricKpi tone="success" Icon={CheckCircle2} label="Resolved" value={totals.resolved} hint={`${overallResolutionRate.toFixed(0)}% of found`} help="Status is Done and the status changed in the date range.">
+          <div className="metric-kpi-bar" aria-hidden><span style={{ width: `${Math.min(100, Math.max(0, overallResolutionRate))}%` }} /></div>
+          {viewPrefs.showCardSeverity && renderSeverityBreakdown(totals.resolvedBySeverity)}
+        </MetricKpi>
+        <MetricKpi tone="warning" Icon={CircleAlert} label="Outstanding" value={totals.outstanding} hint="Still open" help="Status is not Done and not Cancelled.">
+          {viewPrefs.showCardSeverity && renderSeverityBreakdown(totals.outstandingBySeverity)}
+        </MetricKpi>
+        <MetricKpi tone="danger" Icon={Clock} label="Overdue" value={totals.securityOverdue} hint="Past the security due date" help="Security Due Date is before today and the issue is not Done or Cancelled." />
+        <MetricKpi tone="muted" Icon={ShieldCheck} label="Risk Accepted" value={totals.riskAccepted} hint="Not counted as backlog" help="Status is Risk Accepted." />
+        <MetricKpi
+          tone="muted"
+          Icon={Layers}
+          label="Applications"
+          value={summaries.length}
+          hint={useCustomProjectListOnly ? 'Target list only' : `${totals.allTime} records all time`}
+          help={useCustomProjectListOnly ? 'Only apps in your target project list are shown.' : 'Projects found in the data, split by iOS / Android keywords.'}
+          onClick={onOpenProjects}
+        />
       </div>
 
-      {/* Applied Formula & Smart Search Banner */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-        <div className="flex items-center space-x-3 flex-wrap gap-y-1">
-          <div className="flex items-center space-x-1.5 text-blue-400 font-medium">
-            <Calculator className="w-4 h-4" />
-            <span>Active Match & Metric Rules:</span>
-          </div>
-          <span className="text-slate-300">
-            <strong>Platform Keywords:</strong> <code className="text-sky-300 font-bold">{formulaConfig.iosKeyword}</code> & <code className="text-emerald-300 font-bold">{formulaConfig.aosKeyword}</code> in Summary split into dedicated project metrics.
-          </span>
-          <span className="text-slate-500">&bull;</span>
-          <span className="text-slate-300">
-            <strong>Found:</strong> "{formulaConfig.columnMapping.createdColumn}" in date range.
-          </span>
-          <span className="text-slate-500">&bull;</span>
-          <span className="text-slate-300">
-            <strong>Resolved:</strong> Status change in range & Done.
-          </span>
-          <span className="text-slate-500">&bull;</span>
-          <span className="text-slate-300">
-            <strong>Overdue:</strong> Security Due Date earlier than today.
-          </span>
-        </div>
-
-        <div className="flex items-center space-x-2 self-start md:self-auto">
-          {onOpenTargetList && (
-            <button
-              onClick={onOpenTargetList}
-              className="flex items-center space-x-1 text-xs text-purple-300 hover:text-white font-medium px-2.5 py-1 rounded-lg bg-purple-950/70 border border-purple-800 hover:bg-purple-900 transition whitespace-nowrap"
-              title="Provide your target list of project names to search in the database"
-            >
-              <ClipboardList className="w-3.5 h-3.5 text-purple-400" />
-              <span>Target Project List ({customProjectList.length})</span>
-            </button>
-          )}
-
-          <button
-            onClick={onOpenFormulas}
-            className="flex items-center space-x-1 text-xs text-blue-400 hover:text-blue-300 font-medium px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition whitespace-nowrap"
-          >
-            <span>Edit Formulas</span>
-            <ExternalLink className="w-3 h-3" />
-          </button>
-        </div>
-      </div>
+      <details className="metric-rules">
+        <summary>
+          <Info className="w-3.5 h-3.5" aria-hidden />
+          How are these counted?
+        </summary>
+        <ul>
+          <li><b>Found</b>: “{formulaConfig.columnMapping.createdColumn}” is in the date range.</li>
+          <li><b>Resolved</b>: status is Done and the status changed in the date range.</li>
+          <li><b>Outstanding</b>: status is not Done and not Cancelled.</li>
+          <li><b>Overdue</b>: Security Due Date is before today and the issue is still open.</li>
+          <li><b>Apps</b>: “{formulaConfig.iosKeyword}” and “{formulaConfig.aosKeyword}” in the summary split an app into iOS and Android.</li>
+        </ul>
+        <button type="button" onClick={onOpenFormulas} className="metric-rules-link">
+          Edit formulas <ExternalLink className="w-3 h-3" aria-hidden />
+        </button>
+      </details>
 
       {/* Target Watchlist Active Notification Banner if enabled */}
       {useCustomProjectListOnly && customProjectList.length > 0 && (

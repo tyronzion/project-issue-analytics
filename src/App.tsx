@@ -66,6 +66,7 @@ import { MonitorFrame, isMonitorTab } from './components/MonitorFrame';
 import AssessmentTracker from './components/tracker/AssessmentTracker.jsx';
 import PrivacyImpact from './components/pia/PrivacyImpact.jsx';
 import { matchKey } from '../tracker/shared/logic.js';
+import { useSharedTargets, saveSharedTargets } from './utils/sharedTargets';
 import { getProjectSecuritySeal } from './utils/securitySeal';
 
 // Assessment Tracker sidebar entries -> section shown by <AssessmentTracker>.
@@ -117,6 +118,8 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string; role: 'admin' | 'user' } | null>(null);
   const isAdmin = currentUser?.role === 'admin';
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
+  // The shared Target Project List (server); it replaces this browser's own copy once it is set up.
+  const sharedTargets = useSharedTargets();
   const [issues, setIssues] = useState<IssueRecord[]>(() => {
     const saved = loadSavedData();
     if (saved && Array.isArray(saved) && saved.length > 0) {
@@ -521,18 +524,19 @@ export default function App() {
     });
   };
 
-  // Handler: Save Target Project Watchlist (automatically un-blacklists any project present in target list)
+  // Handler: Save Target Project Watchlist (admins; saved on the server for everyone). Also un-blacklists any
+  // project present in the target list.
   const handleSaveTargetList = (list: string[], useOnly: boolean) => {
-    setSettings(prev => {
-      const listLower = new Set(list.map(p => p.trim().toLowerCase()));
-      return {
-        ...prev,
-        customProjectList: list,
-        useCustomProjectListOnly: useOnly,
-        // Un-blacklist any project that is in the target list
-        deletedProjects: prev.deletedProjects.filter(p => !listLower.has(p.trim().toLowerCase())),
-      };
-    });
+    if (!isAdmin) return;
+    saveSharedTargets({ names: list, targetOnly: useOnly })
+      .then(saved => {
+        const listLower = new Set(saved.names.map(p => p.trim().toLowerCase()));
+        setSettings(prev => ({
+          ...prev,
+          deletedProjects: prev.deletedProjects.filter(p => !listLower.has(p.trim().toLowerCase())),
+        }));
+      })
+      .catch(err => window.alert(err.message));
   };
 
   // Handler: Save Formula Configuration Permanently
@@ -604,10 +608,14 @@ export default function App() {
     setIssues([]);
     savePersistedData([]);
     if (options.clearTargetList) {
-      setSettings(prev => ({
-        ...prev,
-        customProjectList: [],
-      }));
+      if (sharedTargets?.seeded) {
+        if (isAdmin) saveSharedTargets({ names: [] }).catch(err => window.alert(err.message));
+      } else {
+        setSettings(prev => ({
+          ...prev,
+          customProjectList: [],
+        }));
+      }
     }
     if (options.clearAliases) {
       setSettings(prev => ({
@@ -717,7 +725,10 @@ export default function App() {
 
   // Handler: Restore Full Backup
   const handleRestoreBackup = (backup: { settings: AppSettings; issues: IssueRecord[] }) => {
-    setSettings(backup.settings);
+    // A backup doesn't replace the shared Target Project List.
+    setSettings(prev => (sharedTargets?.seeded
+      ? { ...backup.settings, customProjectList: prev.customProjectList, useCustomProjectListOnly: prev.useCustomProjectListOnly }
+      : backup.settings));
     setIssues(removeCancelledIssues(backup.issues, backup.settings.formulaConfig));
   };
 
@@ -727,6 +738,21 @@ export default function App() {
       .then(user => setCurrentUser(user ? { name: user.name || '', email: user.email || '', role: user.role === 'admin' ? 'admin' : 'user' } : null))
       .catch(() => setCurrentUser(null));
   }, []);
+
+  // Shared Target Project List: use the server's list and switch. If it isn't set up yet, the first admin
+  // to open the app sets it up from this browser's list (or the built-in default), with the switch on.
+  const seedingTargets = useRef(false);
+  useEffect(() => {
+    if (!sharedTargets) return;
+    if (sharedTargets.seeded) {
+      setSettings(prev => ({ ...prev, customProjectList: sharedTargets.names, useCustomProjectListOnly: sharedTargets.targetOnly }));
+    } else if (isAdmin && !seedingTargets.current) {
+      seedingTargets.current = true;
+      const names = settings.customProjectList?.length ? settings.customProjectList : DEFAULT_SETTINGS.customProjectList;
+      saveSharedTargets({ names, targetOnly: true, seed: true }).catch(err => console.error(err));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedTargets, isAdmin]);
 
   // Users can't open admin pages (e.g. from a bookmarked URL); wait until the role is known.
   useEffect(() => {
@@ -1088,7 +1114,7 @@ export default function App() {
         {isMonitorTab(activeTab) && <MonitorFrame tab={activeTab} />}
 
         {trackerSection(activeTab) && !isSettingsTab(activeTab) && (
-          <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} />
+          <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} isAdmin={isAdmin} />
         )}
 
         {piaSection(activeTab) && (isAdmin || !ADMIN_TABS.includes(activeTab)) && (
@@ -1162,12 +1188,13 @@ export default function App() {
             {activeTab === 'settings-targets' && (
               <SettingsPanel
                 title="Target Project List"
-                description="The list of applications you report on. When “target list only” is on, metrics show just these apps."
+                description="One shared list of the applications you report on. When “show only target projects” is on, the analytics, Assessment Tracker and PIA pages show just these apps, for everyone. New apps from Rules of Engagement tickets are added automatically."
                 facts={[
                   ['Apps in list', settings.customProjectList?.length || 0],
-                  ['Target list only', settings.useCustomProjectListOnly ? 'On' : 'Off'],
+                  ['Show only target projects', settings.useCustomProjectListOnly ? 'On' : 'Off'],
+                  ['Added from Rules of Engagement', sharedTargets?.entries.filter(e => e.source === 'roe').length ?? 0],
                 ]}
-                actionLabel="Edit target project list"
+                actionLabel={isAdmin ? 'Edit target project list' : 'View target project list'}
                 onAction={() => setIsTargetListOpen(true)}
               />
             )}
@@ -1187,7 +1214,7 @@ export default function App() {
               />
             )}
             {(activeTab === 'tracker-import' || activeTab === 'tracker-sync') && (
-              <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} />
+              <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} isAdmin={isAdmin} />
             )}
             {activeTab === 'users' && <UsersPage />}
             {activeTab === 'settings-danger' && (
@@ -1214,6 +1241,7 @@ export default function App() {
         projectAliases={settings.projectAliases || []}
         issues={issues}
         onSaveTargetList={handleSaveTargetList}
+        readOnly={!isAdmin}
       />
 
       <ImportModal

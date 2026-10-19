@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { UserRound, RefreshCw, CalendarRange, Calendar } from 'lucide-react';
 import { FilterSelect } from '../FilterChips';
 import { enrich, isDecommissioned } from '../../../tracker/shared/logic.js';
+import { targetMatcher } from '../../../tracker/shared/targets.js';
+import { useSharedTargets, activeTargetNames } from '../../utils/sharedTargets';
 import { api, getUser, setUser } from './api.js';
 import Monitoring from './Monitoring.jsx';
 import TimeReport, { PeriodComparison } from './TimeReport.jsx';
@@ -38,8 +40,10 @@ function currentPeriod(cycle) {
  * Assessment Tracker (the "Security Full Assessment Tracker" workbook as pages).
  * section: 'monitoring' | 'assessment' | 'time' | 'comparison' | 'checklist' | 'decommissioned' | 'sync' | 'import'
  * sealForProject(name): the app's current Security Seal, or null when unknown / issues still loading.
+ * When the shared Target Project List's "show only target projects" is on, only apps on it are shown (admins
+ * can show all, e.g. to find an app to add). The UberTicket sync page and seal snapshots still see every app.
  */
-export default function AssessmentTracker({ section, sealForProject }) {
+export default function AssessmentTracker({ section, sealForProject, isAdmin = false }) {
   const [cycles, setCycles] = useState(null);
   const [cycleId, setCycleId] = useState(() => Number(recall('assessment_tracker_cycle')) || null);
   const [period, setPeriod] = useState('');
@@ -49,6 +53,14 @@ export default function AssessmentTracker({ section, sealForProject }) {
   const [user, setUserState] = useState(getUser());
   const [error, setError] = useState('');
   const sealTried = useRef(new Set());
+  const targets = useSharedTargets();
+  const targetNames = activeTargetNames(targets);
+  const [showAll, setShowAll] = useState(false);
+  const isShown = useMemo(() => {
+    if (!targetNames || showAll) return null;
+    const onList = targetMatcher(targetNames);
+    return (r) => onList(r.project);
+  }, [targetNames, showAll]);
 
   const cycle = cycles?.find((c) => c.id === cycleId);
 
@@ -101,8 +113,10 @@ export default function AssessmentTracker({ section, sealForProject }) {
   }, [rows, sealForProject]);
 
   const enriched = useMemo(() => rows.map(enrich), [rows]);
-  const active = useMemo(() => enriched.filter((r) => !isDecommissioned(r)), [enriched]);
-  const retired = useMemo(() => enriched.filter(isDecommissioned), [enriched]);
+  const shown = useMemo(() => (isShown ? enriched.filter(isShown) : enriched), [enriched, isShown]);
+  const hiddenCount = enriched.length - shown.length;
+  const active = useMemo(() => shown.filter((r) => !isDecommissioned(r)), [shown]);
+  const retired = useMemo(() => shown.filter(isDecommissioned), [shown]);
   const testers = useMemo(() => [...new Set(rows.map((r) => r.securityTester).filter(Boolean))].sort(), [rows]);
   const projects = useMemo(() => [...new Set(rows.map((r) => r.project))].sort((a, b) => a.localeCompare(b)), [rows]);
 
@@ -159,6 +173,16 @@ export default function AssessmentTracker({ section, sealForProject }) {
           />
         )}
         <span className="ml-auto text-xs at-muted">{active.length} active · {retired.length} decommissioned</span>
+        {targetNames && section !== 'sync' && section !== 'import' && (
+          <span className="text-xs at-muted">
+            {showAll ? 'All apps' : `Target projects only${hiddenCount ? ` · ${hiddenCount} hidden` : ''}`}
+            {isAdmin && (
+              <button type="button" className="at-link ml-1.5" onClick={() => setShowAll((v) => !v)}>
+                {showAll ? 'Show target projects only' : 'Show all apps'}
+              </button>
+            )}
+          </span>
+        )}
         <button type="button" onClick={loadRows} className="at-btn-ghost" title="Reload">
           <RefreshCw className="w-3.5 h-3.5" aria-hidden />
         </button>
@@ -192,7 +216,7 @@ export default function AssessmentTracker({ section, sealForProject }) {
       {cycle && section === 'time' && (
         <TimeReport rows={active} period={allPeriods ? null : period} scopeLabel={`${cycle.label}, ${allPeriods ? 'all periods' : period}`} onOpen={setEditing} />
       )}
-      {cycles?.length > 0 && section === 'comparison' && <PeriodComparison cycles={cycles} />}
+      {cycles?.length > 0 && section === 'comparison' && <PeriodComparison cycles={cycles} isShown={isShown} />}
       {cycle && section === 'checklist' && <Checklist rows={active} period={period} onToggle={quickUpdate} onOpen={setEditing} />}
       {cycle && section === 'decommissioned' && (
         <Decommissioned rows={retired} onOpen={setEditing} onRestore={(r) => quickUpdate(r, { isActive: 'Active', decommissionedAt: null, decommissionReason: null })} />

@@ -29,6 +29,8 @@ interface TargetProjectListModalProps {
   projectAliases: ProjectAlias[];
   issues: IssueRecord[];
   onSaveTargetList: (list: string[], useOnly: boolean) => void;
+  // Users see the shared list but can't change it (the server enforces this too).
+  readOnly?: boolean;
 }
 
 export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
@@ -40,6 +42,7 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
   projectAliases,
   issues,
   onSaveTargetList,
+  readOnly = false,
 }) => {
   const [rawText, setRawText] = useState<string>('');
   const [isStrictOnly, setIsStrictOnly] = useState<boolean>(useCustomProjectListOnly);
@@ -145,7 +148,7 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
             <div>
               <h2 className="text-base font-bold text-white">Target Project Watchlist & Auto-Matcher</h2>
               <p className="text-xs text-slate-400">
-                Provide your custom list of project names to search, filter, and track from uploaded data.
+                One shared list for everyone. New apps from Rules of Engagement tickets are added automatically.
               </p>
             </div>
           </div>
@@ -160,6 +163,11 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+          {readOnly && (
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-300">
+              Only admins can change the Target Project List.
+            </div>
+          )}
           {/* Quick Explanation Banner */}
           <div className="bg-blue-950/40 border border-blue-800/60 rounded-xl p-4 space-y-2">
             <div className="flex items-center space-x-2 text-blue-300 font-semibold">
@@ -180,6 +188,7 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
           </div>
 
           {/* Mode Switcher & Quick Helper Actions */}
+          <fieldset disabled={readOnly} className="contents">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
             <label className="flex items-center space-x-3 cursor-pointer">
               <input
@@ -189,9 +198,9 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
                 className="rounded border-slate-700 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
               />
               <div>
-                <span className="font-semibold text-slate-200 text-xs">Strict Watchlist Mode</span>
+                <span className="font-semibold text-slate-200 text-xs">Show only target projects</span>
                 <p className="text-[11px] text-slate-400">
-                  Only show and report the applications listed in this target list on the dashboard.
+                  For everyone: the analytics, Assessment Tracker and PIA pages show only the apps on this list.
                 </p>
               </div>
             </label>
@@ -216,6 +225,7 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
               </button>
             </div>
           </div>
+          </fieldset>
 
           {/* Tabs: Bulk Paste vs Interactive Item View */}
           <div className="space-y-3">
@@ -259,6 +269,7 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
                 <textarea
                   rows={9}
                   value={rawText}
+                  readOnly={readOnly}
                   onChange={e => setRawText(e.target.value)}
                   placeholder={`Example:\nStaffcentral IOS Project\nStaffcentral AOS Project\nStaffcentral\nDoorspace AOS\nDoorspace IOS\nRadio AOS\nBoardroom AOS\nGenesis\nGenesis IOS\nGenesis AOS`}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3.5 font-mono text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 leading-relaxed"
@@ -273,6 +284,7 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
             {activeTab === 'list' && (
               <div className="space-y-3">
                 {/* Add single item row */}
+                {!readOnly && (
                 <div className="flex items-center space-x-2">
                   <input
                     type="text"
@@ -291,6 +303,7 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
                     <span>Add</span>
                   </button>
                 </div>
+                )}
 
                 {/* Items List with Live Match Status */}
                 <div className="bg-slate-950 border border-slate-800 rounded-xl divide-y divide-slate-800 max-h-72 overflow-y-auto">
@@ -343,14 +356,14 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
                             </div>
                           </div>
 
-                          <button
+                          {!readOnly && <button
                             type="button"
                             onClick={() => handleRemoveItem(idx)}
                             className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-950/40 rounded transition"
                             title="Remove from target list"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          </button>}
                         </div>
                       );
                     })
@@ -363,6 +376,7 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-800 bg-slate-900 flex items-center justify-between">
+          {readOnly ? <span /> : (
           <button
             type="button"
             onClick={() => setRawText('')}
@@ -370,6 +384,7 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
           >
             Clear List
           </button>
+          )}
 
           <div className="flex items-center space-x-2">
             <button
@@ -377,16 +392,16 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition"
             >
-              Cancel
+              {readOnly ? 'Close' : 'Cancel'}
             </button>
-            <button
+            {!readOnly && <button
               type="button"
               onClick={handleSave}
               className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-md shadow-blue-600/30 flex items-center space-x-1.5"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Apply Target Watchlist ({currentList.length})</span>
-            </button>
+            </button>}
           </div>
         </div>
       </div>

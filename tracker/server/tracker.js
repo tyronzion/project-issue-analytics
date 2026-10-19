@@ -3,6 +3,7 @@ import path from 'node:path';
 import { openDb, FIELDS, toApi, toDb, listApps } from './db.js';
 import { parseWorkbook, previewOf, importCycles } from './importer.js';
 import { syncTickets } from './sync.js';
+import { readTargets, saveTargets, addTargetsFromRoe } from './targets.js';
 import { TRACKS, SEALS, matchKey } from '../shared/logic.js';
 
 // Assessment Tracker API, mounted by vite.config.ts at /api/tracker.
@@ -24,8 +25,16 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
   function sync() {
     if (!db || !getTickets) return lastSync;
     try {
-      lastSync = syncTickets(db, getTickets(), { offsetHours });
+      const tickets = getTickets();
+      lastSync = syncTickets(db, tickets, { offsetHours });
       log(`UberTicket sync: ${lastSync.tickets} tickets, ${lastSync.matchedApps} apps matched, ${lastSync.updated} updated, ${lastSync.unmatched.length} unmatched`);
+      // New Rules of Engagement apps join the shared Target Project List.
+      try {
+        lastSync.targetsAdded = addTargetsFromRoe(db, tickets?.roe || []);
+        if (lastSync.targetsAdded.length) log(`added to the Target Project List from Rules of Engagement: ${lastSync.targetsAdded.join(', ')}`);
+      } catch (err) {
+        log(`Target Project List update from Rules of Engagement failed: ${err.message}`);
+      }
     } catch (err) {
       lastSync = { at: new Date().toISOString(), error: err.message, unmatched: [] };
       log(`UberTicket sync failed: ${err.message}`);
@@ -136,6 +145,24 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
       .run(seal, ticketKey, 'Security Seal (auto)', r.id);
     db.prepare('INSERT INTO history (assessment_id, field, old_value, new_value, changed_by) VALUES (?, ?, ?, ?, ?)').run(r.id, 'seal', r.seal, seal, `Security Seal at ${ticketKey} resolution`);
     res.json(toApi(db.prepare('SELECT * FROM assessments WHERE id = ?').get(r.id)));
+  });
+
+  // Shared Target Project List: everyone signed in reads it; only admins change it (fails closed without
+  // isAdmin, unlike the tracker's other setup routes). Admins also get the change history.
+  const isAdminReq = (req) => !!(isAdmin && isAdmin(req));
+  router.get('/targets', (req, res) => res.json(readTargets(db, { history: isAdminReq(req) })));
+  router.put('/targets', (req, res) => {
+    if (!isAdminReq(req)) return res.status(403).json({ error: 'Only admins can change the Target Project List.' });
+    const { names, targetOnly, seed } = req.body || {};
+    if (names === undefined && typeof targetOnly !== 'boolean') return res.status(400).json({ error: 'names or targetOnly is required.' });
+    try {
+      const result = saveTargets(db, { names, targetOnly, seed: seed === true, user: userOf(req) });
+      if (result.conflict) return res.status(409).json({ error: 'The shared list is already set up.', ...readTargets(db, { history: true }) });
+      log(`Target Project List saved by ${userOf(req)}: ${result.names.length} apps, target only ${result.targetOnly ? 'on' : 'off'}`);
+      res.json(readTargets(db, { history: true }));
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
   });
 
   // UberTicket sync status, unmatched tickets and manual links.

@@ -153,12 +153,13 @@ function downloadCsv(name, header, lines) {
 }
 
 // Every period of every cycle, grouped by track (Bi-Annual, Quarterly), oldest first, with its time stats.
-function usePeriodComparison(cycles) {
+// isShown(row): the Target Project List filter, or null to keep every app.
+function usePeriodComparison(cycles, isShown) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   useEffect(() => {
     let live = true;
-    Promise.all(cycles.map((c) => api.assessments(c.id).then((rows) => ({ c, rows: rows.map(enrich).filter((r) => !isDecommissioned(r)) }))))
+    Promise.all(cycles.map((c) => api.assessments(c.id).then((rows) => ({ c, rows: rows.map(enrich).filter((r) => !isDecommissioned(r) && (!isShown || isShown(r))) }))))
       .then((all) => {
         if (!live) return;
         const list = [];
@@ -176,7 +177,7 @@ function usePeriodComparison(cycles) {
     return () => {
       live = false;
     };
-  }, [cycles]);
+  }, [cycles, isShown]);
   return { data, error };
 }
 
@@ -270,8 +271,8 @@ function TrackComparison({ track, periods, metric }) {
   );
 }
 
-export function PeriodComparison({ cycles }) {
-  const { data, error } = usePeriodComparison(cycles);
+export function PeriodComparison({ cycles, isShown = null }) {
+  const { data, error } = usePeriodComparison(cycles, isShown);
   const [metric, setMetric] = useState('avg');
   if (error) return <div className="at-alert at-alert--error">{error}</div>;
   if (!data) return <div className="at-card p-6 text-center at-muted">Loading periods…</div>;

@@ -34,6 +34,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `src/utils/projectMatcher.ts` | Maps issues to projects using aliases and fuzzy matching | metricsEngine |
 | `src/utils/securitySeal.ts` | **Seal matrix** (Secure → Compromised) from outstanding severities | SecuritySealDashboard and the tracker seal snapshot |
 | `src/utils/storage.ts` | localStorage for issues, settings, formulas and the Jira profile. `normalizeSettings` / `normalizeJiraProfile` validate stored and imported settings. | App, SettingsModal (settings-only export/import) |
+| `src/utils/sharedTargets.ts` | Client for `/api/tracker/targets`: one copy per page (`useSharedTargets`), `saveSharedTargets`, `activeTargetNames` | App.tsx, tracker, PIA |
 | `src/utils/remotePersistence.ts` | Client for `/api/state/issues` | App |
 | `src/utils/excelParser.ts` | Excel/CSV import and export, and row → `IssueRecord` mapping | ImportModal, App |
 | `src/utils/sampleData.ts` | Default and sample data | Bootstrap |
@@ -71,9 +72,11 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 |---|---|---|
 | `tracker/server/tracker.js` | Express router: cycles, assessments, history, seal, sync, links, import | db, sync, importer |
 | `tracker/server/sync.js` | UberTicket → tracker matching and updates (product name, then quarter → period) | logic.js `matchKey` |
+| `tracker/server/targets.js` | **Shared Target Project List** (D11): tables, read/save (admin), `addTargetsFromRoe` after each sync | tracker.js, db.js |
 | `tracker/server/db.js`, `sqlite.js` | Schema, field mapping (`toApi`/`toDb`), node:sqlite or sql.js adapter | tracker |
 | `tracker/server/importer.js`, `cli-import.js` | Workbook import | tracker |
 | `tracker/shared/logic.js` | **Scoring and status rules ported from the Excel formulas.** Shared by the server and the UI. | sync, UI, App.tsx |
+| `tracker/shared/targets.js` | `targetKey` / `targetMatcher`: is an app on the Target Project List (ignores platform and filler words) | targets.js, tracker + PIA UI |
 | `tracker/test/*.test.js` | Tests for logic and sync (in-memory DB) | `npm run test:tracker` |
 
 ## Privacy Impact Assessments (`pia/`, D10)

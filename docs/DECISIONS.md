@@ -134,3 +134,14 @@ Add a new entry only for decisions a future developer might otherwise reconsider
 - **Impact:**
   - Back up `pia/data/pia.db`.
   - Phase 2 (read-only GitHub App scan) and phase 3 (own PIA vs covered by parent, decided by an admin with the parent's PIA linked) are planned in `docs/sessions/pia.md`. They must keep GitHub access GET-only, with an org allowlist.
+
+### D11: The Target Project List is one shared list on the server
+- **Date:** 2026-10-19
+- **Decision:**
+  - The Target Project List and "show only target projects" moved from each browser's `localStorage` to the tracker database (`target_projects`, `target_history`, `target_settings`), served at `/api/tracker/targets`. Reads need sign-in; changes are admin-only and fail closed without `isAdmin`.
+  - New Rules of Engagement products are added by the UberTicket sync, only for tickets created after the list was set up (no backfill of years of old RoE apps). Apps an admin removed stay removed.
+  - Entries are unique by `matchKey` (platform entries such as "Staffcentral IOS" stay separate, as the analytics pages count them separately). Tracker and PIA pages match apps with `targetKey`, which ignores platform and filler words.
+  - The filter is applied in the UI only.
+- **Reason:** The user wanted one list for everyone that grows with new RoE apps and limits the analytics, tracker and PIA pages. A per-browser list can't be updated by the server.
+- **Impact:** Restoring a settings backup or clearing data no longer changes the list unless an admin does it. The list is in `tracker.db`, so the tracker backup covers it.
+

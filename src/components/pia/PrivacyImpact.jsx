@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Plus, ExternalLink } from 'lucide-react';
 import { FilterSearch } from '../FilterChips';
 import { STATUS } from '../../../pia/shared/rules.js';
+import { targetMatcher } from '../../../tracker/shared/targets.js';
+import { useSharedTargets, activeTargetNames } from '../../utils/sharedTargets';
 import { fmtDate, cx } from '../tracker/ui.jsx';
 import { piaApi } from './api.js';
 import { StatusBadge, InProgressBadge, DaysLeft } from './badges.jsx';
@@ -23,6 +25,8 @@ const KPI_NOTE = {
 /**
  * Privacy Impact Assessments: yearly reassessment status per application.
  * section: 'overview' | 'matching'. Changes are admin-only on the server; isAdmin only hides the buttons.
+ * The overview shows only apps on the shared Target Project List when "show only target projects" is on
+ * (admins can show all). The matching page always sees every app.
  */
 export default function PrivacyImpact({ section, isAdmin }) {
   const [data, setData] = useState(null);
@@ -31,6 +35,8 @@ export default function PrivacyImpact({ section, isAdmin }) {
   const [query, setQuery] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [openId, setOpenId] = useState(null);
+  const targetNames = activeTargetNames(useSharedTargets());
+  const [allApps, setAllApps] = useState(false);
 
   const load = useCallback(() => piaApi.apps().then(setData).catch((e) => setError(e.message)), []);
   useEffect(() => {
@@ -40,7 +46,13 @@ export default function PrivacyImpact({ section, isAdmin }) {
     return () => clearInterval(t);
   }, [load]);
 
-  const apps = data?.apps ?? [];
+  const everyApp = data?.apps ?? [];
+  const apps = useMemo(() => {
+    if (!targetNames || allApps) return everyApp;
+    const onList = targetMatcher(targetNames);
+    return everyApp.filter((a) => onList(a.name));
+  }, [everyApp, targetNames, allApps]);
+  const hiddenCount = everyApp.length - apps.length;
   const counts = useMemo(() => Object.fromEntries(KPIS.map((k) => [k, apps.filter((a) => counted(a) && a.status === k).length])), [apps]);
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -100,7 +112,7 @@ export default function PrivacyImpact({ section, isAdmin }) {
               </button>
             ))}
             <article className="issues-kpi-card">
-              <div><span>Applications</span><small>Tracker apps + PIA products (hidden and decommissioned not counted)</small></div>
+              <div><span>Applications</span><small>{targetNames && !allApps ? 'Target projects only' : 'Tracker apps + PIA products'} (hidden and decommissioned not counted)</small></div>
               <strong>{data ? apps.filter(counted).length : '…'}</strong>
             </article>
           </section>
@@ -113,6 +125,16 @@ export default function PrivacyImpact({ section, isAdmin }) {
               <label className="flex items-center gap-1.5 text-xs at-muted">
                 <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> Show hidden and decommissioned
               </label>
+              {targetNames && (
+                <span className="text-xs at-muted">
+                  {allApps ? 'All apps' : `Target projects only${hiddenCount ? ` · ${hiddenCount} not on the list` : ''}`}
+                  {isAdmin && (
+                    <button type="button" className="at-link ml-1.5" onClick={() => setAllApps((v) => !v)}>
+                      {allApps ? 'Show target projects only' : 'Show all apps'}
+                    </button>
+                  )}
+                </span>
+              )}
               {isAdmin && (
                 <button type="button" onClick={addApp} className="at-btn"><Plus className="w-3.5 h-3.5" aria-hidden /> Add app</button>
               )}

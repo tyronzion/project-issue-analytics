@@ -11,6 +11,11 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 - Classic login keeps working throughout.
 
 ## Recently completed
+- **Shared Target Project List** (2026-10-19, D11; pushed to `main`, **not deployed**).
+  - The list and the "show only target projects" switch are now one shared copy on the server (`tracker/server/targets.js`, tables in `tracker.db`, `GET/PUT /api/tracker/targets`). Everyone reads it; only admins change it, with a history log. The browser's own copy is no longer used.
+  - The first admin to open the app after deploy sets it up from that browser's list (or the 104-app default), with the switch on.
+  - The UberTicket sync adds products from Rules of Engagement tickets created after setup that aren't covered by the list (platform variants count; removed apps aren't re-added).
+  - When the switch is on, the analytics pages, Assessment Tracker pages and PIA Overview show only target apps (`tracker/shared/targets.js` `targetKey`). Admins can "Show all apps". UberTicket Sync and PIA Matching still see every app. It is a display filter, not access control.
 - **One filter design + rejected tickets never count** (2026-10-16; pushed to `main` as `a69e3cb`, **not deployed**). Every page's filters now use the global filter bar's chip (`FilterChips.tsx`): tracker cycle/period header, Assessment List, Monitoring, Time Report, Period Comparison, Decommissioned, All Issues, PIA, and the UberTicket monitor pages (their segmented date / environment / priority buttons became dropdown chips). Rejected UberTicket tickets are excluded everywhere (D3 note).
 - **UI clean-up from MichaelC's review** (2026-10-16; pushed to `main` as `dff7034`, **not deployed**).
   - Time Report and Period Comparison redesigned to read at a glance: a plain-language headline, size cards with range strip vs the man-hours estimate (`estimateMinutes`/`vsEstimate` in `logic.js`), tester bars, an "Above/Within/Below estimate" badge per app, and period columns per track.
@@ -21,7 +26,7 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 - **Tracker Period Comparison page** (2026-10-16; pushed to `main` as `7fb847f`, **not deployed**). The comparison between periods moved off Time Report to its own sidebar page "Period Comparison" (`/assessment-tracker/period-comparison`, `tracker-comparison`); `PeriodComparison` is still exported from `TimeReport.jsx`.
 - **Tracker Time Report** (2026-10-16; pushed to `main` as `397f18b`, **not deployed**). New sidebar page "Time Report" (`/assessment-tracker/time-report`, `tracker-time`, everyone can view) asked for by MichaelC: summary KPIs, by application size (= priority), by security tester, per app (filters + CSV), and a comparison between periods across all cycles, grouped by track (Bi-Annual vs Quarterly are never compared). Uses `timeByGroup` in `logic.js`; Monitoring's priority table is now the shared `TimeByPriorityTable`.
 - **Tracker time spent per app** (2026-10-16; pushed to `main` as `a82e2e3`, **not deployed**). The existing `time_spent` (minutes; from the RoE ticket or the editor) is now shown per app: a Time spent column on Assessment List and Monitoring, plus a "Time Spent by Priority" table on Monitoring (apps with time, hours range, average, total, vs the workbook man-hours estimate). Apps without time are left out of the range. Logic is `timeStats`/`timeByPriority` in `tracker/shared/logic.js`; formatting is `fmtMinutes` in `ui.jsx`.
-- **PIA monitor, phase 1** (2026-10-15, D10; pushed to `main` 2026-10-19, **not deployed**).
+- **PIA monitor, phase 1** (2026-10-15, D10; pushed to `main` as `14acd59` on 2026-10-19, **not deployed**).
   - New `pia/` module at `/api/pia`, with sidebar pages "PIA Overview" and "PIA Matching" (admins only).
   - Reads UberTicket **policies** of template `[PIA01] Privacy Impact Assessment` (379488) through `GET /v1/policies/search`; the product is field 18890.
   - The app list is tracker apps plus PIA products plus admin-added apps.
@@ -62,7 +67,7 @@ These are recorded only, not fixed.
 
 ## Architecture notes (only what saves time)
 - The whole backend runs as Vite middleware in `vite.config.ts`: Jira, Postgres state, the monitor (an Express app), and the tracker (an Express router).
-- Issue data is stored in `localStorage` first, with Postgres `app_state` as an optional mirror. Analytics settings and formulas live only in `localStorage`.
+- Issue data is stored in `localStorage` first, with Postgres `app_state` as an optional mirror. Analytics settings and formulas live only in `localStorage`, except the Target Project List and its switch (server, D11).
 - The tracker DB uses `node:sqlite` on Node 22.13+ and falls back to `sql.js`. Tests run on both.
 
 ## Constraints (do not break)
@@ -78,7 +83,7 @@ These are recorded only, not fixed.
 - The `@layer` order at the top of `src/index.css` (design-system layers before Tailwind's) must not change; see D6.
 
 ## Last important decisions
-See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3 UberTicket wins in tracker sync, D4 tracker styling isolation, D5 SQLite fallback, D6 design system through tokens, D7 server-side Microsoft sign-in, D8 admin/user roles, D10 PIA module.
+See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3 UberTicket wins in tracker sync, D4 tracker styling isolation, D5 SQLite fallback, D6 design system through tokens, D7 server-side Microsoft sign-in, D8 admin/user roles, D10 PIA module, D11 shared Target Project List.
 
 ## Verification (2026-10-14, after Microsoft sign-in)
 | Check | Result |
@@ -86,7 +91,7 @@ See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3
 | `npm run test:auth` | 34/34 pass (both sign-in options side by side, roles, `pia/data` blocked) — rerun 2026-10-15 |
 | `npm run test:monitor` | 33/33 pass (incl. PIA policy client and normalizer) — 2026-10-16 |
 | `npm run test:pia` | 20/20 pass on node:sqlite and sql.js — 2026-10-15 |
-| `npm run test:tracker` | 23/23 pass (node:sqlite and sql.js) — 2026-10-16 |
+| `npm run test:tracker` | 31/31 pass (node:sqlite and sql.js, incl. shared Target Project List) — 2026-10-19 |
 | `npm run lint` (tsc) | clean |
 | `vite build` | succeeds; fonts bundled |
 | Browser check (`issue-analytics-demo` preview) | design pages checked. Auth checked live: fails closed (503), data folders 404, dev bypass and sign-out work. Classic login checked live (`issue-analytics-classic` preview, generated test credentials). Roles checked live in both preview configs: admin Users page (add, change role, remove), and as user every admin action returns 403 while admin pages redirect. The real Entra round trip was verified in production on 2026-10-15. |

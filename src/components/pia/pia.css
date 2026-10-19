@@ -1,0 +1,43 @@
+/* Privacy Impact Assessment pages. Built on the tracker's at-* classes (tracker.css, DECISIONS D4);
+   these add the reassessment status colours, from design-system tokens only (D6). */
+
+.pia-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pia-status--overdue { color: var(--color-feedback-danger); background: var(--color-feedback-danger-soft); border-color: var(--color-border-danger); }
+.pia-status--due-soon { color: var(--color-feedback-warning-contrast); background: var(--color-feedback-warning-soft); border-color: var(--color-border-warning); }
+.pia-status--never { color: var(--color-feedback-danger); background: var(--color-surface-canvas); border-color: var(--color-border-danger); border-style: dashed; }
+.pia-status--initial { color: var(--color-feedback-info); background: var(--color-feedback-info-soft); border-color: var(--color-border-info); }
+.pia-status--current { color: var(--color-feedback-success); background: var(--color-feedback-success-soft); border-color: var(--color-border-success); }
+.pia-status--hidden { color: var(--color-feedback-muted); background: var(--color-feedback-muted-soft); border-color: var(--color-border-subtle); }
+
+.pia-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-feedback-info);
+  background: var(--color-feedback-info-soft);
+}
+
+.pia-kpi { cursor: pointer; text-align: left; }
+.pia-kpi[aria-pressed='true'] { outline: 2px solid var(--cs-primary); outline-offset: -2px; }
+
+.pia-days--late { color: var(--color-feedback-danger); font-weight: 700; }
+.pia-days--soon { color: var(--color-feedback-warning-contrast); font-weight: 700; }
+
+.pia-timeline { list-style: none; margin: 0; padding: 0; }
+.pia-timeline li { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--color-border-subtle); }
+.pia-timeline li:last-child { border-bottom: 0; }
+.pia-timeline time { width: 96px; flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--cs-muted); }

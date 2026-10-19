@@ -10,7 +10,8 @@ Jira API / Excel-CSV import / Postgres ──▶ App.tsx issue state (localStora
    ──▶ metricsEngine + projectMatcher ──▶ MetricsDashboard / Charts / Issues / Security Seal
 
 UberTicket API (read-only, encrypted token) ──▶ monitor.js (DPSA, Full Assessment, RoE metrics) ──▶ /monitor/* pages (iframes)
-                                             └─▶ onRefresh ──▶ tracker sync.js ──▶ SQLite tracker.db ──▶ /api/tracker ──▶ tracker UI
+                                             ├─▶ onRefresh ──▶ tracker sync.js ──▶ SQLite tracker.db ──▶ /api/tracker ──▶ tracker UI
+                                             └─▶ [PIA01] policies ─▶ onRefresh ──▶ pia sync.js (+ tracker apps) ──▶ SQLite pia.db ──▶ /api/pia ──▶ PIA UI
 Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapshot on resolve)
 ```
 
@@ -39,7 +40,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `src/types.ts` | Shared TS types (`IssueRecord`, `ActiveTab`, `AppSettings`, …) | Everywhere |
 | `src/components/MetricsDashboard.tsx` | Project Metrics and Dependabots page: `MetricKpi` cards (formula in tooltip + "How are these counted?") and the main project metrics table. Large file. | metricsEngine |
 | `src/components/ChartsDashboard.tsx` | Dashboard totals with colour-coded icons and a 12-month sparkline (found / open at month end / resolved) | `index.css` `.dashboard-*` |
-| `src/components/FilterChips.tsx` | `FilterSelect` / `FilterSearch` / `FilterReset`: the one filter look (`.cs-filter-*` in index.css), used by the global bar, tracker and All Issues. The monitor pages mirror it in `monitor/public/theme.css` (`.selectbox`, `.search`, `.ftitle`). | DateRangeFilterBar and every page filter |
+| `src/components/FilterChips.tsx` | `FilterSelect` / `FilterSearch` / `FilterReset`: the one filter look (`.cs-filter-*` in index.css), used by the global bar, tracker, All Issues and PIA. The monitor pages mirror it in `monitor/public/theme.css` (`.selectbox`, `.search`, `.ftitle`). | DateRangeFilterBar and every page filter |
 | `src/components/SettingsPage.tsx` | Settings shell (`SETTINGS_SECTIONS`, `SettingsLayout`), dialog launcher panels, and the Danger Zone (the only Delete All Data entry point) | App.tsx renders each section |
 | `src/components/FormulaEditorModal.tsx` | User-defined metric formulas | settings |
 | `src/components/JiraIntegrationPage.tsx` | Jira connection UI. Posts its config to `/api/jira/issues`. | storage (Jira profile) |
@@ -55,6 +56,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `monitor/server/tokenStore.js` | **Security-sensitive.** AES-256-GCM token storage (`data/token.enc` and `secret.key`, mode 0600) | monitor |
 | `monitor/server/businessTime.js`, `phHolidays.js` | Business-hours maths in Manila time, with PH holidays | metrics, fullAssessment |
 | `monitor/server/metrics.js`, `fullAssessment.js` | DPSA MTTR, priority SLA, times tested | monitor |
+| `monitor/server/piaPolicy.js` | `[PIA01]` policy (template 379488) → `{ product, version, state, approvedAt, … }`. Keeps only fields 18890/18891/37936/37937; questionnaire answers are dropped. | monitor (`piaPolicies()`), pia |
 | `monitor/server/server.js` | Standalone mode (`npm run monitor`, 127.0.0.1:3010) | monitor |
 | `monitor/public/*.html`, `common.js` | Monitor pages (`assessment.html` serves both FullAssessment and RoE) | `/monitor/api/*` |
 
@@ -73,3 +75,13 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `tracker/server/importer.js`, `cli-import.js` | Workbook import | tracker |
 | `tracker/shared/logic.js` | **Scoring and status rules ported from the Excel formulas.** Shared by the server and the UI. | sync, UI, App.tsx |
 | `tracker/test/*.test.js` | Tests for logic and sync (in-memory DB) | `npm run test:tracker` |
+
+## Privacy Impact Assessments (`pia/`, D10)
+| File | Purpose | Relationships |
+|---|---|---|
+| `pia/server/pia.js` | Express router at `/api/pia`: apps + status, app detail, admin-only reassessments / hide / add app / links / settings / sync. Fails closed without `isAdmin`. Report links must be https. | db, sync, rules; wired in `vite.config.ts` |
+| `pia/server/sync.js` | Tracker apps + PIA policies → app list (matchKey, `pia_links`); rebuilds the policy cache; never touches admin-entered rows | `tracker/shared/logic.js` `matchKey`, tracker `apps()` |
+| `pia/server/db.js` | Schema of `pia/data/pia.db` (reuses `tracker/server/sqlite.js`) and `*ToApi` mappers | pia, sync |
+| `pia/shared/rules.js` | **Reassessment rules** (calendar days, Manila): due = last assessed + 12 months; never / initial / current / due-soon / overdue; in-progress badge | server and UI |
+| `pia/test/*.test.js` | Rules, sync, routes (roles, validation) | `npm run test:pia` |
+| `src/components/pia/*` | UI: `PrivacyImpact.jsx` (shell + overview), `AppDetail.jsx` (drawer, record reassessment), `MatchingPage.jsx`, `badges.jsx`, `api.js`, `pia.css` (status colours from tokens; reuses `tracker.css`) | `/api/pia` |

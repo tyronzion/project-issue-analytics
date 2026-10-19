@@ -20,6 +20,8 @@ export const TAB_ROUTES: { tab: ActiveTab; path: string; title: string }[] = [
   { tab: 'tracker-decommissioned', path: '/assessment-tracker/decommissioned', title: 'Decommissioned Apps' },
   { tab: 'tracker-sync', path: '/settings/uberticket-sync', title: 'UberTicket Sync' },
   { tab: 'tracker-import', path: '/settings/import-excel', title: 'Import Assessment Excel' },
+  { tab: 'pia', path: '/pia', title: 'Privacy Impact Assessments' },
+  { tab: 'pia-matching', path: '/pia/uberticket-matching', title: 'PIA Matching' },
   { tab: 'users', path: '/settings/users', title: 'Users & Roles' },
   { tab: 'settings', path: '/settings', title: 'Settings' },
   { tab: 'settings-targets', path: '/settings/target-projects', title: 'Target Project List' },
@@ -38,6 +40,7 @@ const PATH_ALIASES: Record<string, ActiveTab> = {
   '/roe': 'roe',
   '/tracker': 'tracker',
   '/assessment-tracker/monitoring': 'tracker',
+  '/privacy-impact-assessments': 'pia',
   // Old paths of pages that moved into Settings.
   '/jira': 'jira',
   '/formulas': 'formulas',
@@ -52,7 +55,7 @@ function normalizePath(pathname: string): string {
 }
 
 // Pages only admins can open (the server enforces the matching actions as well).
-export const ADMIN_TABS: ActiveTab[] = ['jira', 'tracker-sync', 'tracker-import', 'users', 'settings-merge', 'settings-danger'];
+export const ADMIN_TABS: ActiveTab[] = ['jira', 'tracker-sync', 'tracker-import', 'pia-matching', 'users', 'settings-merge', 'settings-danger'];
 
 export function getTabFromPath(pathname: string): ActiveTab | undefined {
   const path = normalizePath(pathname);

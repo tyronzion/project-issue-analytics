@@ -1,26 +1,33 @@
 # Project State
 
-_Last updated: 2026-10-16_
+_Last updated: 2026-10-19_
 
 ## Current phase
 The app is in production use and gets features added incrementally. The Assessment Tracker was merged in on 2026-10-13, which brings all three parts (analytics, monitors and tracker) into one app.
 
 ## Current focus
 The sign-in page offers two options, "Sign in with Microsoft" and the classic team login (D7 amended).
-- **Enabled on production 2026-10-15.** The server's `.env.local` has all `AUTH_*` settings (redirect URI `https://security-analytics.cloudstaff.tech/callback`, as registered in Entra), and the log says `sign-in options: Microsoft + classic`. Set by hand with `auth/envFromCi.js` because no GitHub runner is registered (runner unpacked but not configured in `~/actions-runner`). The first real sign-in failed with `token exchange failed: invalid_state` (msal-node decodes a payload state it was not given in the request); fixed by passing `state` in the `acquireTokenByCode` request. Confirm with a real sign-in after deploying the fix.
+- **Enabled on production 2026-10-15.** The server's `.env.local` has all `AUTH_*` settings (redirect URI `https://security-analytics.cloudstaff.tech/callback`, as registered in Entra), and the log says `sign-in options: Microsoft + classic`. Set by hand with `auth/envFromCi.js` because no GitHub runner is registered (runner unpacked but not configured in `~/actions-runner`). The first real sign-in failed with `token exchange failed: invalid_state` (msal-node decodes a payload state it was not given in the request); fixed by passing `state` in the `acquireTokenByCode` request (`b0f966e`). **Verified 2026-10-15 02:05: a real Microsoft sign-in works in production** (`signed in: zionm@cloudstaff.com`).
 - Classic login keeps working throughout.
 
 ## Recently completed
-- **One filter design + rejected tickets never count** (2026-10-16; pushed to `main`, **not deployed**). Every page's filters now use the global filter bar's chip (`FilterChips.tsx`): tracker cycle/period header, Assessment List, Monitoring, Time Report, Period Comparison, Decommissioned, All Issues, and the UberTicket monitor pages (their segmented date / environment / priority buttons became dropdown chips). Rejected UberTicket tickets are excluded everywhere (D3 note).
-- **UI clean-up from MichaelC's review** (2026-10-16; pushed to `main`, **not deployed**).
+- **One filter design + rejected tickets never count** (2026-10-16; pushed to `main` as `a69e3cb`, **not deployed**). Every page's filters now use the global filter bar's chip (`FilterChips.tsx`): tracker cycle/period header, Assessment List, Monitoring, Time Report, Period Comparison, Decommissioned, All Issues, PIA, and the UberTicket monitor pages (their segmented date / environment / priority buttons became dropdown chips). Rejected UberTicket tickets are excluded everywhere (D3 note).
+- **UI clean-up from MichaelC's review** (2026-10-16; pushed to `main` as `dff7034`, **not deployed**).
   - Time Report and Period Comparison redesigned to read at a glance: a plain-language headline, size cards with range strip vs the man-hours estimate (`estimateMinutes`/`vsEstimate` in `logic.js`), tester bars, an "Above/Within/Below estimate" badge per app, and period columns per track.
   - Dashboard: colour-coded icons plus a 12-month sparkline behind each total.
   - Project Metrics / Dependabots: six quiet KPI cards; the formulas moved into a collapsed "How are these counted?".
   - New **Settings** page (`/settings/*`): Application Settings, Formula Rules, Target Project List, Jira, Merge Data, Import Excel, UberTicket Sync, Users & Roles, Danger Zone. Those entries left the sidebar; old paths still work. **Delete All Data now exists only in the Danger Zone** (removed from the navbar menu, Project Metrics, Dependabots and All Issues).
-- **Time spent from Full Assessment tickets** (2026-10-16; pushed to `main`, **not deployed**). Full Assessment (1080829) tickets have Time Spent (MM), Size and Seal under Private Fields; `FULL_FIELDS` now reads Time Spent and Size (ids 22570/43044 as in RoE, label fallback for grouped data) and sync no longer limits time spent to RoE. **Unverified against a real Full Assessment payload:** after deploy, check a resolved Full Assessment ticket (e.g. the one with 500) shows its time in the tracker; if not, the template uses different field ids.
-- **Tracker Period Comparison page** (2026-10-16; pushed to `main`, **not deployed**). The comparison between periods moved off Time Report to its own sidebar page "Period Comparison" (`/assessment-tracker/period-comparison`, `tracker-comparison`); `PeriodComparison` is still exported from `TimeReport.jsx`.
-- **Tracker Time Report** (2026-10-16; pushed to `main`, **not deployed**). New sidebar page "Time Report" (`/assessment-tracker/time-report`, `tracker-time`, everyone can view) asked for by MichaelC: summary KPIs, by application size (= priority), by security tester, per app (filters + CSV), and a comparison between periods across all cycles, grouped by track (Bi-Annual vs Quarterly are never compared). Uses `timeByGroup` in `logic.js`; Monitoring's priority table is now the shared `TimeByPriorityTable`.
-- **Tracker time spent per app** (2026-10-16; pushed to `main`, **not deployed**). The existing `time_spent` (minutes; from the RoE ticket or the editor) is now shown per app: a Time spent column on Assessment List and Monitoring, plus a "Time Spent by Priority" table on Monitoring (apps with time, hours range, average, total, vs the workbook man-hours estimate). Apps without time are left out of the range. Logic is `timeStats`/`timeByPriority` in `tracker/shared/logic.js`; formatting is `fmtMinutes` in `ui.jsx`.
+- **Time spent from Full Assessment tickets** (2026-10-16; pushed to `main` as `875b440`, **not deployed**). Full Assessment (1080829) tickets have Time Spent (MM), Size and Seal under Private Fields; `FULL_FIELDS` now reads Time Spent and Size (ids 22570/43044 as in RoE, label fallback for grouped data) and sync no longer limits time spent to RoE. **Unverified against a real Full Assessment payload:** after deploy, check a resolved Full Assessment ticket (e.g. the one with 500) shows its time in the tracker; if not, the template uses different field ids.
+- **Tracker Period Comparison page** (2026-10-16; pushed to `main` as `7fb847f`, **not deployed**). The comparison between periods moved off Time Report to its own sidebar page "Period Comparison" (`/assessment-tracker/period-comparison`, `tracker-comparison`); `PeriodComparison` is still exported from `TimeReport.jsx`.
+- **Tracker Time Report** (2026-10-16; pushed to `main` as `397f18b`, **not deployed**). New sidebar page "Time Report" (`/assessment-tracker/time-report`, `tracker-time`, everyone can view) asked for by MichaelC: summary KPIs, by application size (= priority), by security tester, per app (filters + CSV), and a comparison between periods across all cycles, grouped by track (Bi-Annual vs Quarterly are never compared). Uses `timeByGroup` in `logic.js`; Monitoring's priority table is now the shared `TimeByPriorityTable`.
+- **Tracker time spent per app** (2026-10-16; pushed to `main` as `a82e2e3`, **not deployed**). The existing `time_spent` (minutes; from the RoE ticket or the editor) is now shown per app: a Time spent column on Assessment List and Monitoring, plus a "Time Spent by Priority" table on Monitoring (apps with time, hours range, average, total, vs the workbook man-hours estimate). Apps without time are left out of the range. Logic is `timeStats`/`timeByPriority` in `tracker/shared/logic.js`; formatting is `fmtMinutes` in `ui.jsx`.
+- **PIA monitor, phase 1** (2026-10-15, D10; pushed to `main` 2026-10-19, **not deployed**).
+  - New `pia/` module at `/api/pia`, with sidebar pages "PIA Overview" and "PIA Matching" (admins only).
+  - Reads UberTicket **policies** of template `[PIA01] Privacy Impact Assessment` (379488) through `GET /v1/policies/search`; the product is field 18890.
+  - The app list is tracker apps plus PIA products plus admin-added apps.
+  - Reassessment is due 12 months after the last approved PIA or admin-recorded reassessment; "coming due" is 30 days and editable.
+  - Data lives in its own `pia/data/pia.db`.
+  - The plan for phases 2 and 3 (GitHub scan, coverage decisions) is in `docs/sessions/pia.md`.
 - **User management with two roles** (2026-10-14, D8). Admins can do everything; users can't make data changes or monitor/tracker setup. Enforced on the server. `zionm@cloudstaff.com` is a permanent admin via `AUTH_ADMIN_EMAILS` in the local `.env.local`.
 - **Sign-in on the server** (2026-10-14, D7).
   - Two options: Microsoft SSO and the classic shared login, checked server-side (hash only) and rate-limited.
@@ -34,6 +41,8 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 
 ## Current issues / known limitations
 These are recorded only, not fixed.
+- **PIA needs a production backup entry.** `pia/data/pia.db` holds admin-recorded reassessments; add it to whatever backs up `tracker/data/tracker.db`. Past reassessments (e.g. NEO, Jan 2026) must be recorded once by an admin after deploy.
+- **PIA policy statuses** were confirmed only for `approved`. Treating `resolved`/`closed` as approved and `rejected`/`removed` as ignored is an assumption (`monitor/server/piaPolicy.js`); check it against real data after deploy.
 - **Production still runs the old build** until a deploy. That build has client-only login, an exposed `/tracker/data/tracker.db`, and probably exposed `monitor/data` key files. Treat the old password (`csdatasec` login) as public: change it anywhere else it is used. Consider rotating the UberTicket token after deploying.
 - **Entra client secret expires.** Renew it in Entra before the expiry date, or sign-in stops working.
 - **Production** has been the Proxmox CT since 2026-10-14, at **10.6.99.213** (final address; .208 belonged to the old VM and is not reused, see the session file). It was moved from the old VM; see `docs/sessions/server-migration.md`.
@@ -69,22 +78,24 @@ These are recorded only, not fixed.
 - The `@layer` order at the top of `src/index.css` (design-system layers before Tailwind's) must not change; see D6.
 
 ## Last important decisions
-See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3 UberTicket wins in tracker sync, D4 tracker styling isolation, D5 SQLite fallback, D6 design system through tokens, D7 server-side Microsoft sign-in, D8 admin/user roles.
+See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3 UberTicket wins in tracker sync, D4 tracker styling isolation, D5 SQLite fallback, D6 design system through tokens, D7 server-side Microsoft sign-in, D8 admin/user roles, D10 PIA module.
 
 ## Verification (2026-10-14, after Microsoft sign-in)
 | Check | Result |
 |---|---|
-| `npm run test:auth` | 25/25 pass (both sign-in options side by side, roles) |
-| `npm run test:monitor` | 26/26 pass |
-| `npm run test:tracker` | 16/16 pass (node:sqlite and sql.js) |
+| `npm run test:auth` | 34/34 pass (both sign-in options side by side, roles, `pia/data` blocked) — rerun 2026-10-15 |
+| `npm run test:monitor` | 33/33 pass (incl. PIA policy client and normalizer) — 2026-10-16 |
+| `npm run test:pia` | 20/20 pass on node:sqlite and sql.js — 2026-10-15 |
+| `npm run test:tracker` | 23/23 pass (node:sqlite and sql.js) — 2026-10-16 |
 | `npm run lint` (tsc) | clean |
 | `vite build` | succeeds; fonts bundled |
-| Browser check (`issue-analytics-demo` preview) | design pages checked. Auth checked live: fails closed (503), data folders 404, dev bypass and sign-out work. Classic login checked live (`issue-analytics-classic` preview, generated test credentials). Roles checked live in both preview configs: admin Users page (add, change role, remove), and as user every admin action returns 403 while admin pages redirect. The real Entra round trip is **not yet tested** (no app registration). |
+| Browser check (`issue-analytics-demo` preview) | design pages checked. Auth checked live: fails closed (503), data folders 404, dev bypass and sign-out work. Classic login checked live (`issue-analytics-classic` preview, generated test credentials). Roles checked live in both preview configs: admin Users page (add, change role, remove), and as user every admin action returns 403 while admin pages redirect. The real Entra round trip was verified in production on 2026-10-15. |
 
 ## Next action
-Pushed to `main` on 2026-10-14. The self-hosted deploy runner was queued, apparently offline. To turn on Microsoft sign-in:
-1. Register the app in Entra (steps in README).
-2. Test a real sign-in locally with `AUTH_REDIRECT_URI=http://localhost:5199/auth/callback`.
-3. Arrange HTTPS on the server.
-4. Put the four `AUTH_*` settings and `AUTH_ADMIN_EMAILS=zionm@cloudstaff.com` in GitHub Actions secrets/variables (2026-10-15: `deploy.yml` merges them into the server's `.env.local` via `auth/envFromCi.js`; needs the runner registered on the CT), or directly in the server's `.env.local`, then restart.
-5. Optional: set a strong `AUTH_CLASSIC_PASSWORD`, or `AUTH_CLASSIC_LOGIN=0` once everyone uses Microsoft.
+PIA phase 1 is on `main` (pushed 2026-10-19; verified locally in a 2026-10-15 browser check in `issue-analytics-demo`, admin and user roles). To ship it: deploy, confirm the live PIA01 fetch in the log (`[pia] UberTicket sync: N PIA policies`), link any mismatched products on PIA Matching, record past reassessments, add `pia/data/pia.db` to backups. Phase 2 (GitHub scan) needs the GitHub org name and an org owner to install a read-only GitHub App.
+
+Microsoft sign-in is live in production (2026-10-15). Remaining, none urgent:
+1. Assign the people/group who should sign in to the app's Enterprise Application in Entra (Assignment required = Yes), and give roles on the Users & Roles page.
+2. Once everyone uses Microsoft: set `AUTH_CLASSIC_LOGIN=0` (the old classic password should be treated as public), or set a strong `AUTH_CLASSIC_PASSWORD`.
+3. Note the Entra client secret's expiry date; renew it before then (in Entra and in GitHub/`.env.local`).
+4. GitHub deploys: either finish registering the runner (`~/actions-runner` is unpacked; run `config.sh`, then `svc.sh install` as root) or delete `~/actions-runner` and keep deploying by hand with `scripts/deploy.sh`. The repo is public: never add a `pull_request` trigger to `deploy.yml`.

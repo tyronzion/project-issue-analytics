@@ -1,4 +1,4 @@
-// Read-only client for the UberTicket API (GET /tickets and GET /tickets/{id}/activities only).
+// Read-only client for the UberTicket API (GET /tickets, GET /tickets/{id}/activities and GET /policies/search only).
 
 export class AuthError extends Error {}
 
@@ -28,6 +28,30 @@ export async function fetchTemplateTickets({ api, token, templateIds, lookbackDa
     if (rows.every((r) => Date.parse(r.created_at) < cutoff)) break;
   }
   return all.filter((r) => Date.parse(r.created_at) >= cutoff);
+}
+
+// Policies ("Uber Preferences", e.g. [PIA01] Privacy Impact Assessment) of the given templates: every page,
+// no lookback cutoff (a PIA approved years ago still sets the next reassessment date).
+// Same query as the Policies list page's filter.
+export async function fetchTemplatePolicies({ api, token, templateIds, maxPages, log = () => {}, onPage = () => {} }) {
+  const all = [];
+  const seen = new Set();
+  for (let page = 1; page <= maxPages; page++) {
+    const qs = new URLSearchParams({
+      page: String(page),
+      _keyword: '', _category: '', _assignees: '', _submitters: '',
+      _templates: templateIds.join(','),
+      _tags: '', _labels: '', _applicableTos: '', _acknowledgedBys: '', _submittedRange: '', _hasAdvanceFilter: 'true',
+    });
+    const body = await getJson(`${api}/policies/search?${qs}`, token);
+    const rows = Array.isArray(body.data) ? body.data : body.data?.data ?? [];
+    for (const r of rows) if (!seen.has(r.id)) { seen.add(r.id); all.push(r); }
+    log(`policies page ${page}: ${rows.length}`);
+    onPage(page, all.length);
+    const limit = Number(body.limit) || rows.length;
+    if (rows.length === 0 || rows.length < limit) break;
+  }
+  return all;
 }
 
 async function getJson(url, token) {

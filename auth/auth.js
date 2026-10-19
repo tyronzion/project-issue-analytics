@@ -59,7 +59,7 @@ const CALLBACK_PATHS = ['/auth/callback', '/callback'];
 
 // Live data and secrets inside the project folder. The Vite dev server serves project files directly, so
 // these are refused for everyone, signed in or not (tracker database, encrypted UberTicket token + its key,
-// the users/roles file).
+// the users/roles file, the PIA database).
 export function isBlockedPath(pathname) {
   let p;
   try {
@@ -68,7 +68,7 @@ export function isBlockedPath(pathname) {
     return true;
   }
   p = p.replace(/\\/g, '/').replace(/\/{2,}/g, '/').toLowerCase();
-  return /(^|\/)(tracker|monitor|auth)\/data(\/|$)/.test(p);
+  return /(^|\/)(tracker|monitor|auth|pia)\/data(\/|$)/.test(p);
 }
 
 // Where to go after sign-in: only a path on this site, never another origin (no open redirect).

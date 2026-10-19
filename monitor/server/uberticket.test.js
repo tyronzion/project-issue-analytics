@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchTemplateTickets } from './uberticket.js';
+import { fetchTemplateTickets, fetchTemplatePolicies } from './uberticket.js';
 
 // Records the query of each GET /tickets call and returns one short page.
 function stubFetch(rows) {
@@ -30,4 +30,26 @@ test('includeArchived: false leaves the filter empty, like UberTicket\'s default
     await fetchTemplateTickets({ api: 'https://x/v1', token: 't', templateIds: [1], lookbackDays: 30, maxPages: 5, includeArchived: false });
     assert.equal(s.seen[0].get('_includeArchived'), '');
   } finally { s.restore(); }
+});
+
+test('PIA policies: GET /policies/search for the template, every page, no lookback cutoff', async () => {
+  const calls = [];
+  const real = globalThis.fetch;
+  const old = { id: 'old', created_at: '2019-01-01T00:00:00Z' };
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: new URL(url), method: init.method ?? 'GET' });
+    const page = Number(new URL(url).searchParams.get('page'));
+    const rows = page === 1 ? Array.from({ length: 10 }, (_, i) => ({ ...old, id: `p${i}` })) : [{ ...old, id: 'last' }];
+    return new Response(JSON.stringify({ status: 'success', data: rows, current_page: page, limit: 10, record_count: rows.length }), { status: 200 });
+  };
+  try {
+    const rows = await fetchTemplatePolicies({ api: 'https://x/v1', token: 't', templateIds: [379488], maxPages: 5 });
+    assert.equal(rows.length, 11);
+    assert.equal(calls.length, 2);
+    for (const c of calls) {
+      assert.equal(c.method, 'GET');
+      assert.equal(c.url.pathname, '/v1/policies/search');
+      assert.equal(c.url.searchParams.get('_templates'), '379488');
+    }
+  } finally { globalThis.fetch = real; }
 });

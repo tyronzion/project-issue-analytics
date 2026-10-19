@@ -17,6 +17,7 @@
       "runtimeArgs": [
         "DEMO=1",
         "TRACKER_DB_PATH=tracker/data/dev-copy.db",
+        "PIA_DB_PATH=pia/data/dev.db",
         "AUTH_DEV_BYPASS=1",
         "npx",
         "vite",
@@ -31,6 +32,7 @@
       "runtimeArgs": [
         "DEMO=1",
         "TRACKER_DB_PATH=tracker/data/dev-copy.db",
+        "PIA_DB_PATH=pia/data/dev.db",
         "AUTH_DEV_BYPASS=1",
         "AUTH_DEV_ROLE=user",
         "npx",
@@ -46,6 +48,7 @@
       "runtimeArgs": [
         "DEMO=1",
         "TRACKER_DB_PATH=tracker/data/dev-copy.db",
+        "PIA_DB_PATH=pia/data/dev.db",
         "AUTH_CLASSIC_USERNAME=local-tester",
         "AUTH_CLASSIC_PASSWORD=Zql-5xuufBjwzZFT",
         "npx",

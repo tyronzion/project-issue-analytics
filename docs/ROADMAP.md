@@ -8,6 +8,11 @@
   - put the AUTH_* settings on the server
 
 ## Next
+- **PIA (approved plan: `docs/sessions/pia.md`)**
+  - Deploy phase 1; back up `pia/data/pia.db`; record past reassessments.
+  - Phase 2: read-only GitHub App scan of app repos for personal data (needs the org name and an org owner to install the App).
+  - Phase 3: "own PIA" vs "covered by parent" decisions (admin-only, parent's PIA linked, reason, history, drift review).
+
 These candidates come from known issues and need user approval first.
 - Server move follow-ups (see `docs/sessions/server-migration.md`):
   - delete `~/sia-migration` on the CT once no longer needed as a backup
@@ -33,5 +38,6 @@ These candidates come from known issues and need user approval first.
 - Cloudstaff Design System adopted as the visual design (2026-10-14)
 - Microsoft Entra sign-in on the server, with data folders blocked (2026-10-14, built; awaiting go-live)
 - User management with admin and user roles (2026-10-14)
+- PIA monitor phase 1: UberTicket [PIA01] policies, yearly reassessment status, matching (2026-10-15; pushed to `main` 2026-10-19, not deployed)
 - Auto-deploy on push to `main` (currently inactive: no runner registered)
 - Moved production to the Proxmox CT at 10.6.99.208 with identical data (2026-10-14)

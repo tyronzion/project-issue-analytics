@@ -12,6 +12,7 @@
     "test:monitor": "node --test monitor/server/*.test.js",
     "test:auth": "node --test auth/*.test.js",
     "test:tracker": "node --test tracker/test/*.test.js && TRACKER_SQLITE=sqljs node --test tracker/test/*.test.js",
+    "test:pia": "node --test pia/test/*.test.js && TRACKER_SQLITE=sqljs node --test pia/test/*.test.js",
     "monitor": "node monitor/server/server.js"
   },
   "dependencies": {

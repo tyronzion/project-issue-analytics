@@ -17,6 +17,8 @@ import {
   RefreshCcw,
   FileUp,
   UserCog,
+  Fingerprint,
+  Link2,
   Timer,
   GitCompareArrows,
   Settings as SettingsIcon,
@@ -62,6 +64,7 @@ import { SettingsLayout, SettingsPanel, DangerZone, isSettingsTab } from './comp
 import { JiraIntegrationPage, JiraCredentials } from './components/JiraIntegrationPage';
 import { MonitorFrame, isMonitorTab } from './components/MonitorFrame';
 import AssessmentTracker from './components/tracker/AssessmentTracker.jsx';
+import PrivacyImpact from './components/pia/PrivacyImpact.jsx';
 import { matchKey } from '../tracker/shared/logic.js';
 import { getProjectSecuritySeal } from './utils/securitySeal';
 
@@ -77,6 +80,13 @@ const TRACKER_TABS = [
   { tab: 'tracker-import', section: 'import', label: 'Import Excel', Icon: FileUp },
 ] as const;
 const trackerSection = (tab: ActiveTab) => TRACKER_TABS.find(t => t.tab === tab)?.section;
+
+// Privacy Impact Assessment sidebar entries -> section shown by <PrivacyImpact>.
+const PIA_TABS = [
+  { tab: 'pia', section: 'overview', label: 'PIA Overview', Icon: Fingerprint },
+  { tab: 'pia-matching', section: 'matching', label: 'PIA Matching', Icon: Link2 },
+] as const;
+const piaSection = (tab: ActiveTab) => PIA_TABS.find(t => t.tab === tab)?.section;
 
 const AUTO_SYNC_INTERVAL_MS = 15 * 60 * 1000;
 const FILTERABLE_TABS: ActiveTab[] = ['dashboard', 'charts', 'seal', 'dependabots', 'issues', 'projects'];
@@ -887,6 +897,22 @@ export default function App() {
                 </button>
               ))}
 
+              <p className="px-3 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Privacy (PIA)</p>
+              {PIA_TABS.filter(({ tab }) => isAdmin || !ADMIN_TABS.includes(tab)).map(({ tab, label, Icon }) => (
+                <button
+                  key={tab}
+                  id={`tab-${tab}-btn`}
+                  onClick={() => setActiveTab(tab)}
+                  className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    activeTab === tab
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-900/20'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{label}</span>
+                </button>
+              ))}
 
               <div className="pt-2 mt-2" style={{ borderTop: '1px solid var(--cs-border)' }}>
                 <button
@@ -902,6 +928,7 @@ export default function App() {
                   <span>Settings</span>
                 </button>
               </div>
+
 
             </div>
           </aside>
@@ -1062,6 +1089,10 @@ export default function App() {
 
         {trackerSection(activeTab) && !isSettingsTab(activeTab) && (
           <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} />
+        )}
+
+        {piaSection(activeTab) && (isAdmin || !ADMIN_TABS.includes(activeTab)) && (
+          <PrivacyImpact section={piaSection(activeTab)} isAdmin={isAdmin} />
         )}
 
         {isSettingsTab(activeTab) && (isAdmin || !ADMIN_TABS.includes(activeTab)) && (

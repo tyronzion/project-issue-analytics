@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'node:path';
-import { openDb, FIELDS, toApi, toDb } from './db.js';
+import { openDb, FIELDS, toApi, toDb, listApps } from './db.js';
 import { parseWorkbook, previewOf, importCycles } from './importer.js';
 import { syncTickets } from './sync.js';
 import { TRACKS, SEALS, matchKey } from '../shared/logic.js';
@@ -177,5 +177,6 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
   const app = express();
   app.disable('x-powered-by');
   app.use(router);
-  return { app, sync, available: !!db };
+  // apps(): the tracker's app list, read-only (used by the PIA module).
+  return { app, sync, apps: () => (db ? listApps(db) : []), available: !!db };
 }

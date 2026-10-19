@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { openSqlite } from './sqlite.js';
+import { matchKey } from '../shared/logic.js';
 
 // Assessment Tracker storage: one SQLite file, via node:sqlite (Node 22.13+) or sql.js on older Node.
 export async function openDb(dbPath, options) {
@@ -161,4 +162,15 @@ export function toDb(value, key) {
   if (key === 'mobileApp') return value ? 1 : 0;
   if (key === 'timeSpent' || key === 'sortOrder') return value === '' || value == null ? null : Number(value);
   return value ?? null;
+}
+
+// Every app in the tracker, as of its most recent cycle (read by the PIA module for its app list).
+export function listApps(db) {
+  const rows = db.prepare('SELECT a.project, a.repositories, a.is_active, c.year FROM assessments a JOIN cycles c ON c.id = a.cycle_id ORDER BY c.year DESC, a.id DESC').all();
+  const apps = new Map();
+  for (const r of rows) {
+    const key = matchKey(r.project);
+    if (key && !apps.has(key)) apps.set(key, { name: r.project, repositories: r.repositories || '', decommissioned: r.is_active === 'Decommissioned', year: r.year });
+  }
+  return [...apps.values()];
 }

@@ -3,10 +3,11 @@ import { timingSafeEqual } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { makeCalendar } from './businessTime.js';
-import { fetchTemplateTickets, fetchActivitySummary, mapLimit, AuthError } from './uberticket.js';
+import { fetchTemplateTickets, fetchTemplatePolicies, fetchActivitySummary, mapLimit, AuthError } from './uberticket.js';
 import { normalizeTicket } from './metrics.js';
 import { normalizeFull, FULL_FIELDS, ROE_FIELDS } from './fullAssessment.js';
-import { demoTickets, demoFullTickets, demoRoeTickets } from './demoData.js';
+import { normalizePolicy } from './piaPolicy.js';
+import { demoTickets, demoFullTickets, demoRoeTickets, demoPiaPolicies } from './demoData.js';
 import { phHolidayList, phHolidayYears } from './phHolidays.js';
 import { makeTokenStore, tokenExpiry } from './tokenStore.js';
 
@@ -53,6 +54,8 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
         lookbackDays: Number(env.ROE_LOOKBACK_DAYS || 3650),
       },
     ],
+    // Privacy Impact Assessments: UberTicket policies of the [PIA01] template (PIA_TEMPLATE=0 turns this off).
+    pia: { templateId: Number(env.PIA_TEMPLATE || 379488), enabled: env.PIA_TEMPLATE !== '0' },
     // Resolve SLA per priority in business days, shared by all assessment monitors ("Normal" = Medium).
     slaDays: {
       low: Number(env.SLA_LOW_DAYS || 5),
@@ -104,6 +107,9 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
   const tokenInfo = () => ({ set: !!token, savedAt: tokenSavedAt, expiresAt: token ? tokenExpiry(token) : null });
 
   const state = { raw: [], assess: {}, fetchedAt: null, error: null, errorKind: null, loading: false };
+  // PIA policies, normalized as soon as they arrive (the questionnaire answers are not kept in memory).
+  // A PIA fetch failure is recorded here and doesn't fail the DPSA / assessment monitors.
+  const pia = { policies: [], fetchedAt: null, error: null };
 
   // Activity-log summary per ticket (submitted / resolved / first assignment). A ticket's log only
   // changes when the ticket does, so it is re-read only when updated_at moves; kept on disk across restarts.
@@ -161,6 +167,7 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
         state.raw = demoTickets(config.templates);
         const demo = { full: demoFullTickets, roe: demoRoeTickets };
         for (const m of config.assessments) state.assess[m.key] = demo[m.key](m.templateId);
+        if (config.pia.enabled) Object.assign(pia, { policies: demoPiaPolicies(config.pia.templateId).map((r) => normalizePolicy(r)), fetchedAt: Date.now(), error: null });
       } else if (!token) {
         throw new AuthError('No UberTicket token saved yet. Open Settings and paste one.');
       } else {
@@ -196,6 +203,17 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
             ? { percent: (100 * (pagesDone + done)) / (pagesDone + total), step: `Reading activity logs · ${done} / ${total}` }
             : { percent: 99, step: 'Activity logs up to date' });
         });
+        if (config.pia.enabled) {
+          setProgress({ step: 'Loading PIA policies…' });
+          try {
+            const rows = await fetchTemplatePolicies({ ...common, templateIds: [config.pia.templateId] });
+            Object.assign(pia, { policies: rows.map((r) => normalizePolicy(r)), fetchedAt: Date.now(), error: null });
+          } catch (err) {
+            if (err instanceof AuthError) throw err;
+            pia.error = err.message;
+            log(`PIA policies failed: ${err.message}`);
+          }
+        }
         last = { pages, logs: logsTotal };
         await mkdir(dataDir, { recursive: true });
         await writeFile(pagesFile, JSON.stringify(last));
@@ -357,6 +375,9 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
       const now = Date.now();
       return (state.assess[key] ?? []).map((r) => normalizeFull(r, { calendar, slaDays: config.slaDays, offsetHours: config.business.offsetHours, fields: m.fields, now }));
     },
+    // Normalized PIA policies from the last refresh, and how that fetch went.
+    piaPolicies: () => pia.policies,
+    piaStatus: () => ({ enabled: config.pia.enabled, templateId: config.pia.templateId, fetchedAt: pia.fetchedAt, error: pia.error, loading: state.loading, uberticketError: state.error, errorKind: state.errorKind, demo: config.demo }),
     status: () => ({ fetchedAt: state.fetchedAt, loading: state.loading, error: state.error, errorKind: state.errorKind, demo: config.demo }),
     onRefresh(fn) {
       refreshListeners.add(fn);

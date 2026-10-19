@@ -147,6 +147,16 @@ test('an ignored ticket (its app was deleted) is not re-created', async () => {
   assert.equal(res.unmatched.length, 1);
 });
 
+test('listApps: one entry per app, from its most recent cycle', async () => {
+  const { listApps } = await import('../server/db.js');
+  const db = await setup();
+  db.prepare("INSERT INTO cycles (id, track, year) VALUES (3, 'biannual', 2025)").run();
+  db.prepare("INSERT INTO assessments (cycle_id, period, project, is_active, repositories) VALUES (3, '1st Half', 'Cloudstaff MyStaff', 'Decommissioned', 'old-repo')").run();
+  const apps = listApps(db);
+  assert.deepEqual(apps.map((a) => a.name).sort(), ['Buzz', 'MyStaff', 'Pact-X', 'Payroll']);
+  assert.equal(apps.find((a) => a.name === 'MyStaff').decommissioned, false);
+});
+
 test('Full Assessment time spent is synced too; an empty field keeps the recorded time', async () => {
   const db = await setup();
   syncTickets(db, { full: [ticket({ product: 'MyStaff', timeSpent: '500' })], roe: [] });

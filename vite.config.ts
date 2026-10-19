@@ -9,6 +9,7 @@ import { createAuth, isBlockedPath, requireAdmin } from './auth/auth.js';
 import { createUserStore } from './auth/users.js';
 import { createMonitor } from './monitor/server/monitor.js';
 import { createTracker } from './tracker/server/tracker.js';
+import { createPia } from './pia/server/pia.js';
 
 interface JiraApiConfig {
   baseUrl: string;
@@ -494,7 +495,7 @@ function designSystemAssetsPlugin() {
   };
 }
 
-// UberTicket monitoring (DPSA, Full Assessment, Rules of Engagement), served at /monitor/* and shown
+// UberTicket monitoring (DPSA, Full Assessment, Rules of Engagement, PIA policies), served at /monitor/* and shown
 // in the app's sidebar tabs. Its encrypted UberTicket token and cache live in monitor/data (git-ignored).
 function uberticketMonitorPlugin() {
   return {
@@ -532,6 +533,20 @@ function uberticketMonitorPlugin() {
       });
       server.middlewares.use('/api/tracker', tracker.app);
       monitor.onRefresh(() => tracker.sync());
+
+      // Privacy Impact Assessments at /api/pia. Its data lives in pia/data (git-ignored, blocked over HTTP).
+      // After every UberTicket refresh it rebuilds its app list from the tracker's apps and the [PIA01] policies.
+      const pia = await createPia({
+        root: path.resolve(__dirname, 'pia'),
+        getPolicies: () => monitor.piaPolicies(),
+        getTrackerApps: () => tracker.apps(),
+        uberticket: () => monitor.piaStatus(),
+        offsetHours: monitor.config.business.offsetHours,
+        // Every PIA change (reassessments, apps, links, settings) is admin-only.
+        isAdmin: (req: any) => req.user?.role === 'admin',
+      });
+      server.middlewares.use('/api/pia', pia.app);
+      monitor.onRefresh(() => pia.sync());
 
       monitor.start();
       server.httpServer?.on('close', () => monitor.stop());
@@ -572,7 +587,7 @@ export default defineConfig(({ mode }) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       // monitor/data changes on every refresh (cache, encrypted token); it is not app source.
-      watch: process.env.DISABLE_HMR === 'true' ? null : { ignored: ['**/monitor/data/**', '**/tracker/data/**'] },
+      watch: process.env.DISABLE_HMR === 'true' ? null : { ignored: ['**/monitor/data/**', '**/tracker/data/**', '**/pia/data/**'] },
     },
   };
 });

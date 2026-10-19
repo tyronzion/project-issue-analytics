@@ -121,3 +121,16 @@ Add a new entry only for decisions a future developer might otherwise reconsider
 - **Decision:** The database file is `tracker/data/tracker.db` (git-ignored). `TRACKER_DB_PATH` overrides the location and `TRACKER_SQLITE=sqljs` forces the fallback.
 - **Reason:** It needs no extra service and works on Node versions older than 22.13.
 - **Impact:** Tests run on both backends. SQL must work on both.
+
+### D10: Privacy Impact Assessments are a module of this app, read from UberTicket policies
+- **Date:** 2026-10-15
+- **Decision:**
+  - **Placement:** `pia/` is a fourth module inside this app (D1), with its own SQLite file `pia/data/pia.db` (blocked over HTTP, git-ignored). The tracker database is only read (`tracker.apps()`).
+  - **Source:** PIAs are UberTicket **policies**, not tickets: template `[PIA01] Privacy Impact Assessment` = 379488 (`PIA_TEMPLATE`), listed with GET-only `/v1/policies/search?_templates=379488`. The product is form field 18890 ("Project or Product"). Only the product, version and risk-rating fields are kept; the questionnaire answers and policy messages are never stored. Same token and rules as D2. A PIA fetch failure doesn't fail the other monitors.
+  - **Reassessment:** due 12 calendar months after the latest of an approved policy (`acknowledged_at`) or an **admin-recorded reassessment** (date + https report link). Today, reassessments are a message on the existing policy with no new version, so they can't be detected automatically. "Coming due" defaults to 30 days and is admin-set. Overdue stays overdue, with an "in progress" badge, until a reassessment is recorded or a newer policy is approved.
+  - **App list:** tracker apps, plus PIA products (as their own app when no name matches), plus admin-added apps. Apps without a PIA show as "Never assessed".
+  - **Roles:** every PIA change is admin-only (D8); users can see everything.
+- **Reason:** It reuses sign-in, roles, the encrypted UberTicket token and the tracker's app list. The user chose admin-recorded reassessments over parsing messages, which hold personal data.
+- **Impact:**
+  - Back up `pia/data/pia.db`.
+  - Phase 2 (read-only GitHub App scan) and phase 3 (own PIA vs covered by parent, decided by an admin with the parent's PIA linked) are planned in `docs/sessions/pia.md`. They must keep GitHub access GET-only, with an org allowlist.

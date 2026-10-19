@@ -56,10 +56,10 @@ async function signIn(auth) {
 }
 
 test('data folders are blocked however the path is written', () => {
-  for (const p of ['/tracker/data/tracker.db', '/Tracker/Data/x', '/monitor/data/secret.key', '/auth/data/users.json', '//monitor//data/token.enc', '/monitor%2Fdata%2Fsecret.key', '/tracker\\data\\tracker.db', '/%E0%A4%A']) {
+  for (const p of ['/tracker/data/tracker.db', '/Tracker/Data/x', '/monitor/data/secret.key', '/auth/data/users.json', '//monitor//data/token.enc', '/monitor%2Fdata%2Fsecret.key', '/tracker\\data\\tracker.db', '/pia/data/pia.db', '/PIA/data/pia.db-wal', '/%E0%A4%A']) {
     assert.equal(isBlockedPath(p), true, p);
   }
-  for (const p of ['/', '/monitor/DPSA', '/tracker', '/api/tracker/cycles', '/src/data.ts']) assert.equal(isBlockedPath(p), false, p);
+  for (const p of ['/', '/monitor/DPSA', '/tracker', '/api/tracker/cycles', '/api/pia/apps', '/pia/shared/rules.js', '/src/data.ts']) assert.equal(isBlockedPath(p), false, p);
 });
 
 test('returnTo only allows paths on this site', () => {

@@ -147,3 +147,46 @@ export function demoRoeTickets(templateId, now = Date.now()) {
     };
   });
 }
+
+// Synthetic "[PIA01] Privacy Impact Assessment" policies (template 379488), in the policies list shape:
+// flat form data with the product in field 18890. One case per reassessment status.
+export function demoPiaPolicies(templateId, now = Date.now()) {
+  const day = 86_400_000;
+  const plain = (t) => new Date(t).toISOString().slice(0, 19).replace('T', ' ');
+  const iso = (t) => new Date(t).toISOString();
+  const cases = [
+    // [product, status, submitted days ago, approved days ago, version]
+    ['NEO', 'approved', 720, 540, '1'],                 // approved 18 months ago: overdue
+    ['Jobs', 'approved', 400, 300, '1'],                // current
+    ['Payroll App', 'approved', 380, 350, '2'],         // coming due in ~15 days
+    ['Timesheets', 'approved', 800, 420, '1'],          // overdue, with a newer version under review
+    ['Timesheets', 'open', 20, null, '2'],
+    ['Client Portal', 'open', 45, null, '1'],           // first PIA not approved yet
+    ['Rewards', 'rejected', 200, null, '1'],            // rejected: ignored, so never assessed
+    ['Cloudstaff Mystaff', 'approved', 200, 120, '3'],  // current
+    ['Sales Genie', 'approved', 60, 14, '1'],           // not in the tracker: added from its PIA
+    ['Door Space', 'approved', 500, 380, '1'],          // overdue; product name differs from the tracker's
+  ];
+  return cases.map(([product, status, submitted, approved, version], i) => {
+    const approvedAt = approved == null ? null : plain(now - approved * day);
+    return {
+      id: `demo-pia-${i}`,
+      serial: 71000 + i,
+      template_id: templateId,
+      status,
+      priority: 'low',
+      data: { 18888: '', 18890: product, 18891: version, 37936: approved == null ? '' : String(1 + (i % 4)), 37937: '' },
+      meta: { acknowledged_at: approvedAt, acknowledged_by: approvedAt ? 'ApproverA' : null },
+      acknowledged_at: approvedAt,
+      rejected_at: status === 'rejected' ? plain(now - (submitted - 10) * day) : null,
+      resolved_at: null,
+      removed_at: null,
+      deleted_at: null,
+      created_at: iso(now - submitted * day),
+      updated_at: iso(now - Math.min(submitted, approved ?? submitted) * day),
+      submitter: { alias: SUBMITTERS[i % SUBMITTERS.length] },
+      acknowledger: approvedAt ? { alias: 'ApproverA' } : null,
+      template: { name: '[PIA01] Privacy Impact Assessment' },
+    };
+  });
+}

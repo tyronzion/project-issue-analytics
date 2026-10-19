@@ -467,7 +467,7 @@ body {
 .settings-btn--danger { margin-top: 0; border-color: var(--color-feedback-danger); background: var(--color-surface-canvas); color: var(--color-feedback-danger); }
 .settings-btn--danger:hover { background: var(--color-feedback-danger); color: var(--color-surface-canvas); }
 
-/* Filter chips: the one filter look used on every page (global filter bar, tracker, issues). */
+/* Filter chips: the one filter look used on every page (global filter bar, tracker, issues, PIA). */
 .cs-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .cs-filter-title { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; font-size: 12px; font-weight: 600; color: var(--cs-muted); }
 .cs-filter-title svg { width: 14px; height: 14px; color: var(--cs-primary); }

@@ -75,7 +75,7 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
  * Builds everything the report shows.
- * assessment: tracker row (project, period, ticketSource, actualStart/End, plannedStart/End, testingUrl, reportInfo)
+ * assessment: tracker row (project, period, ticketSource, actualStart/End, testingUrl, reportInfo)
  * issues: the app's UNRESOLVED issues as { key, summary, created, dueDate, severity } where severity is
  *   'critical' | 'high' | 'medium' | 'low' | 'informational' | null and dates are YYYY-MM-DD.
  * today: YYYY-MM-DD (report date; due dates before it are overdue).
@@ -83,8 +83,8 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 export function buildReport({ assessment: a, issues = [], today }) {
   const kind = reportKind(a);
   const info = { ...REPORT_DEFAULTS, ...(a.reportInfo || {}) };
-  const start = day(a.actualStart) || day(a.plannedStart);
-  const end = day(a.actualEnd) || day(a.plannedEnd) || today;
+  const start = day(a.actualStart);
+  const end = day(a.actualEnd) || today;
 
   // New = created inside the UberTicket assessment window; anything else is Backlog.
   const rows = issues.map((i) => {

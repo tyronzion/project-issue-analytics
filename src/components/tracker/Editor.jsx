@@ -9,7 +9,7 @@ const BLANK = {
   project: '', quarter: '', isActive: 'Active', classification: 'New', repositories: '', testingUrl: '', priority: 'Medium',
   baAssigned: '', securityTester: '', coTester: '', checks: {}, mobileApp: false,
   dependabots: 'Not Started', codeReview: 'Not Started', report: 'Not Started',
-  plannedStart: '', plannedEnd: '', actualStart: '', actualEnd: '', timeSpent: '', seal: '', notes: '',
+  actualStart: '', actualEnd: '', timeSpent: '', seal: '', notes: '',
 };
 
 function Field({ label, children, wide, locked }) {
@@ -231,8 +231,6 @@ export default function Editor({ row, periods, testers, onClose, onSaved, onDele
           <section>
             <h3 className="at-section-title">Schedule &amp; result</h3>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Planned start"><input type="date" value={draft.plannedStart ?? ''} onChange={(e) => set('plannedStart')(e.target.value)} className="at-input w-full" /></Field>
-              <Field label="Planned end"><input type="date" value={draft.plannedEnd ?? ''} onChange={(e) => set('plannedEnd')(e.target.value)} className="at-input w-full" /></Field>
               <Field label="Actual start (ticket submitted)" locked={linked}><input type="date" value={draft.actualStart ?? ''} onChange={(e) => set('actualStart')(e.target.value)} className="at-input w-full" disabled={linked} /></Field>
               <Field label="Actual end (ticket resolved)" locked={linked}><input type="date" value={draft.actualEnd ?? ''} onChange={(e) => set('actualEnd')(e.target.value)} className="at-input w-full" disabled={linked} /></Field>
               <Field label={`Time spent (minutes)${fmtMinutes(draft.timeSpent) ? ` · ${fmtMinutes(draft.timeSpent)}` : ''}`}><input type="number" min="0" value={draft.timeSpent ?? ''} onChange={(e) => set('timeSpent')(e.target.value)} className="at-input w-full" /></Field>

@@ -205,7 +205,9 @@ function sealGuide() {
 }
 
 const STYLES = `
-  @page { size: A4; margin: 16mm 16mm 20mm; }
+  /* Zero page margins: Chrome then prints no header/footer of its own (title, URL, date). The page margins
+     come from the frame below: its thead/tfoot spacers repeat on every printed page. */
+  @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
   html, body { background: var(--color-surface-canvas); }
   body { margin: 0; font-family: var(--font-family-body); color: var(--color-text-base-primary); font-size: 10.5pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -242,14 +244,21 @@ const STYLES = `
   .phases span { flex: 1; text-align: center; padding: 6px 4px; border-radius: var(--radius-sm, 6px); background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); font-weight: 700; font-size: 9.5pt; }
   .recs li { margin-bottom: 6px; }
   .page-break { break-before: page; }
-  .footer { display: flex; justify-content: space-between; font-size: 8pt; color: var(--color-text-base-muted); border-top: 1px solid var(--color-border-primary); padding-top: 6px; margin-top: 24px; }
+  .frame { width: 100%; border-collapse: collapse; margin: 0; }
+  .frame > thead > tr > td, .frame > tfoot > tr > td, .frame > tbody > tr > td { padding: 0; border: 0; }
+  .frame-space { height: 0; }
+  .footer { display: flex; gap: 48px; align-items: center; font-family: var(--font-family-heading); font-size: 8pt; color: var(--color-text-base-muted); max-width: 180mm; margin: 32px auto 0; letter-spacing: 0.02em; }
+  .footer a { color: var(--color-brand-primary); font-weight: 400; text-decoration: none; letter-spacing: 0; }
   .toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: 12px; align-items: center; justify-content: center; padding: 10px; background: var(--color-surface-secondary); border-bottom: 1px solid var(--color-border-primary); font-size: 10pt; }
   .toolbar button { font: inherit; font-weight: 700; padding: 6px 14px; border-radius: var(--radius-sm, 6px); border: 0; background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); cursor: pointer; }
   @media print {
     html, body { background: none; }
     .toolbar { display: none; }
-    main { padding: 0; max-width: none; }
-    .footer { position: fixed; bottom: -12mm; left: 0; right: 0; margin: 0; }
+    main { padding: 0 18mm; max-width: none; }
+    .frame-space.top { height: 14mm; }
+    .frame-space.bottom { height: 20mm; }
+    /* Fixed elements repeat on every printed page; the bottom spacer keeps text clear of it. */
+    .footer { position: fixed; bottom: 8mm; left: 18mm; right: 18mm; margin: 0; max-width: none; }
   }
 `;
 
@@ -263,10 +272,14 @@ export function renderReport(r, fileName) {
 <style>${STYLES}</style></head>
 <body>
 <div class="toolbar"><span>Choose <b>Save as PDF</b> as the destination in the print dialog.</span><button type="button" id="print-report">Save as PDF</button></div>
+<table class="frame"><thead><tr><td><div class="frame-space top"></div></td></tr></thead>
+<tfoot><tr><td><div class="frame-space bottom"></div></td></tr></tfoot>
+<tbody><tr><td>
 <main>
 ${r.kind === 'roe' ? roeReport(r) : fullReport(r)}
-<div class="footer"><span>US | UK | Australia | China | Philippines | India</span><span>cloudstaff.com · Report as of ${esc(longDate(r.today))}</span></div>
 </main>
+</td></tr></tbody></table>
+<div class="footer"><span>US&nbsp; | &nbsp;UK&nbsp; | &nbsp;AUSTRALIA&nbsp; | &nbsp;PHILIPPINES&nbsp; | &nbsp;INDIA</span><a href="https://www.cloudstaff.com">cloudstaff.com</a></div>
 </body></html>`;
 }
 

@@ -11,7 +11,7 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 - Classic login keeps working throughout.
 
 ## Recently completed
-- **Assessment report PDF** (2026-10-20, D12; local only, **not pushed or deployed**).
+- **Assessment report PDF** (2026-10-20, D12; pushed to `main` as `0a79a91`, **not deployed**).
   - In the assessment editor, **Download report** turns on once all 12 checklist items are ticked. It opens a dialog for the Dashboard and Scan Results links (recommended), the Introduction and notes, and for RoE the testing type, testing time and recommendations. These are saved in `report_info`.
   - The dialog then opens a print-ready report in a new tab. The template is Full Assessment, or RoE when the ticket is RoE. The report has the team's seal badge image (`public/seals/`), New/Backlog/Overdue counts, the issue table and the grammar-checked seal wording. The browser's "Save as PDF" makes the file, named like `2026 Q4 Cloudstaff <App> Security Report`.
   - **Frozen after resolution:** the first download after the ticket resolves saves the issues as of the resolution date (`report_snapshot`). Later downloads use that copy, and the next assessment gets its own report. Admins can unfreeze. Checked in the demo: changing issues afterwards left the report unchanged.

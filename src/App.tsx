@@ -66,9 +66,10 @@ import { MonitorFrame, isMonitorTab } from './components/MonitorFrame';
 import AssessmentTracker from './components/tracker/AssessmentTracker.jsx';
 import PrivacyImpact from './components/pia/PrivacyImpact.jsx';
 import { matchKey } from '../tracker/shared/logic.js';
-import { useSharedTargets, saveSharedTargets } from './utils/sharedTargets';
+import { useSharedTargets, saveSharedTargets, appCount } from './utils/sharedTargets';
 import { getProjectSecuritySeal } from './utils/securitySeal';
 import { reportIssuesOf, ReportIssues } from './utils/reportIssues';
+import { useTrackerApps, decommissionedMatcher, setAppDecommissioned, trackerKnows } from './utils/trackerApps';
 
 // Assessment Tracker sidebar entries -> section shown by <AssessmentTracker>.
 const TRACKER_TABS = [
@@ -121,6 +122,9 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
   // The shared Target Project List (server); it replaces this browser's own copy once it is set up.
   const sharedTargets = useSharedTargets();
+  // Apps decommissioned in the Assessment Tracker are left out of every analytics page (shared for everyone).
+  const trackerApps = useTrackerApps();
+  const isDecommissionedApp = useMemo(() => decommissionedMatcher(trackerApps), [trackerApps]);
   const [issues, setIssues] = useState<IssueRecord[]>(() => {
     const saved = loadSavedData();
     if (saved && Array.isArray(saved) && saved.length > 0) {
@@ -322,9 +326,11 @@ export default function App() {
       settings.deletedProjects,
       settings.projectAliases,
       settings.customProjectList,
-      settings.useCustomProjectListOnly
+      settings.useCustomProjectListOnly,
+      isDecommissionedApp
     );
   }, [
+    isDecommissionedApp,
     severityFilteredIssues,
     settings.formulaConfig, 
     settings.dateFilter, 
@@ -404,9 +410,11 @@ export default function App() {
       settings.deletedProjects,
       settings.projectAliases,
       settings.customProjectList,
-      settings.useCustomProjectListOnly
+      settings.useCustomProjectListOnly,
+      isDecommissionedApp
     );
   }, [
+    isDecommissionedApp,
     dependabotsSourceIssues,
     settings.formulaConfig,
     settings.dateFilter,
@@ -450,6 +458,25 @@ export default function App() {
       ...prev,
       deletedProjects: Array.from(new Set([...prev.deletedProjects, projectName])),
     }));
+  };
+
+  // Handler: Decommission / restore an app in the Assessment Tracker (applies to everyone's analytics pages).
+  const [decommissionError, setDecommissionError] = useState('');
+  const handleSetDecommissioned = async (projectName: string, decommissioned: boolean) => {
+    let reason = '';
+    if (decommissioned) {
+      const answer = window.prompt(`Decommission ${projectName}? It leaves Active Applications and every metrics page for everyone, and is marked Decommissioned in the Assessment Tracker. You can restore it later.\n\nReason (optional):`, '');
+      if (answer === null) return;
+      reason = answer;
+    } else if (!window.confirm(`Restore ${projectName}? It comes back to the metrics pages and the Assessment Tracker.`)) {
+      return;
+    }
+    setDecommissionError('');
+    try {
+      await setAppDecommissioned(projectName, decommissioned, reason);
+    } catch (error: any) {
+      setDecommissionError(String(error?.message || error));
+    }
   };
 
   // Handler: Toggle Delete / Restore Project
@@ -1029,7 +1056,7 @@ export default function App() {
                   onClick={() => setIsTargetListOpen(true)}
                   className="px-3.5 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-300 rounded-lg text-xs font-semibold transition shadow-sm"
                 >
-                  Target Project List ({settings.customProjectList?.length || 0})
+                  Target Project List ({settings.customProjectList?.length || 0} entries &middot; {appCount(settings.customProjectList)} apps)
                 </button>
                 <button
                   onClick={() => setIsProjectsOpen(true)}
@@ -1051,6 +1078,7 @@ export default function App() {
                   </span>
                 )}
               </div>
+              {decommissionError && <p className="text-xs text-red-600">{decommissionError}</p>}
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {scopedSummaries.map(p => (
@@ -1072,6 +1100,15 @@ export default function App() {
                       >
                         Inspect
                       </button>
+                      {trackerKnows(trackerApps, p.projectName) && (
+                        <button
+                          onClick={() => handleSetDecommissioned(p.projectName, true)}
+                          className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded transition text-xs"
+                          title="Decommission: hide from every metrics page for everyone and mark it Decommissioned in the Assessment Tracker"
+                        >
+                          Decommission
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteProject(p.projectName)}
                         className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-950/30 rounded transition text-xs"
@@ -1084,6 +1121,38 @@ export default function App() {
                 ))}
               </div>
             </div>
+
+            {trackerApps && trackerApps.some(a => a.decommissioned) && (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+                <div className="border-b border-slate-800 pb-3">
+                  <span className="font-semibold text-slate-200 text-sm">
+                    Decommissioned Applications ({trackerApps.filter(a => a.decommissioned).length})
+                  </span>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Decommissioned in the Assessment Tracker (here or in the assessment editor). Left out of every metrics page for everyone.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {trackerApps.filter(a => a.decommissioned).sort((a, b) => a.name.localeCompare(b.name)).map(a => (
+                    <div key={a.name} className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between shadow-sm">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-slate-200 text-xs">{a.name}</h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5 truncate" title={a.decommissionReason || undefined}>
+                          {a.decommissionedAt ? `Since ${a.decommissionedAt}` : `${a.year} cycle`}{a.decommissionReason ? ` \u2022 ${a.decommissionReason}` : ''}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleSetDecommissioned(a.name, false)}
+                        className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-slate-900 rounded transition text-xs"
+                        title="Restore: back to the metrics pages and the Assessment Tracker"
+                      >
+                        Restore
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

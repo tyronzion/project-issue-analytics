@@ -19,6 +19,7 @@ import {
 import { IssueRecord, FormulaConfig, ProjectAlias } from '../types';
 import { parseTargetProjectItem, matchIssueToTargetList, ParsedTargetProject } from '../utils/projectMatcher';
 import { normalizeProjectName } from '../utils/metricsEngine';
+import { appCount } from '../utils/sharedTargets';
 
 interface TargetProjectListModalProps {
   isOpen: boolean;
@@ -256,7 +257,7 @@ export const TargetProjectListModal: React.FC<TargetProjectListModalProps> = ({
               </div>
 
               <span className="text-slate-400 text-xs font-mono">
-                {currentList.length} Target Project(s)
+                {currentList.length} entries &middot; {appCount(currentList)} apps (platforms counted once)
               </span>
             </div>
 

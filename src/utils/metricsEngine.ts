@@ -177,7 +177,9 @@ export function computeProjectSummaries(
   deletedProjects: string[] = [],
   aliases: ProjectAlias[] = [],
   customProjectList: string[] = [],
-  useCustomProjectListOnly: boolean = false
+  useCustomProjectListOnly: boolean = false,
+  // Projects left out everywhere, even when on the target list (apps decommissioned in the Assessment Tracker).
+  isExcluded: ((projectName: string) => boolean) | null = null
 ): { summaries: ProjectSummary[]; filteredIssues: IssueRecord[] } {
   // Map of tracked projects
   const projectMap = new Map<string, { baseProject: string; platformTag: string; isFromCustomList: boolean; matchReason?: string; issues: IssueRecord[] }>();
@@ -270,7 +272,7 @@ export function computeProjectSummaries(
 
   const activeIssues = processedIssues.filter(issue => {
     const isDynDeleted = effectiveDeletedSet.has(issue.project.toLowerCase());
-    return !isDynDeleted;
+    return !isDynDeleted && !isExcluded?.(issue.project);
   });
 
   const summaries: ProjectSummary[] = [];
@@ -279,6 +281,7 @@ export function computeProjectSummaries(
   projectMap.forEach(({ baseProject, platformTag, isFromCustomList, issues }, projectName) => {
     // If project was deleted and is NOT in target list, skip
     if (effectiveDeletedSet.has(projectName.toLowerCase())) return;
+    if (isExcluded?.(projectName)) return;
 
     let generalFound = 0;
     let iosFound = 0;

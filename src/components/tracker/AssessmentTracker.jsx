@@ -4,6 +4,7 @@ import { FilterSelect } from '../FilterChips';
 import { enrich, isDecommissioned } from '../../../tracker/shared/logic.js';
 import { targetMatcher } from '../../../tracker/shared/targets.js';
 import { useSharedTargets, activeTargetNames } from '../../utils/sharedTargets';
+import { loadTrackerApps } from '../../utils/trackerApps';
 import { api, getUser, setUser } from './api.js';
 import Monitoring from './Monitoring.jsx';
 import TimeReport, { PeriodComparison } from './TimeReport.jsx';
@@ -13,6 +14,7 @@ import Decommissioned from './Decommissioned.jsx';
 import ImportPage from './ImportPage.jsx';
 import SyncPage from './SyncPage.jsx';
 import Editor from './Editor.jsx';
+import TargetCheck from './TargetCheck.jsx';
 import './tracker.css';
 
 const remember = (k, v) => {
@@ -114,6 +116,12 @@ export default function AssessmentTracker({ section, sealForProject, reportIssue
     }
   }, [rows, sealForProject]);
 
+  // Decommissioning in the editor hides the app from the analytics pages: refresh their copy of the app list.
+  const decomKey = rows.map((r) => `${r.id}:${r.isActive}`).join(',');
+  useEffect(() => {
+    if (decomKey) loadTrackerApps();
+  }, [decomKey]);
+
   const enriched = useMemo(() => rows.map(enrich), [rows]);
   const shown = useMemo(() => (isShown ? enriched.filter(isShown) : enriched), [enriched, isShown]);
   const hiddenCount = enriched.length - shown.length;
@@ -177,7 +185,7 @@ export default function AssessmentTracker({ section, sealForProject, reportIssue
         <span className="ml-auto text-xs at-muted">{active.length} active · {retired.length} decommissioned</span>
         {targetNames && section !== 'sync' && section !== 'import' && (
           <span className="text-xs at-muted">
-            {showAll ? 'All apps' : `Target projects only${hiddenCount ? ` · ${hiddenCount} hidden` : ''}`}
+            {showAll ? 'All apps' : `Target projects only${hiddenCount ? ` · ${hiddenCount} rows hidden (all periods)` : ''}`}
             {isAdmin && (
               <button type="button" className="at-link ml-1.5" onClick={() => setShowAll((v) => !v)}>
                 {showAll ? 'Show target projects only' : 'Show all apps'}
@@ -201,6 +209,10 @@ export default function AssessmentTracker({ section, sealForProject, reportIssue
           />
         </label>
       </div>
+
+      {targetNames && cycle && ['monitoring', 'assessment', 'checklist'].includes(section) && (
+        <TargetCheck targetNames={targetNames} cycle={cycle} cycles={cycles} rows={rows} />
+      )}
 
       {error && (
         <div className="at-alert at-alert--error justify-between">

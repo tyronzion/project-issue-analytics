@@ -11,8 +11,10 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 - Classic login keeps working throughout.
 
 ## Recently completed
+- **Target Project List as the guide** (2026-10-20; pushed to `main`, **not deployed**). The tracker's Monitoring, Assessment List and Checklist pages have a check panel (`TargetCheck.jsx`). It counts the list by app (platform entries once) and shows list apps in this cycle, on the other track of the same year, decommissioned, or missing, plus cycle apps not on the list. The list buttons show "N entries · M apps". New RoE apps already join the list (D11).
+- **Decommissioned apps follow the tracker** (2026-10-20, D13; pushed to `main`, **not deployed**). The Projects page has Decommission/Restore and a Decommissioned Applications section. Decommissioned apps (from here or the assessment editor) are left out of every analytics page for everyone.
 - **New / Old column** (2026-10-20; pushed to `main`, **not deployed**). The Assessment List has a New / Old column and filter (the filter also shows on Checklist and Time Report). It shows `classification`, which the UberTicket sync already sets: Rules of Engagement ticket = New, Full Assessment ticket = Old. Apps without a ticket keep their workbook or editor value.
-- **Assessment report PDF** (2026-10-20, D12; pushed to `main` as `0a79a91`, print fixes `b18d8ad` and `548eaf2`, **not deployed**).
+- **Assessment report PDF** (2026-10-20, D12; pushed to `main` as `0a79a91`, print fixes `b18d8ad`, `548eaf2`, Jira links `e1b7920`, **not deployed**).
   - In the assessment editor, **Download report** turns on once all 12 checklist items are ticked. It opens a dialog for the Dashboard and Scan Results links (recommended), the Introduction and notes, and for RoE the testing type, testing time and recommendations. These are saved in `report_info`.
   - The dialog then opens a print-ready report in a new tab. The template is Full Assessment, or RoE when the ticket is RoE. The report has the team's seal badge image (`public/seals/`), New/Backlog/Overdue counts, the issue table and the grammar-checked seal wording. The browser's "Save as PDF" makes the file, named like `2026 Q4 Cloudstaff <App> Security Report`.
   - **Frozen after resolution:** the first download after the ticket resolves saves the issues as of the resolution date (`report_snapshot`). Later downloads use that copy, and the next assessment gets its own report. Admins can unfreeze. Checked in the demo: changing issues afterwards left the report unchanged.
@@ -98,7 +100,7 @@ See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3
 | `npm run test:auth` | 34/34 pass (both sign-in options side by side, roles, `pia/data` blocked) — rerun 2026-10-15 |
 | `npm run test:monitor` | 33/33 pass (incl. PIA policy client and normalizer) — 2026-10-16 |
 | `npm run test:pia` | 20/20 pass on node:sqlite and sql.js — 2026-10-15 |
-| `npm run test:tracker` | 46/46 pass (node:sqlite and sql.js, incl. shared Target Project List, assessment report and report freeze) — 2026-10-20 |
+| `npm run test:tracker` | 47/47 pass (node:sqlite and sql.js, incl. shared Target Project List, assessment report, report freeze and decommission) — 2026-10-20 |
 | `npm run lint` (tsc) | clean |
 | `vite build` | succeeds; fonts bundled |
 | Browser check (`issue-analytics-demo` preview) | design pages checked. Auth checked live: fails closed (503), data folders 404, dev bypass and sign-out work. Classic login checked live (`issue-analytics-classic` preview, generated test credentials). Roles checked live in both preview configs: admin Users page (add, change role, remove), and as user every admin action returns 403 while admin pages redirect. The real Entra round trip was verified in production on 2026-10-15. |

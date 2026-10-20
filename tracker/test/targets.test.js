@@ -142,3 +142,47 @@ test('routes: everyone reads, only admins change (fails closed without isAdmin)'
     await open.close();
   }
 });
+
+test('apps route and decommission from the Projects page: latest year only, platform ignored, restorable', async () => {
+  process.env.TRACKER_DB_PATH = ':memory:';
+  const tracker = await createTracker({ root: '/unused', log: () => {} });
+  const outer = express();
+  outer.use('/api/tracker', tracker.app);
+  const http = outer.listen(0);
+  await new Promise((r) => http.once('listening', r));
+  const base = `http://127.0.0.1:${http.address().port}/api/tracker`;
+  const call = async (method, url, body) => {
+    const res = await fetch(base + url, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    return { status: res.status, body: await res.json() };
+  };
+  try {
+    const { body: old } = await call('POST', '/cycles', { track: 'biannual', year: 2025 });
+    const { body: cur } = await call('POST', '/cycles', { track: 'biannual', year: 2026 });
+    const { body: a2025 } = await call('POST', `/cycles/${old.id}/assessments`, { project: 'Radio', period: '2nd Half' });
+    await call('POST', `/cycles/${cur.id}/assessments`, { project: 'Radio', period: '1st Half' });
+    await call('POST', `/cycles/${cur.id}/assessments`, { project: 'Radio', period: '2nd Half' });
+    await call('POST', `/cycles/${cur.id}/assessments`, { project: 'Buzz', period: '2nd Half' });
+
+    assert.equal((await call('POST', '/apps/decommission', { project: 'Nope', decommissioned: true })).status, 404);
+    assert.equal((await call('POST', '/apps/decommission', { project: 'Radio' })).status, 400);
+    assert.equal((await call('POST', '/apps/decommission', { project: 'Radio', decommissioned: true, date: 'today' })).status, 400);
+
+    const done = await call('POST', '/apps/decommission', { project: 'Radio AOS', decommissioned: true, reason: 'Retired' });
+    assert.equal(done.status, 200);
+    const radio = done.body.find((a) => a.name === 'Radio');
+    assert.equal(radio.decommissioned, true);
+    assert.equal(radio.decommissionReason, 'Retired');
+    assert.equal(done.body.find((a) => a.name === 'Buzz').decommissioned, false);
+    const rows2026 = (await call('GET', `/cycles/${cur.id}/assessments`)).body.filter((r) => r.project === 'Radio');
+    assert.deepEqual(rows2026.map((r) => r.isActive), ['Decommissioned', 'Decommissioned']);
+    const row2025 = (await call('GET', `/cycles/${old.id}/assessments`)).body.find((r) => r.id === a2025.id);
+    assert.equal(row2025.isActive, null); // older years are left as they were
+    assert.ok((await call('GET', `/assessments/${rows2026[0].id}/history`)).body.some((h) => h.field === 'isActive'));
+
+    const back = await call('POST', '/apps/decommission', { project: 'Radio', decommissioned: false });
+    assert.equal(back.body.find((a) => a.name === 'Radio').decommissioned, false);
+    assert.equal((await call('GET', '/apps')).body.find((a) => a.name === 'Radio').decommissionedAt, null);
+  } finally {
+    await new Promise((r) => http.close(r));
+  }
+});

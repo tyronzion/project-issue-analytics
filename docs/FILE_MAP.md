@@ -34,6 +34,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `src/utils/projectMatcher.ts` | Maps issues to projects using aliases and fuzzy matching | metricsEngine |
 | `src/utils/securitySeal.ts` | Seal (Secure → Compromised) from outstanding severities, via `sealFromCounts` in `tracker/shared/report.js` | SecuritySealDashboard and the tracker seal snapshot |
 | `src/utils/storage.ts` | localStorage for issues, settings, formulas and the Jira profile. `normalizeSettings` / `normalizeJiraProfile` validate stored and imported settings. | App, SettingsModal (settings-only export/import) |
+| `src/utils/trackerApps.ts` | Shared copy of `/api/tracker/apps` (`useTrackerApps`), `decommissionedMatcher` (hides decommissioned apps from the analytics pages, D13), `setAppDecommissioned` (Projects page) | App.tsx, AssessmentTracker (refresh) |
 | `src/utils/reportIssues.ts` | An app's unresolved issues in the shape the assessment report needs (App.tsx `reportIssuesFor`) | metricsEngine (`ProjectSummary.issues`) |
 | `src/utils/sharedTargets.ts` | Client for `/api/tracker/targets`: one copy per page (`useSharedTargets`), `saveSharedTargets`, `activeTargetNames` | App.tsx, tracker, PIA |
 | `src/utils/remotePersistence.ts` | Client for `/api/state/issues` | App |
@@ -48,7 +49,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `src/components/JiraIntegrationPage.tsx` | Jira connection UI. Posts its config to `/api/jira/issues`. | storage (Jira profile) |
 | `src/components/UsersPage.tsx` | Users & Roles page (admins only): list, add by email, change role, remove | `/auth/users` |
 | `src/components/MonitorFrame.tsx` | Embeds the `/monitor/*` pages as tabs | routes |
-| `src/components/tracker/*` | Assessment Tracker UI. `AssessmentTracker.jsx` is the shell; `api.js` is the `/api/tracker` client; `SyncPage.jsx` handles UberTicket links; `TimeReport.jsx` is the time-spent report (also exports `TimeByPriorityTable` for Monitoring and `PeriodComparison` for its own page); `tracker.css` holds the `at-*` styles. `report/ReportDialog.jsx` (opened by Editor's "Download report": links and text, preview of seal and counts) and `report/renderReport.js` (print-ready HTML of both templates, escaped; seal badges from `public/seals/<seal>.png`, the team's official images) build the assessment PDF. | `tracker/shared/logic.js` |
+| `src/components/tracker/*` | Assessment Tracker UI. `AssessmentTracker.jsx` is the shell; `api.js` is the `/api/tracker` client; `SyncPage.jsx` handles UberTicket links; `TargetCheck.jsx` compares the cycle with the Target Project List by app; `TimeReport.jsx` is the time-spent report (also exports `TimeByPriorityTable` for Monitoring and `PeriodComparison` for its own page); `tracker.css` holds the `at-*` styles. `report/ReportDialog.jsx` (opened by Editor's "Download report": links and text, preview of seal and counts) and `report/renderReport.js` (print-ready HTML of both templates, escaped; seal badges from `public/seals/<seal>.png`, the team's official images) build the assessment PDF. | `tracker/shared/logic.js` |
 
 ## UberTicket monitor (`monitor/`)
 | File | Purpose | Relationships |
@@ -71,7 +72,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 ## Assessment Tracker (`tracker/`)
 | File | Purpose | Relationships |
 |---|---|---|
-| `tracker/server/tracker.js` | Express router: cycles, assessments, history, seal, report snapshot (freeze), sync, links, import | db, sync, importer |
+| `tracker/server/tracker.js` | Express router: cycles, assessments, history, seal, report snapshot (freeze), apps list + decommission (D13), sync, links, import | db, sync, importer |
 | `tracker/server/sync.js` | UberTicket → tracker matching and updates (product name, then quarter → period) | logic.js `matchKey` |
 | `tracker/server/targets.js` | **Shared Target Project List** (D11): tables, read/save (admin), `addTargetsFromRoe` after each sync | tracker.js, db.js |
 | `tracker/server/db.js`, `sqlite.js` | Schema, field mapping (`toApi`/`toDb`), node:sqlite or sql.js adapter | tracker |

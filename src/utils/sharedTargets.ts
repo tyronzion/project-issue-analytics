@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { targetKey } from '../../tracker/shared/targets.js';
 
 // The shared Target Project List (server: /api/tracker/targets). One copy for the whole page, so a save on
 // the Settings page updates the analytics, tracker and PIA pages at once. null = not loaded or unavailable
@@ -61,4 +62,10 @@ export function useSharedTargets(): SharedTargets | null {
 // Names to filter by, or null when pages should show everything (list off, not set up, or unavailable).
 export function activeTargetNames(t: SharedTargets | null): string[] | null {
   return t && t.seeded && t.targetOnly && t.names.length ? t.names : null;
+}
+
+// How many apps a list covers: platform entries ("Radio", "Radio AOS", "Radio iOS") are one app, as in the
+// Assessment Tracker.
+export function appCount(names: string[] | null | undefined): number {
+  return new Set((names || []).map(n => targetKey(n)).filter(Boolean)).size;
 }

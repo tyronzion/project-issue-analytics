@@ -158,3 +158,14 @@ Add a new entry only for decisions a future developer might otherwise reconsider
   - The snapshot is taken at download, not automatically when the tracker loads. A browser with stale or partial issue data would otherwise freeze wrong reports (target-list apps count as "matched" even with no data). The person downloading sees the counts before they are frozen.
 - **Reason:** The user asked for PDFs that follow the SharePoint Word templates, with grammar-checked seal wording (including a version for when no issues are found).
 - **Impact:** Changing the seal rules means editing `sealFromCounts` only. The report wording lives in `report.js` (seal text, advisory, findings) and `renderReport.js` (fixed template sections).
+
+### D13: Decommissioned is one shared flag, owned by the Assessment Tracker
+- **Date:** 2026-10-20
+- **Decision:**
+  - An app is decommissioned when its rows in its **latest** tracker cycle are `is_active = 'Decommissioned'` (`listApps`, `GET /api/tracker/apps`).
+  - The analytics pages (Project Metrics, Dashboard, Seal, All Issues, Dependabots) leave decommissioned apps out for everyone (`computeProjectSummaries` `isExcluded`). The match is by `targetKey`, so platform variants ("Radio AOS") follow "Radio".
+  - The Projects page can decommission or restore an app (`POST /api/tracker/apps/decommission`). That sets every row of the app in its latest tracker year and logs it in history. It is open to every signed-in user, like editing in the tracker (D8).
+  - Decommissioning in the assessment editor has the same effect.
+  - Delete (per-browser `deletedProjects`) is unchanged.
+- **Reason:** The user wanted "decommissioned" on the Projects page to follow the tracker automatically, and asked for decommissioned apps to be hidden from metrics but restorable.
+- **Impact:** Older cycles keep their own state; only the latest year changes. An app the tracker doesn't know can't be decommissioned from the Projects page (no button).

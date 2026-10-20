@@ -180,13 +180,24 @@ export function toDb(value, key) {
   return value ?? null;
 }
 
-// Every app in the tracker, as of its most recent cycle (read by the PIA module for its app list).
+// Every app in the tracker, as of its most recent cycle (read by the PIA module for its app list, and by the
+// analytics pages, which hide apps decommissioned here).
 export function listApps(db) {
-  const rows = db.prepare('SELECT a.project, a.repositories, a.is_active, c.year FROM assessments a JOIN cycles c ON c.id = a.cycle_id ORDER BY c.year DESC, a.id DESC').all();
+  const rows = db.prepare('SELECT a.project, a.repositories, a.is_active, a.decommissioned_at, a.decommission_reason, c.year FROM assessments a JOIN cycles c ON c.id = a.cycle_id ORDER BY c.year DESC, a.id DESC').all();
   const apps = new Map();
   for (const r of rows) {
     const key = matchKey(r.project);
-    if (key && !apps.has(key)) apps.set(key, { name: r.project, repositories: r.repositories || '', decommissioned: r.is_active === 'Decommissioned', year: r.year });
+    if (key && !apps.has(key)) {
+      const decommissioned = r.is_active === 'Decommissioned';
+      apps.set(key, {
+        name: r.project,
+        repositories: r.repositories || '',
+        decommissioned,
+        decommissionedAt: decommissioned ? r.decommissioned_at || null : null,
+        decommissionReason: decommissioned ? r.decommission_reason || null : null,
+        year: r.year,
+      });
+    }
   }
   return [...apps.values()];
 }

@@ -6,6 +6,7 @@ import { syncTickets } from './sync.js';
 import { readTargets, saveTargets, addTargetsFromRoe } from './targets.js';
 import { TRACKS, SEALS, matchKey } from '../shared/logic.js';
 import { normalizeReportInfo, normalizeSnapshot } from '../shared/report.js';
+import { targetKey } from '../shared/targets.js';
 
 // Assessment Tracker API, mounted by vite.config.ts at /api/tracker.
 // getTickets() returns { full, roe } normalized UberTicket tickets (from the monitor).
@@ -196,6 +197,44 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
         .run(r.id, 'reportSnapshot', `${current.ticketKey} as of ${current.asOf}`, null, userOf(req));
     }
     res.json(toApi(db.prepare('SELECT * FROM assessments WHERE id = ?').get(r.id)));
+  });
+
+  // App list with each app's state in its latest cycle. The analytics pages hide decommissioned apps from
+  // their metrics, so decommissioning in the tracker (editor or below) applies everywhere.
+  router.get('/apps', (_req, res) => res.json(listApps(db)));
+
+  // Decommission or restore an app from the analytics Projects page: every row of the app (platform
+  // ignored, as on the Target Project List) in the latest year it appears in. Tracker editing is open to
+  // every signed-in user (D8), as in the assessment editor.
+  router.post('/apps/decommission', (req, res) => {
+    const { project, decommissioned, date, reason } = req.body || {};
+    if (typeof project !== 'string' || !project.trim() || typeof decommissioned !== 'boolean') return res.status(400).json({ error: 'project and decommissioned are required' });
+    if (date != null && date !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(String(date))) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    if (reason != null && (typeof reason !== 'string' || reason.length > 300)) return res.status(400).json({ error: 'reason must be text (max 300 characters)' });
+    const key = targetKey(project);
+    const rows = db.prepare('SELECT a.*, c.year FROM assessments a JOIN cycles c ON c.id = a.cycle_id').all().filter((r) => targetKey(r.project) === key);
+    if (!key || !rows.length) return res.status(404).json({ error: `${project} is not in the Assessment Tracker.` });
+    const year = Math.max(...rows.map((r) => r.year));
+    const user = userOf(req);
+    const next = decommissioned
+      ? { is_active: 'Decommissioned', decommissioned_at: date || new Date().toISOString().slice(0, 10), decommission_reason: reason?.trim() || null }
+      : { is_active: 'Active', decommissioned_at: null, decommission_reason: null };
+    const update = db.prepare("UPDATE assessments SET is_active = ?, decommissioned_at = ?, decommission_reason = ?, updated_at = datetime('now'), updated_by = ? WHERE id = ?");
+    const logChange = db.prepare('INSERT INTO history (assessment_id, field, old_value, new_value, changed_by) VALUES (?, ?, ?, ?, ?)');
+    db.exec('BEGIN');
+    try {
+      for (const r of rows.filter((x) => x.year === year && (x.is_active === 'Decommissioned') !== decommissioned)) {
+        update.run(next.is_active, next.decommissioned_at, next.decommission_reason, user, r.id);
+        logChange.run(r.id, 'isActive', r.is_active, `${next.is_active} (Projects page)`, user);
+      }
+      db.exec('COMMIT');
+    } catch (e) {
+      db.exec('ROLLBACK');
+      return res.status(500).json({ error: e.message });
+    }
+    log(`${decommissioned ? 'decommissioned' : 'restored'} ${project} (${year}) by ${user}`);
+    sync();
+    res.json(listApps(db));
   });
 
   // Shared Target Project List: everyone signed in reads it; only admins change it (fails closed without

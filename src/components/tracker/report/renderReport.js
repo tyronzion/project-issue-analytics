@@ -262,6 +262,7 @@ const STYLES = `
   .frame { width: 100%; border-collapse: collapse; margin: 0; }
   .frame > thead > tr > td, .frame > tfoot > tr > td, .frame > tbody > tr > td { padding: 0; border: 0; }
   .frame-space { height: 0; }
+  .page-head { display: none; }
   .footer { display: flex; gap: 48px; align-items: center; font-family: var(--font-family-heading); font-size: 8pt; color: var(--color-text-base-muted); max-width: 180mm; margin: 32px auto 0; letter-spacing: 0.02em; }
   .footer a { color: var(--color-brand-primary); font-weight: 400; text-decoration: none; letter-spacing: 0; }
   .toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: 12px; align-items: center; justify-content: center; padding: 10px; background: var(--color-surface-secondary); border-bottom: 1px solid var(--color-border-primary); font-size: 10pt; }
@@ -270,7 +271,12 @@ const STYLES = `
     html, body { background: none; }
     .toolbar { display: none; }
     main { padding: 0 18mm; max-width: none; }
-    .frame-space.top { height: 14mm; }
+    /* Pages 2+: the seal at the top right (the thead repeats on every printed page). On page 1 the cover is
+       pulled up over it, so page 1 keeps its own layout (seal left, logo right). */
+    .frame-space.top { height: 34mm; }
+    .page-head { display: flex; justify-content: flex-end; padding: 10mm 18mm 0; }
+    .page-head .seal { height: 20mm; }
+    .cover { position: relative; z-index: 1; background: var(--color-surface-canvas); margin: -34mm -18mm 0; padding: 14mm 18mm 0; }
     .frame-space.bottom { height: 20mm; }
     /* Fixed elements repeat on every printed page; the bottom spacer keeps text clear of it. */
     .footer { position: fixed; bottom: 8mm; left: 18mm; right: 18mm; margin: 0; max-width: none; }
@@ -287,7 +293,7 @@ export function renderReport(r, fileName, { jiraBase = '' } = {}) {
 <style>${STYLES}</style></head>
 <body>
 <div class="toolbar"><span>Choose <b>Save as PDF</b> as the destination in the print dialog.</span><button type="button" id="print-report">Save as PDF</button></div>
-<table class="frame"><thead><tr><td><div class="frame-space top"></div></td></tr></thead>
+<table class="frame"><thead><tr><td><div class="frame-space top"><div class="page-head">${sealBadge(r.seal)}</div></div></td></tr></thead>
 <tfoot><tr><td><div class="frame-space bottom"></div></td></tr></tfoot>
 <tbody><tr><td>
 <main>

@@ -43,7 +43,11 @@ function countsTable(r) {
 }
 
 function issueTable(r, caption) {
-  if (!r.rows.length) return '<p class="muted center">There are no unresolved issues for this application.</p>';
+  if (!r.rows.length) {
+    // RoE is usually the app's first test, so "unresolved" would read oddly there.
+    const none = r.kind === 'roe' ? 'No security issues were found during this assessment.' : 'There are no new or backlog issues for this application.';
+    return `<p class="muted center">${none}</p>`;
+  }
   const body = r.rows.map((i) => `<tr>
       <td class="nowrap${i.overdue ? ' overdue' : ''}">${esc(i.key)}${i.overdue ? '*' : ''}</td>
       <td>${esc(i.summary)}</td>
@@ -223,7 +227,10 @@ const STYLES = `
   .logo { height: 44px; }
   .seal { height: 92px; width: auto; }
   table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; break-inside: auto; }
-  tr { break-inside: avoid; }
+  /* Keep data-table rows whole, but never the frame row that holds the whole report: Chrome would push
+     the report to page 2 to avoid splitting it. */
+  .grid tr, .guide tr { break-inside: avoid; }
+  .frame > tbody > tr, .frame > tbody > tr > td { break-inside: auto; }
   .grid th, .grid td { border: 1px solid var(--color-border-primary); padding: 5px 7px; vertical-align: middle; }
   .grid thead th { background: var(--color-surface-secondary); font-weight: 700; }
   .grid th.band { background: var(--color-brand-primary-soft); }

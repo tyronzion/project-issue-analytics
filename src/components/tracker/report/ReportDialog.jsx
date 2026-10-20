@@ -4,6 +4,7 @@ import { buildReport, reportFileName, normalizeReportInfo, isWebUrl, REPORT_DEFA
 import { api } from '../api.js';
 import { SealBadge } from '../ui.jsx';
 import { openReportTab, showReport, longDate } from './renderReport.js';
+import { loadJiraIntegrationProfile } from '../../../utils/storage';
 
 const todayIso = () => new Date().toLocaleDateString('en-CA');
 
@@ -27,6 +28,21 @@ export default function ReportDialog({ row, cycleYear, reportIssuesFor, isAdmin,
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setInfo((i) => ({ ...i, [k]: e.target.value }));
+  // Jira site for issue-key links: the server's JIRA_BASE_URL, else this browser's Jira profile.
+  const [jiraBase, setJiraBase] = useState('');
+  useEffect(() => {
+    let alive = true;
+    const fallback = () => {
+      try {
+        return new URL(loadJiraIntegrationProfile().baseUrl).origin;
+      } catch {
+        return '';
+      }
+    };
+    fetch('/api/jira/site').then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
+      .then((d) => alive && setJiraBase(d?.baseUrl || fallback()));
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
@@ -88,7 +104,7 @@ export default function ReportDialog({ row, cycleYear, reportIssuesFor, isAdmin,
         if (snap) [used, usedAsOf] = [snap.issues, snap.asOf];
       }
       const final = buildReport({ assessment: { ...row, reportInfo: saved.reportInfo }, issues: used, today: usedAsOf });
-      showReport(tab, final, reportFileName(final, cycleYear));
+      showReport(tab, final, reportFileName(final, cycleYear), { jiraBase });
       onClose();
     } catch (e) {
       tab.close();
@@ -147,6 +163,7 @@ export default function ReportDialog({ row, cycleYear, reportIssuesFor, isAdmin,
                   {report.counts.unresolved} unresolved · {report.counts.new} new · {report.counts.backlog} backlog · {report.counts.overdue} overdue
                 </span>
               </div>
+              {!jiraBase && <div className="mt-1 text-xs at-muted">Issue keys won't be links: the Jira site isn't known (set JIRA_BASE_URL on the server, or connect Jira on the Jira page).</div>}
               <div className="mt-1 text-xs at-muted">
                 New = created between {report.start ? longDate(report.start) : '(no start date)'} and {longDate(report.end)}{row.ticketKey ? ` (${row.ticketKey})` : ''}.
               </div>

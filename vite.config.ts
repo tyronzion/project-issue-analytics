@@ -421,6 +421,19 @@ function jiraDatasourcePlugin() {
         }
       });
 
+      // The Jira site address only (no credentials), so pages can link issue keys to Jira (assessment report).
+      server.middlewares.use('/api/jira/site', (_req: any, res: any) => {
+        let baseUrl = '';
+        try {
+          const u = new URL(String(process.env.JIRA_BASE_URL || ''));
+          if (u.protocol === 'https:' || u.protocol === 'http:') baseUrl = u.origin;
+        } catch {
+          // not configured
+        }
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ baseUrl }));
+      });
       server.middlewares.use('/api/jira/issues', async (_req: any, res: any) => {
         try {
           const req = _req;

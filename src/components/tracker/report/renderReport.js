@@ -42,14 +42,21 @@ function countsTable(r) {
     <tbody><tr><td>${r.counts.new}</td><td>${r.counts.backlog}</td><td>${r.counts.overdue}</td><td>${r.counts.unresolved}</td></tr></tbody></table>`;
 }
 
-function issueTable(r, caption) {
+// Jira issue link for a key like "RRP-11415", when the Jira site is known.
+const KEY_RE = /^[A-Z][A-Z0-9_]*-\d+$/;
+function issueLink(key, jiraBase) {
+  const label = esc(key);
+  return jiraBase && isWebUrl(jiraBase) && KEY_RE.test(key) ? `<a href="${esc(`${jiraBase.replace(/\/+$/, '')}/browse/${key}`)}">${label}</a>` : label;
+}
+
+function issueTable(r, caption, jiraBase) {
   if (!r.rows.length) {
     // RoE is usually the app's first test, so "unresolved" would read oddly there.
     const none = r.kind === 'roe' ? 'No security issues were found during this assessment.' : 'There are no new or backlog issues for this application.';
     return `<p class="muted center">${none}</p>`;
   }
   const body = r.rows.map((i) => `<tr>
-      <td class="nowrap${i.overdue ? ' overdue' : ''}">${esc(i.key)}${i.overdue ? '*' : ''}</td>
+      <td class="nowrap${i.overdue ? ' overdue' : ''}">${issueLink(i.key, jiraBase)}${i.overdue ? '*' : ''}</td>
       <td>${esc(i.summary)}</td>
       <td class="nowrap">${esc(longDate(i.dueDate))}</td>
       <td class="nowrap">${i.type}</td>
@@ -82,14 +89,14 @@ function header(r) {
     <div class="subtitle">${esc(r.title)}</div>`;
 }
 
-function fullReport(r) {
+function fullReport(r, jiraBase) {
   return `${header(r)}
     ${r.info.intro ? `<h2>Introduction</h2>${multiline(r.info.intro)}` : ''}
     <h2>Summary of Findings</h2>
     ${paras(r.sealText.slice(0, 1))}
     ${countsTable(r)}
     ${severityTable(r)}
-    ${issueTable(r, "Detailed information regarding the application's issues can be found in the table below:")}
+    ${issueTable(r, "Detailed information regarding the application's issues can be found in the table below:", jiraBase)}
     <h2>Security Advisory</h2>
     ${paras(r.advisory)}
     ${paras(r.sealText.slice(1))}
@@ -97,7 +104,7 @@ function fullReport(r) {
     ${artifacts(r, 'Compilation Security Testing Scan Results', 'Security Dashboard')}`;
 }
 
-function roeReport(r) {
+function roeReport(r, jiraBase) {
   const type = r.info.testingType || 'Blackbox';
   const blackbox = /black/i.test(type);
   const recs = parseRecommendations(r.info.recommendations);
@@ -109,7 +116,7 @@ function roeReport(r) {
     <p>${esc(r.findings)} ${r.rows.length ? 'We recommend addressing them within their SLA.' : 'We recommend that you maintain the integrity of your product.'} If you have any questions, feel free to contact us.</p>
     ${paras(r.sealText.slice(0, 1))}
     ${severityTable(r)}
-    ${issueTable(r, 'Detailed information regarding the current and backlog application issues can be found in the table below:')}
+    ${issueTable(r, 'Detailed information regarding the current and backlog application issues can be found in the table below:', jiraBase)}
     <h3>Overview</h3>
     <p>Cloudstaff Data Security (CSDATASEC) conducted a ${esc(type.toLowerCase())} security assessment of ${esc(r.project)} to evaluate potential security risks. The objective was to identify vulnerabilities and weaknesses that could affect the application, its users, and their data.</p>
     <p>During the engagement, CSDATASEC used configuration analysis and security tools to simulate real-world attack scenarios. The assessment focused on identifying insecure coding practices, logic flaws, misconfigurations, and behavioral anomalies.</p>
@@ -237,6 +244,7 @@ const STYLES = `
   .center td, .center th { text-align: center; }
   .issues td { font-size: 9.5pt; } .issues td:nth-child(n+3) { text-align: center; }
   .issues td.overdue { color: var(--color-feedback-danger, var(--color-text-base-primary)); font-weight: 700; }
+  .issues td a { color: inherit; font-weight: inherit; text-decoration: underline; text-underline-offset: 2px; }
   .details th { text-align: left; width: 40%; background: var(--color-surface-secondary); }
   .qa tbody th { text-align: left; width: 36%; vertical-align: top; }
   .qa td { text-align: justify; vertical-align: top; }
@@ -270,7 +278,7 @@ const STYLES = `
 `;
 
 // The whole report page. fileName becomes the document title, which the browser uses as the PDF name.
-export function renderReport(r, fileName) {
+export function renderReport(r, fileName, { jiraBase = '' } = {}) {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(fileName)}</title>
@@ -283,7 +291,7 @@ export function renderReport(r, fileName) {
 <tfoot><tr><td><div class="frame-space bottom"></div></td></tr></tfoot>
 <tbody><tr><td>
 <main>
-${r.kind === 'roe' ? roeReport(r) : fullReport(r)}
+${r.kind === 'roe' ? roeReport(r, jiraBase) : fullReport(r, jiraBase)}
 </main>
 </td></tr></tbody></table>
 <div class="footer"><span>US&nbsp; | &nbsp;UK&nbsp; | &nbsp;AUSTRALIA&nbsp; | &nbsp;PHILIPPINES&nbsp; | &nbsp;INDIA</span><a href="https://www.cloudstaff.com">cloudstaff.com</a></div>
@@ -297,9 +305,9 @@ export function openReportTab() {
   return w;
 }
 
-export function showReport(w, r, fileName) {
+export function showReport(w, r, fileName, options) {
   w.document.open();
-  w.document.write(renderReport(r, fileName));
+  w.document.write(renderReport(r, fileName, options));
   w.document.close();
   const print = () => w.print();
   w.document.getElementById('print-report')?.addEventListener('click', print);

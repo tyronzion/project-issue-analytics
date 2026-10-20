@@ -125,13 +125,20 @@ export default function App() {
   // Apps decommissioned in the Assessment Tracker are left out of every analytics page (shared for everyone).
   const trackerApps = useTrackerApps();
   const isDecommissionedApp = useMemo(() => decommissionedMatcher(trackerApps), [trackerApps]);
-  const [issues, setIssues] = useState<IssueRecord[]>(() => {
+  // The full dataset, cancelled issues included: they are kept (and saved) so an assessment report can count
+  // an issue that was still open on its resolution date and cancelled later. Every analytics page reads
+  // `issues`, which leaves cancelled issues out, as before.
+  const [allIssues, setIssues] = useState<IssueRecord[]>(() => {
     const saved = loadSavedData();
     if (saved && Array.isArray(saved) && saved.length > 0) {
       return saved;
     }
     return [];
   });
+  const issues = useMemo(
+    () => removeCancelledIssues(allIssues, settings.formulaConfig),
+    [allIssues, settings.formulaConfig]
+  );
 
   const [activeTab, setActiveTab] = useState<ActiveTab>(
     () => getTabFromPath(window.location.pathname) ?? 'dashboard'
@@ -213,7 +220,7 @@ export default function App() {
   useEffect(() => {
     if (!settings.autoSaveData) return;
 
-    savePersistedData(issues);
+    savePersistedData(allIssues);
 
     // Only admins change the shared dataset; a user's changes stay in their own browser.
     if (!isAdmin || !isRemoteHydrated || !isRemotePersistenceConfigured) return;
@@ -223,7 +230,7 @@ export default function App() {
     }
 
     remoteSaveTimeoutRef.current = setTimeout(() => {
-      saveRemoteIssues(issues).catch(error => {
+      saveRemoteIssues(allIssues).catch(error => {
         console.warn('Failed to persist issues to remote database:', error);
       });
     }, 600);
@@ -234,15 +241,7 @@ export default function App() {
         remoteSaveTimeoutRef.current = null;
       }
     };
-  }, [issues, settings.autoSaveData, isRemoteHydrated, isRemotePersistenceConfigured, isAdmin]);
-
-  // Cancelled records are excluded from the permanent local dataset.
-  useEffect(() => {
-    setIssues(currentIssues => {
-      const activeIssues = removeCancelledIssues(currentIssues, settings.formulaConfig);
-      return activeIssues.length === currentIssues.length ? currentIssues : activeIssues;
-    });
-  }, [settings.formulaConfig.cancelledStatuses]);
+  }, [allIssues, settings.autoSaveData, isRemoteHydrated, isRemotePersistenceConfigured, isAdmin]);
 
   // 3.1 Bootstrap permanent default dataset from bundled workbook when storage is empty.
   useEffect(() => {
@@ -250,7 +249,7 @@ export default function App() {
 
     const bootstrapDefaultData = async () => {
       if (!isRemoteHydrated) return;
-      if (issues.length > 0) return;
+      if (allIssues.length > 0) return;
       setIsDataLoading(true);
       try {
         // Try Jira-backed datasource first so users don't need manual imports.
@@ -261,9 +260,8 @@ export default function App() {
           if (jiraRows.length > 0) {
             const { rows } = mapObjectsToIssueRecords(jiraRows, settings.formulaConfig);
             if (!isCancelled && rows.length > 0) {
-              const activeRows = removeCancelledIssues(rows, settings.formulaConfig);
-              setIssues(activeRows);
-              savePersistedData(activeRows);
+              setIssues(rows);
+              savePersistedData(rows);
               return;
             }
           }
@@ -294,9 +292,8 @@ export default function App() {
 
         const { rows } = await parseExcelOrCsvFile(file, settings.formulaConfig);
         if (!isCancelled && rows.length > 0) {
-          const activeRows = removeCancelledIssues(rows, settings.formulaConfig);
-          setIssues(activeRows);
-          savePersistedData(activeRows);
+          setIssues(rows);
+          savePersistedData(rows);
         }
       } catch (err) {
         console.error('Failed to bootstrap default workbook data:', err);
@@ -356,8 +353,10 @@ export default function App() {
   const isTrackerPage = Boolean(trackerSection(activeTab));
   const trackerSummaries = useMemo(() => {
     if (!isTrackerPage || isDataLoading || issues.length === 0) return null;
+    // All issues, cancelled ones included: a report counts an issue cancelled after its resolution date.
+    // The seal snapshot is unaffected (cancelled issues are never outstanding).
     return computeProjectSummaries(
-      issues,
+      allIssues,
       settings.formulaConfig,
       settings.dateFilter,
       settings.deletedProjects,
@@ -365,7 +364,7 @@ export default function App() {
       settings.customProjectList,
       settings.useCustomProjectListOnly
     ).summaries;
-  }, [isTrackerPage, isDataLoading, issues, settings]);
+  }, [isTrackerPage, isDataLoading, issues, allIssues, settings]);
   const sealByProject = useMemo(() => {
     if (!trackerSummaries) return null;
     const map = new Map<string, string>();
@@ -591,23 +590,23 @@ export default function App() {
 
   // Handler: Import Complete
   const handleImportComplete = (importedRows: IssueRecord[], mode: 'replace' | 'append' | 'deduplicate') => {
-    const activeImportedRows = removeCancelledIssues(importedRows, settings.formulaConfig);
+    // Cancelled rows are kept (hidden from the analytics pages; used by assessment reports).
     if (mode === 'replace') {
-      setIssues(activeImportedRows);
+      setIssues(importedRows);
     } else if (mode === 'append') {
-      setIssues(prev => [...prev, ...activeImportedRows]);
+      setIssues(prev => [...prev, ...importedRows]);
     } else {
       // Deduplicate
       const map = new Map<string, IssueRecord>();
-      issues.forEach(i => map.set(i.id, i));
-      activeImportedRows.forEach(i => map.set(i.id, i));
+      allIssues.forEach(i => map.set(i.id, i));
+      importedRows.forEach(i => map.set(i.id, i));
       setIssues(Array.from(map.values()));
     }
   };
 
   // Handler: Data Merge Complete
   const handleMergeComplete = (mergedRows: IssueRecord[]) => {
-    setIssues(removeCancelledIssues(mergedRows, settings.formulaConfig));
+    setIssues(mergedRows);
   };
 
   // Handler: Drilldown into specific project or platform
@@ -707,8 +706,8 @@ export default function App() {
 
       const { rows } = mapObjectsToIssueRecords(jiraRows, settings.formulaConfig);
       const activeRows = removeCancelledIssues(rows, settings.formulaConfig);
-      setIssues(activeRows);
-      savePersistedData(activeRows);
+      setIssues(rows);
+      savePersistedData(rows);
       saveJiraIntegrationProfile({
         ...loadJiraIntegrationProfile(),
         ...credentials,
@@ -771,7 +770,7 @@ export default function App() {
     setSettings(prev => (sharedTargets?.seeded
       ? { ...backup.settings, customProjectList: prev.customProjectList, useCustomProjectListOnly: prev.useCustomProjectListOnly }
       : backup.settings));
-    setIssues(removeCancelledIssues(backup.issues, backup.settings.formulaConfig));
+    setIssues(backup.issues);
   };
 
   useEffect(() => {
@@ -1352,7 +1351,7 @@ export default function App() {
       <DataMergeModal
         isOpen={isMergeOpen}
         onClose={() => setIsMergeOpen(false)}
-        currentIssues={issues}
+        currentIssues={allIssues}
         formulaConfig={settings.formulaConfig}
         onMergeComplete={handleMergeComplete}
       />
@@ -1383,7 +1382,7 @@ export default function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
-        issues={issues}
+        issues={allIssues}
         onUpdateSettings={setSettings}
         onResetDataToSample={isAdmin ? handleResetDataToSample : undefined}
         onRestoreBackup={isAdmin ? handleRestoreBackup : undefined}

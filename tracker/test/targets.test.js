@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import { openDb } from '../server/db.js';
-import { readTargets, saveTargets, addTargetsFromRoe, cleanNames } from '../server/targets.js';
+import { readTargets, saveTargets, addTargetsFromRoe, cleanNames, addRowsForTargets, ignoreTargetRow } from '../server/targets.js';
+import { syncTickets } from '../server/sync.js';
 import { createTracker } from '../server/tracker.js';
 import { targetKey, targetMatcher } from '../shared/targets.js';
 
@@ -185,4 +186,42 @@ test('apps route and decommission from the Projects page: latest year only, plat
   } finally {
     await new Promise((r) => http.close(r));
   }
+});
+
+test('list apps missing from this year get Not Started rows; a Full Assessment ticket then links to them', async () => {
+  const db = await seeded(['MyStaff', 'Radio', 'Radio AOS', 'Buzz', 'Gone']);
+  db.prepare("INSERT INTO cycles (id, track, year) VALUES (1, 'biannual', 2026), (2, 'quarterly', 2026)").run();
+  const add = db.prepare('INSERT INTO assessments (cycle_id, period, project, is_active) VALUES (?, ?, ?, ?)');
+  add.run(2, '1st Quarter', 'MyStaff', 'Active');
+  add.run(1, '1st Half', 'Buzz', 'Active');
+  add.run(1, '1st Half', 'Gone', 'Decommissioned');
+  const today = new Date(2026, 9, 20); // 2nd Half / 4th Quarter
+
+  const added = addRowsForTargets(db, { today });
+  const got = added.map((a) => `${a.project}|${a.track}|${a.period}`).sort();
+  assert.deepEqual(got, ['Buzz|biannual|2nd Half', 'MyStaff|quarterly|4th Quarter', 'Radio|biannual|2nd Half']);
+  const radio = db.prepare("SELECT * FROM assessments WHERE project = 'Radio'").get();
+  assert.equal(radio.is_active, 'Active');
+  assert.equal(radio.created_from_target, 1);
+  assert.equal(radio.ticket_key, null); // Not Started until a ticket arrives
+
+  assert.deepEqual(addRowsForTargets(db, { today }), []); // no duplicates
+
+  // Deleted rows stay deleted.
+  ignoreTargetRow(db, db.prepare("SELECT * FROM assessments WHERE project = 'Buzz' AND period = '2nd Half'").get(), 'Zion');
+  db.prepare("DELETE FROM assessments WHERE project = 'Buzz' AND period = '2nd Half'").run();
+  assert.deepEqual(addRowsForTargets(db, { today }), []);
+
+  // A new Full Assessment ticket for Radio in Q4 is combined with the list row (no second row).
+  const ms = (iso) => Date.parse(`${iso}T00:00:00Z`) - 8 * 3_600_000;
+  syncTickets(db, { full: [{ key: 'UB-77', url: 'https://ub/77', state: 'open', product: 'Cloudstaff Radio', quarter: 'Q4', year: '2026', assignee: 'ZionM', createdAt: ms('2026-10-21'), resolvedAt: null }], roe: [] });
+  const rows = db.prepare("SELECT * FROM assessments WHERE project LIKE '%Radio%'").all();
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].ticket_key, 'UB-77');
+  assert.equal(rows[0].ticket_url, 'https://ub/77');
+  assert.equal(rows[0].ticket_state, 'open');
+  assert.equal(rows[0].classification, 'Old');
+
+  // No cycle for the year: nothing is added.
+  assert.deepEqual(addRowsForTargets(db, { today: new Date(2027, 1, 1) }), []);
 });

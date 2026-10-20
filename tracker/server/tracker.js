@@ -3,7 +3,7 @@ import path from 'node:path';
 import { openDb, FIELDS, toApi, toDb, listApps } from './db.js';
 import { parseWorkbook, previewOf, importCycles } from './importer.js';
 import { syncTickets } from './sync.js';
-import { readTargets, saveTargets, addTargetsFromRoe } from './targets.js';
+import { readTargets, saveTargets, addTargetsFromRoe, addRowsForTargets, ignoreTargetRow } from './targets.js';
 import { TRACKS, SEALS, matchKey } from '../shared/logic.js';
 import { normalizeReportInfo, normalizeSnapshot } from '../shared/report.js';
 import { targetKey } from '../shared/targets.js';
@@ -23,8 +23,24 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
     log(unavailable);
   }
 
+  // Target Project List apps missing from this year's cycle get a "Not Started" row (targets.js).
+  function fillFromTargets() {
+    if (!db) return [];
+    try {
+      const added = addRowsForTargets(db);
+      if (added.length) log(`added ${added.length} Not Started rows for Target Project List apps: ${[...new Set(added.map((a) => a.project))].join(', ')}`);
+      return added;
+    } catch (err) {
+      log(`adding Target Project List apps to the tracker failed: ${err.message}`);
+      return [];
+    }
+  }
+  fillFromTargets();
+
   let lastSync = null;
   function sync() {
+    // Before matching tickets, so a new Full Assessment ticket lands on the list app's row.
+    fillFromTargets();
     if (!db || !getTickets) return lastSync;
     try {
       const tickets = getTickets();
@@ -63,7 +79,9 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
     const { track, year } = req.body || {};
     if (!TRACKS[track] || !Number.isInteger(year)) return res.status(400).json({ error: 'track and year are required' });
     try {
-      res.status(201).json(db.prepare('INSERT INTO cycles (track, year) VALUES (?, ?) RETURNING id').get(track, year));
+      const created = db.prepare('INSERT INTO cycles (track, year) VALUES (?, ?) RETURNING id').get(track, year);
+      fillFromTargets();
+      res.status(201).json(created);
     } catch {
       res.status(409).json({ error: 'That cycle already exists' });
     }
@@ -140,7 +158,9 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
   });
 
   router.delete('/assessments/:id', (req, res) => {
-    const r = db.prepare('SELECT project, ticket_key, ticket_source, created_from_ticket FROM assessments WHERE id = ?').get(req.params.id);
+    const r = db.prepare('SELECT project, period, cycle_id, ticket_key, ticket_source, created_from_ticket, created_from_target FROM assessments WHERE id = ?').get(req.params.id);
+    // A row added for a Target Project List app: don't add it again.
+    ignoreTargetRow(db, r, userOf(req));
     // Deleting an app that came from a Rules of Engagement ticket: don't let the sync re-create it.
     const ignore = db.prepare('INSERT OR IGNORE INTO ticket_ignores (ticket_key, product, ignored_by) VALUES (?, ?, ?)');
     if (r?.created_from_ticket) ignore.run(r.created_from_ticket, r.project, userOf(req));
@@ -249,6 +269,7 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
       const result = saveTargets(db, { names, targetOnly, seed: seed === true, user: userOf(req) });
       if (result.conflict) return res.status(409).json({ error: 'The shared list is already set up.', ...readTargets(db, { history: true }) });
       log(`Target Project List saved by ${userOf(req)}: ${result.names.length} apps, target only ${result.targetOnly ? 'on' : 'off'}`);
+      fillFromTargets();
       res.json(readTargets(db, { history: true }));
     } catch (e) {
       res.status(400).json({ error: e.message });

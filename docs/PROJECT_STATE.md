@@ -11,6 +11,8 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 - Classic login keeps working throughout.
 
 ## Recently completed
+- **List apps get tracker rows** (2026-10-20, D11 amended; pushed to `main`, **not deployed**). Target Project List apps missing from this year's tracker get a Not Started row for the current and later periods. A new Full Assessment ticket for the app links to that row through the sync. The tracker and the list then count the same apps.
+- **Reports count issues cancelled after the resolution date** (2026-10-20, D12; pushed to `main`, **not deployed**). Cancelled issues are now kept in the dataset but hidden from the analytics pages. After deploy, an admin must **re-sync from Jira** once: saved datasets dropped cancelled issues before this change. If the Jira filter/JQL excludes cancelled issues, they can't be counted.
 - **Target Project List as the guide** (2026-10-20; pushed to `main`, **not deployed**). The tracker's Monitoring, Assessment List and Checklist pages have a check panel (`TargetCheck.jsx`). It counts the list by app (platform entries once) and shows list apps in this cycle, on the other track of the same year, decommissioned, or missing, plus cycle apps not on the list. The list buttons show "N entries · M apps". New RoE apps already join the list (D11).
 - **Decommissioned apps follow the tracker** (2026-10-20, D13; pushed to `main`, **not deployed**). The Projects page has Decommission/Restore and a Decommissioned Applications section. Decommissioned apps (from here or the assessment editor) are left out of every analytics page for everyone.
 - **New / Old column** (2026-10-20; pushed to `main`, **not deployed**). The Assessment List has a New / Old column and filter (the filter also shows on Checklist and Time Report). It shows `classification`, which the UberTicket sync already sets: Rules of Engagement ticket = New, Full Assessment ticket = Old. Apps without a ticket keep their workbook or editor value.
@@ -100,7 +102,7 @@ See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3
 | `npm run test:auth` | 34/34 pass (both sign-in options side by side, roles, `pia/data` blocked) — rerun 2026-10-15 |
 | `npm run test:monitor` | 33/33 pass (incl. PIA policy client and normalizer) — 2026-10-16 |
 | `npm run test:pia` | 20/20 pass on node:sqlite and sql.js — 2026-10-15 |
-| `npm run test:tracker` | 47/47 pass (node:sqlite and sql.js, incl. shared Target Project List, assessment report, report freeze and decommission) — 2026-10-20 |
+| `npm run test:tracker` | 48/48 pass (node:sqlite and sql.js, incl. shared Target Project List, list-app rows, assessment report, report freeze and decommission) — 2026-10-20 |
 | `npm run lint` (tsc) | clean |
 | `vite build` | succeeds; fonts bundled |
 | Browser check (`issue-analytics-demo` preview) | design pages checked. Auth checked live: fails closed (503), data folders 404, dev bypass and sign-out work. Classic login checked live (`issue-analytics-classic` preview, generated test credentials). Roles checked live in both preview configs: admin Users page (add, change role, remove), and as user every admin action returns 403 while admin pages redirect. The real Entra round trip was verified in production on 2026-10-15. |

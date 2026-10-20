@@ -1,4 +1,4 @@
-import { matchKey } from '../shared/logic.js';
+import { matchKey, TRACKS } from '../shared/logic.js';
 import { targetKey } from '../shared/targets.js';
 
 // The shared Target Project List (one list for everyone, stored in the tracker database).
@@ -36,6 +36,15 @@ export function ensureTargetTables(db) {
     CREATE TABLE IF NOT EXISTS target_settings (
       key TEXT PRIMARY KEY,
       value TEXT
+    );
+    -- Rows added for list apps (addRowsForTargets) that someone deleted: don't add them again.
+    CREATE TABLE IF NOT EXISTS target_row_ignores (
+      app_key TEXT NOT NULL,             -- targetKey(project)
+      cycle_id INTEGER NOT NULL,
+      period TEXT NOT NULL,
+      ignored_by TEXT,
+      ignored_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (app_key, cycle_id, period)
     );
   `);
 }
@@ -169,4 +178,70 @@ export function addTargetsFromRoe(db, roeTickets = []) {
     throw err;
   }
   return added;
+}
+
+// The list as the guide for the Assessment Tracker: every list app gets a "Not Started" row in this year's
+// cycle for the current period and the ones after it, so the tracker and the list count the same apps. A
+// Full Assessment ticket for the app is then matched to that row by the UberTicket sync (same name and
+// period), which fills in its link, status, tester and dates.
+//   - one row per app: platform entries ("Radio AOS") are the same app as "Radio" (targetKey)
+//   - the app's track this year if it has rows already, otherwise Bi-Annual; no cycle for the year = nothing
+//   - apps decommissioned this year, and rows someone deleted (target_row_ignores), are left alone
+export function addRowsForTargets(db, { today = new Date(), user = 'Target Project List' } = {}) {
+  if (!setting(db, 'seeded_at')) return [];
+  const names = db.prepare('SELECT name FROM target_projects WHERE removed = 0 ORDER BY sort_order, id').all().map((r) => r.name);
+  const year = today.getFullYear();
+  const cycles = db.prepare('SELECT id, track FROM cycles WHERE year = ?').all(year);
+  if (!names.length || !cycles.length) return [];
+  const cycleOf = new Map(cycles.map((c) => [c.track, c.id]));
+  const month = today.getMonth();
+  const fromIndex = { biannual: month < 6 ? 0 : 1, quarterly: Math.floor(month / 3) };
+
+  const rows = db.prepare('SELECT a.project, a.period, a.is_active, a.cycle_id, c.track FROM assessments a JOIN cycles c ON c.id = a.cycle_id WHERE c.year = ?').all(year);
+  const byApp = new Map();
+  for (const r of rows) {
+    const k = targetKey(r.project);
+    byApp.set(k, [...(byApp.get(k) || []), r]);
+  }
+  const ignored = new Set(db.prepare('SELECT app_key, cycle_id, period FROM target_row_ignores').all().map((r) => `${r.app_key}|${r.cycle_id}|${r.period}`));
+
+  // One name per app: the shortest list entry ("Radio" rather than "Radio AOS").
+  const apps = new Map();
+  for (const n of names) {
+    const k = targetKey(n);
+    if (k && (!apps.has(k) || n.length < apps.get(k).length)) apps.set(k, n);
+  }
+
+  const added = [];
+  db.exec('BEGIN');
+  try {
+    const insert = db.prepare(`INSERT INTO assessments (cycle_id, period, sort_order, project, is_active, created_from_target, updated_by)
+      VALUES (?, ?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM assessments WHERE cycle_id = ? AND period = ?), ?, 'Active', 1, ?) RETURNING id`);
+    const log = db.prepare('INSERT INTO history (assessment_id, field, new_value, changed_by) VALUES (?, ?, ?, ?)');
+    for (const [k, name] of apps) {
+      const existing = byApp.get(k) || [];
+      if (existing.some((r) => r.is_active === 'Decommissioned')) continue;
+      const track = existing[0]?.track ?? (cycleOf.has('biannual') ? 'biannual' : cycles[0].track);
+      const cycleId = cycleOf.get(track);
+      if (!cycleId) continue;
+      for (const period of TRACKS[track].periods.slice(fromIndex[track])) {
+        if (existing.some((r) => r.cycle_id === cycleId && r.period === period) || ignored.has(`${k}|${cycleId}|${period}`)) continue;
+        const id = insert.get(cycleId, period, cycleId, period, name, user).id;
+        log.run(id, 'created', `${name} (from the Target Project List)`, user);
+        added.push({ id, project: name, track, period });
+      }
+    }
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  return added;
+}
+
+// Deleting a row that addRowsForTargets added: remember it, so it isn't added again.
+export function ignoreTargetRow(db, row, user) {
+  if (!row?.created_from_target) return;
+  db.prepare('INSERT OR IGNORE INTO target_row_ignores (app_key, cycle_id, period, ignored_by) VALUES (?, ?, ?, ?)')
+    .run(targetKey(row.project), row.cycle_id, row.period, user);
 }

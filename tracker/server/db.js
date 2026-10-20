@@ -100,6 +100,7 @@ export async function openDb(dbPath, options) {
     ['created_from_ticket', 'TEXT'], // set when the app was created from a Rules of Engagement ticket
     ['report_info', 'TEXT'],         // JSON: assessment report text and links (shared/report.js REPORT_INFO_FIELDS)
     ['report_snapshot', 'TEXT'],     // JSON: frozen report data once the ticket resolved { ticketKey, asOf, issues, capturedAt, capturedBy }
+    ['created_from_target', 'INTEGER NOT NULL DEFAULT 0'], // 1 = added for a Target Project List app (targets.js)
   ]) {
     if (!existing.has(col)) db.exec(`ALTER TABLE assessments ADD COLUMN ${col} ${type}`);
   }

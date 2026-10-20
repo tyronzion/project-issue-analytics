@@ -74,7 +74,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 |---|---|---|
 | `tracker/server/tracker.js` | Express router: cycles, assessments, history, seal, report snapshot (freeze), apps list + decommission (D13), sync, links, import | db, sync, importer |
 | `tracker/server/sync.js` | UberTicket → tracker matching and updates (product name, then quarter → period) | logic.js `matchKey` |
-| `tracker/server/targets.js` | **Shared Target Project List** (D11): tables, read/save (admin), `addTargetsFromRoe` after each sync | tracker.js, db.js |
+| `tracker/server/targets.js` | **Shared Target Project List** (D11): tables, read/save (admin), `addTargetsFromRoe` after each sync, `addRowsForTargets` (Not Started rows for list apps missing from this year) + `ignoreTargetRow` | tracker.js, db.js |
 | `tracker/server/db.js`, `sqlite.js` | Schema, field mapping (`toApi`/`toDb`), node:sqlite or sql.js adapter | tracker |
 | `tracker/server/importer.js`, `cli-import.js` | Workbook import | tracker |
 | `tracker/shared/logic.js` | **Scoring and status rules ported from the Excel formulas.** Shared by the server and the UI. | sync, UI, App.tsx |

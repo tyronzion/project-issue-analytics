@@ -48,6 +48,13 @@ export function PriorityTag({ value }) {
   return <span className="at-tag" style={{ color: c, borderColor: `${c}55`, background: `${c}0d` }}>{value}</span>;
 }
 
+// New / Old app tag: Rules of Engagement ticket = New app, Security Full Assessment ticket = Old app (sync.js).
+export function ClassificationTag({ value }) {
+  if (!value) return <span className="at-soft">—</span>;
+  const c = value === 'New' ? 'var(--color-brand-secondary-strong)' : 'var(--color-text-base-secondary)';
+  return <span className="at-tag" style={{ color: c, borderColor: c }} title={value === 'New' ? 'New app (Rules of Engagement)' : 'Old app (Security Full Assessment)'}>{value}</span>;
+}
+
 export function TicketLink({ row }) {
   if (!row.ticketKey) return null;
   return (

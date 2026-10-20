@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react';
-import { Plus, ExternalLink, AlertTriangle, CircleDot, UserRound } from 'lucide-react';
+import { Plus, ExternalLink, AlertTriangle, CircleDot, UserRound, Tag } from 'lucide-react';
 import { FilterSelect, FilterSearch } from '../FilterChips';
-import { PRIORITIES, CHECKS } from '../../../tracker/shared/logic.js';
-import { StatusPill, SealBadge, PriorityTag, TicketLink, Progress, fmtDate, fmtMinutes } from './ui.jsx';
+import { PRIORITIES, CHECKS, CLASSIFICATIONS } from '../../../tracker/shared/logic.js';
+import { StatusPill, SealBadge, PriorityTag, ClassificationTag, TicketLink, Progress, fmtDate, fmtMinutes } from './ui.jsx';
 
 export function useFilters(rows) {
-  const [f, setF] = useState({ q: '', status: '', priority: '', tester: '' });
+  const [f, setF] = useState({ q: '', status: '', priority: '', tester: '', classification: '' });
   const testers = useMemo(() => [...new Set(rows.map((r) => r.securityTester).filter(Boolean))].sort(), [rows]);
   const filtered = rows.filter((r) => {
     if (f.status && r.status !== f.status) return false;
     if (f.priority && r.priority !== f.priority) return false;
     if (f.tester && r.securityTester !== f.tester) return false;
+    if (f.classification && r.classification !== f.classification) return false;
     if (f.q) {
       const q = f.q.toLowerCase();
       if (![r.project, r.testingUrl, r.baAssigned, r.repositories, r.ticketKey].some((v) => v && v.toLowerCase().includes(q))) return false;
@@ -24,6 +25,7 @@ export function useFilters(rows) {
       <FilterSelect icon={CircleDot} label="Status" value={f.status} onChange={set('status')} allLabel="All" options={['Done', 'In Progress', 'Not Started']} />
       <FilterSelect icon={AlertTriangle} label="Priority" value={f.priority} onChange={set('priority')} allLabel="All" options={PRIORITIES} />
       <FilterSelect icon={UserRound} label="Tester" value={f.tester} onChange={set('tester')} allLabel="All" options={testers} />
+      <FilterSelect icon={Tag} label="New / Old" value={f.classification} onChange={set('classification')} allLabel="All" options={CLASSIFICATIONS} />
     </div>
   );
   return { filtered, bar };
@@ -48,6 +50,7 @@ export default function Assessments({ rows, period, onOpen, onAdd }) {
           <thead>
             <tr>
               <th>Project</th>
+              <th title="Rules of Engagement ticket = New app, Security Full Assessment ticket = Old app">New / Old</th>
               <th>Qtr</th>
               <th>Priority</th>
               <th>Tester</th>
@@ -78,6 +81,7 @@ export default function Assessments({ rows, period, onOpen, onAdd }) {
                     </a>
                   )}
                 </td>
+                <td><ClassificationTag value={r.classification} /></td>
                 <td className="at-muted">{r.quarter}</td>
                 <td><PriorityTag value={r.priority} /></td>
                 <td className="whitespace-nowrap">{r.securityTester}</td>
@@ -105,7 +109,7 @@ export default function Assessments({ rows, period, onOpen, onAdd }) {
             ))}
             {!filtered.length && (
               <tr>
-                <td colSpan={14} className="p-10 text-center at-muted">No applications match these filters.</td>
+                <td colSpan={15} className="p-10 text-center at-muted">No applications match these filters.</td>
               </tr>
             )}
           </tbody>

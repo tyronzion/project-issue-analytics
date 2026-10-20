@@ -351,6 +351,7 @@ export function computeProjectSummaries(
       outstandingBySeverity,
       isDeleted: false,
       isFromCustomList,
+      issues,
     });
   });
 

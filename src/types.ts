@@ -86,6 +86,7 @@ export interface ProjectSummary {
   isDeleted?: boolean;
   isFromCustomList?: boolean;
   matchReason?: string;
+  issues?: IssueRecord[]; // every issue mapped to this project (any date, any status)
 }
 
 export type SeverityLevel = 'low' | 'medium' | 'high' | 'critical';

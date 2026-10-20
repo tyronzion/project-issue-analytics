@@ -98,6 +98,8 @@ export async function openDb(dbPath, options) {
     ['seal_ticket_key', 'TEXT'],     // ticket whose resolution the seal belongs to
     ['seal_at', 'TEXT'],
     ['created_from_ticket', 'TEXT'], // set when the app was created from a Rules of Engagement ticket
+    ['report_info', 'TEXT'],         // JSON: assessment report text and links (shared/report.js REPORT_INFO_FIELDS)
+    ['report_snapshot', 'TEXT'],     // JSON: frozen report data once the ticket resolved { ticketKey, asOf, issues, capturedAt, capturedBy }
   ]) {
     if (!existing.has(col)) db.exec(`ALTER TABLE assessments ADD COLUMN ${col} ${type}`);
   }
@@ -135,6 +137,7 @@ export const FIELDS = {
   notes: 'notes',
   decommissionedAt: 'decommissioned_at',
   decommissionReason: 'decommission_reason',
+  reportInfo: 'report_info',
 };
 
 // Read-only fields maintained by the UberTicket sync.
@@ -154,13 +157,24 @@ export function toApi(row) {
   const out = { id: row.id, cycleId: row.cycle_id, updatedAt: row.updated_at, updatedBy: row.updated_by };
   for (const [k, col] of Object.entries({ ...FIELDS, ...SYNC_FIELDS })) out[k] = row[col];
   out.checks = JSON.parse(row.checks || '{}');
+  out.reportInfo = parseJson(row.report_info);
+  out.reportSnapshot = parseJson(row.report_snapshot);
   out.mobileApp = !!row.mobile_app;
   out.testerFrozen = !!row.tester_frozen;
   return out;
 }
 
+function parseJson(s) {
+  try {
+    return s ? JSON.parse(s) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function toDb(value, key) {
   if (key === 'checks') return JSON.stringify(value || {});
+  if (key === 'reportInfo') return value ? JSON.stringify(value) : null;
   if (key === 'mobileApp') return value ? 1 : 0;
   if (key === 'timeSpent' || key === 'sortOrder') return value === '' || value == null ? null : Number(value);
   return value ?? null;

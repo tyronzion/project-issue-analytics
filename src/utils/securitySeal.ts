@@ -1,4 +1,5 @@
 import { ProjectSummary, SecuritySeal, SeverityBreakdown } from '../types';
+import { sealFromCounts } from '../../tracker/shared/report.js';
 
 export const SECURITY_SEAL_ORDER: SecuritySeal[] = [
   'Secure',
@@ -14,22 +15,11 @@ export interface SecuritySealResult {
   severity: SeverityBreakdown;
 }
 
-function getSeveritySeal(severity: SeverityBreakdown): SecuritySeal {
-  const { critical, high, medium, low } = severity;
-
-  // Security Seal matrix: Critical findings dominate, followed by High,
-  // then Medium and Low findings. The most severe applicable band wins.
-  if (critical >= 51 || high >= 51 || medium >= 51 || low >= 51) return 'Compromised';
-  if (critical >= 1) return 'Exposed';
-  if (high >= 31) return 'Vulnerable';
-  if (high >= 1 || medium >= 31 || low >= 31) return 'Defended';
-  if (medium >= 16 || low >= 16) return 'Protected';
-  return 'Secure';
-}
-
+// Security Seal from the outstanding issues per severity: the team's spreadsheet formula, shared with the
+// assessment report (tracker/shared/report.js).
 export function getProjectSecuritySeal(summary: ProjectSummary): SecuritySealResult {
   return {
-    seal: getSeveritySeal(summary.outstandingBySeverity),
+    seal: sealFromCounts(summary.outstandingBySeverity) as SecuritySeal,
     severity: summary.outstandingBySeverity,
   };
 }

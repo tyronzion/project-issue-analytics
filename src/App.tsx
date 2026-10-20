@@ -68,6 +68,7 @@ import PrivacyImpact from './components/pia/PrivacyImpact.jsx';
 import { matchKey } from '../tracker/shared/logic.js';
 import { useSharedTargets, saveSharedTargets } from './utils/sharedTargets';
 import { getProjectSecuritySeal } from './utils/securitySeal';
+import { reportIssuesOf, ReportIssues } from './utils/reportIssues';
 
 // Assessment Tracker sidebar entries -> section shown by <AssessmentTracker>.
 const TRACKER_TABS = [
@@ -347,9 +348,9 @@ export default function App() {
   // Assessment Tracker: each app's current Security Seal (all issues, every severity), used to
   // snapshot the seal when its UberTicket resolves. Null while issues load or off the tracker pages.
   const isTrackerPage = Boolean(trackerSection(activeTab));
-  const sealByProject = useMemo(() => {
+  const trackerSummaries = useMemo(() => {
     if (!isTrackerPage || isDataLoading || issues.length === 0) return null;
-    const { summaries: allSummaries } = computeProjectSummaries(
+    return computeProjectSummaries(
       issues,
       settings.formulaConfig,
       settings.dateFilter,
@@ -357,11 +358,25 @@ export default function App() {
       settings.projectAliases,
       settings.customProjectList,
       settings.useCustomProjectListOnly
-    );
-    const map = new Map<string, string>();
-    allSummaries.forEach(summary => map.set(matchKey(summary.projectName), getProjectSecuritySeal(summary).seal));
-    return map;
+    ).summaries;
   }, [isTrackerPage, isDataLoading, issues, settings]);
+  const sealByProject = useMemo(() => {
+    if (!trackerSummaries) return null;
+    const map = new Map<string, string>();
+    trackerSummaries.forEach(summary => map.set(matchKey(summary.projectName), getProjectSecuritySeal(summary).seal));
+    return map;
+  }, [trackerSummaries]);
+  // Assessment report: an app's unresolved issues, now or as of a date (null while issues load).
+  const reportIssuesFor = useCallback(
+    (name: string, asOf?: string): ReportIssues | null => {
+      if (!trackerSummaries) return !isDataLoading && issues.length === 0 ? { matched: false, issues: [] } : null;
+      const summary = trackerSummaries.find(s => matchKey(s.projectName) === matchKey(name));
+      return summary
+        ? { matched: true, issues: reportIssuesOf(summary, settings.formulaConfig, asOf) }
+        : { matched: false, issues: [] };
+    },
+    [trackerSummaries, settings.formulaConfig, isDataLoading, issues.length]
+  );
   const sealForProject = useMemo(
     () => (sealByProject ? (name: string) => sealByProject.get(matchKey(name)) ?? null : null),
     [sealByProject]
@@ -1114,7 +1129,7 @@ export default function App() {
         {isMonitorTab(activeTab) && <MonitorFrame tab={activeTab} />}
 
         {trackerSection(activeTab) && !isSettingsTab(activeTab) && (
-          <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} isAdmin={isAdmin} />
+          <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} reportIssuesFor={reportIssuesFor} isAdmin={isAdmin} />
         )}
 
         {piaSection(activeTab) && (isAdmin || !ADMIN_TABS.includes(activeTab)) && (
@@ -1214,7 +1229,7 @@ export default function App() {
               />
             )}
             {(activeTab === 'tracker-import' || activeTab === 'tracker-sync') && (
-              <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} isAdmin={isAdmin} />
+              <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} reportIssuesFor={reportIssuesFor} isAdmin={isAdmin} />
             )}
             {activeTab === 'users' && <UsersPage />}
             {activeTab === 'settings-danger' && (

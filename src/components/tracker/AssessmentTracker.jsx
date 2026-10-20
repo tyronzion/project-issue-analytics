@@ -40,10 +40,12 @@ function currentPeriod(cycle) {
  * Assessment Tracker (the "Security Full Assessment Tracker" workbook as pages).
  * section: 'monitoring' | 'assessment' | 'time' | 'comparison' | 'checklist' | 'decommissioned' | 'sync' | 'import'
  * sealForProject(name): the app's current Security Seal, or null when unknown / issues still loading.
+ * reportIssuesFor(name, asOf?): the app's unresolved issues for the assessment report ({ matched, issues }), now or as
+ *   of a date, or null while loading. A resolved ticket's report is frozen at its first download (ReportDialog).
  * When the shared Target Project List's "show only target projects" is on, only apps on it are shown (admins
  * can show all, e.g. to find an app to add). The UberTicket sync page and seal snapshots still see every app.
  */
-export default function AssessmentTracker({ section, sealForProject, isAdmin = false }) {
+export default function AssessmentTracker({ section, sealForProject, reportIssuesFor = null, isAdmin = false }) {
   const [cycles, setCycles] = useState(null);
   const [cycleId, setCycleId] = useState(() => Number(recall('assessment_tracker_cycle')) || null);
   const [period, setPeriod] = useState('');
@@ -229,7 +231,11 @@ export default function AssessmentTracker({ section, sealForProject, isAdmin = f
           key={editing.id ?? 'new'}
           row={editing}
           cycleId={cycle.id}
+          cycleYear={cycle.year}
           periods={cycle.periods}
+          reportIssuesFor={reportIssuesFor}
+          isAdmin={isAdmin}
+          onReportSaved={replaceRow}
           testers={testers}
           onClose={() => setEditing(null)}
           onSaved={(saved) => {

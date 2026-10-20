@@ -1,6 +1,6 @@
 # Project State
 
-_Last updated: 2026-10-19_
+_Last updated: 2026-10-20_
 
 ## Current phase
 The app is in production use and gets features added incrementally. The Assessment Tracker was merged in on 2026-10-13, which brings all three parts (analytics, monitors and tracker) into one app.
@@ -11,7 +11,13 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 - Classic login keeps working throughout.
 
 ## Recently completed
-- **Shared Target Project List** (2026-10-19, D11; pushed to `main`, **not deployed**).
+- **Assessment report PDF** (2026-10-20, D12; local only, **not pushed or deployed**).
+  - In the assessment editor, **Download report** turns on once all 12 checklist items are ticked. It opens a dialog for the Dashboard and Scan Results links (recommended), the Introduction and notes, and for RoE the testing type, testing time and recommendations. These are saved in `report_info`.
+  - The dialog then opens a print-ready report in a new tab. The template is Full Assessment, or RoE when the ticket is RoE. The report has the team's seal badge image (`public/seals/`), New/Backlog/Overdue counts, the issue table and the grammar-checked seal wording. The browser's "Save as PDF" makes the file, named like `2026 Q4 Cloudstaff <App> Security Report`.
+  - **Frozen after resolution:** the first download after the ticket resolves saves the issues as of the resolution date (`report_snapshot`). Later downloads use that copy, and the next assessment gets its own report. Admins can unfreeze. Checked in the demo: changing issues afterwards left the report unchanged.
+  - The seal now comes from `sealFromCounts`, the user's spreadsheet formula. It gives the same results as the old matrix.
+  - Checked in `issue-analytics-demo` with seeded fake issues: the dialog, the counts, both templates, the no-issue wording, and HTML/`javascript:` escaping. **Not yet checked:** the real print dialog and PDF output. The pane blocks new tabs, so the report was rendered in a tab by script. The SLA "Medium – 90 days" value in Appendix A was partly hidden in the template; confirm it.
+- **Shared Target Project List** (2026-10-19, D11; pushed to `main` as `8fc6975`, **not deployed**).
   - The list and the "show only target projects" switch are now one shared copy on the server (`tracker/server/targets.js`, tables in `tracker.db`, `GET/PUT /api/tracker/targets`). Everyone reads it; only admins change it, with a history log. The browser's own copy is no longer used.
   - The first admin to open the app after deploy sets it up from that browser's list (or the 104-app default), with the switch on.
   - The UberTicket sync adds products from Rules of Engagement tickets created after setup that aren't covered by the list (platform variants count; removed apps aren't re-added).
@@ -91,7 +97,7 @@ See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3
 | `npm run test:auth` | 34/34 pass (both sign-in options side by side, roles, `pia/data` blocked) — rerun 2026-10-15 |
 | `npm run test:monitor` | 33/33 pass (incl. PIA policy client and normalizer) — 2026-10-16 |
 | `npm run test:pia` | 20/20 pass on node:sqlite and sql.js — 2026-10-15 |
-| `npm run test:tracker` | 31/31 pass (node:sqlite and sql.js, incl. shared Target Project List) — 2026-10-19 |
+| `npm run test:tracker` | 46/46 pass (node:sqlite and sql.js, incl. shared Target Project List, assessment report and report freeze) — 2026-10-20 |
 | `npm run lint` (tsc) | clean |
 | `vite build` | succeeds; fonts bundled |
 | Browser check (`issue-analytics-demo` preview) | design pages checked. Auth checked live: fails closed (503), data folders 404, dev bypass and sign-out work. Classic login checked live (`issue-analytics-classic` preview, generated test credentials). Roles checked live in both preview configs: admin Users page (add, change role, remove), and as user every admin action returns 403 while admin pages redirect. The real Entra round trip was verified in production on 2026-10-15. |

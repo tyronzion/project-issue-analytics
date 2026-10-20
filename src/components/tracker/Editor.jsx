@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { X, Trash2, History, Archive, ArchiveRestore, Ticket, Lock, AlertTriangle } from 'lucide-react';
+import { X, Trash2, History, Archive, ArchiveRestore, Ticket, Lock, AlertTriangle, FileDown } from 'lucide-react';
 import { CHECKS, PRIORITIES, TASK_STATUSES, SEALS, QUARTERS, CLASSIFICATIONS, enrich, isDecommissioned } from '../../../tracker/shared/logic.js';
 import { api } from './api.js';
 import { StatusPill, Progress, SealBadge, fmtDate, fmtMinutes, cx } from './ui.jsx';
+import ReportDialog from './report/ReportDialog.jsx';
 
 const BLANK = {
   project: '', quarter: '', isActive: 'Active', classification: 'New', repositories: '', testingUrl: '', priority: 'Medium',
@@ -32,21 +33,23 @@ function Choice({ value, onChange, options, blank, disabled }) {
   );
 }
 
-export default function Editor({ row, periods, testers, onClose, onSaved, onDeleted, cycleId }) {
+export default function Editor({ row, periods, testers, onClose, onSaved, onDeleted, cycleId, cycleYear, reportIssuesFor, onReportSaved, isAdmin = false }) {
   const isNew = !row.id;
   const [draft, setDraft] = useState(() => ({ ...BLANK, ...row }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [history, setHistory] = useState(null);
   const [decom, setDecom] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [report, setReport] = useState({ reportInfo: row.reportInfo ?? null, reportSnapshot: row.reportSnapshot ?? null });
   const retired = !isNew && isDecommissioned(row);
   const linked = !isNew && !!row.ticketKey; // UberTicket owns status, tester and dates
 
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    const onKey = (e) => e.key === 'Escape' && !reportOpen && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, reportOpen]);
 
   const set = (k) => (v) => setDraft((d) => ({ ...d, [k]: v }));
   const live = enrich(draft);
@@ -213,7 +216,7 @@ export default function Editor({ row, periods, testers, onClose, onSaved, onDele
                 Mobile App
               </label>
             </div>
-            <p className="mt-1.5 text-xs at-muted">App status: <b>{live.app}</b>. All 12 ticked makes it "Uploaded" (+40%).</p>
+            <p className="mt-1.5 text-xs at-muted">App status: <b>{live.app}</b>. All 12 ticked makes it "Uploaded" (+40%) and enables the assessment report.</p>
           </section>
 
           <section>
@@ -257,12 +260,36 @@ export default function Editor({ row, periods, testers, onClose, onSaved, onDele
           )}
           {error && <span className="text-sm" style={{ color: '#b42318' }}>{error}</span>}
           <span className="ml-auto text-xs at-muted">{!isNew && row.updatedBy && `Last updated by ${row.updatedBy}`}</span>
+          {!isNew && (
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              disabled={!allChecked}
+              className="at-btn-ghost"
+              title={allChecked ? `Download the ${row.ticketSource === 'roe' ? 'Rules of Engagement' : 'Security Full Assessment'} report (PDF)` : `Tick all ${CHECKS.length} App testing checklist items to download the report`}
+            >
+              <FileDown className="w-4 h-4" aria-hidden /> Download report
+            </button>
+          )}
           <button type="button" onClick={onClose} className="at-btn-ghost">Cancel</button>
           <button type="button" onClick={save} disabled={saving || (!isNew && !changed.length)} className="at-btn">
             {saving ? 'Saving…' : isNew ? 'Add application' : 'Save changes'}
           </button>
         </div>
       </div>
+      {reportOpen && (
+        <ReportDialog
+          row={{ ...draft, ...report }}
+          cycleYear={cycleYear}
+          reportIssuesFor={reportIssuesFor}
+          isAdmin={isAdmin}
+          onClose={() => setReportOpen(false)}
+          onSaved={(saved) => {
+            setReport({ reportInfo: saved.reportInfo ?? null, reportSnapshot: saved.reportSnapshot ?? null });
+            onReportSaved?.(saved);
+          }}
+        />
+      )}
     </div>
   );
 }

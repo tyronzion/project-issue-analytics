@@ -145,3 +145,16 @@ Add a new entry only for decisions a future developer might otherwise reconsider
 - **Reason:** The user wanted one list for everyone that grows with new RoE apps and limits the analytics, tracker and PIA pages. A per-browser list can't be updated by the server.
 - **Impact:** Restoring a settings backup or clearing data no longer changes the list unless an admin does it. The list is in `tracker.db`, so the tracker backup covers it.
 
+
+### D12: Assessment report is a print-ready page; the seal formula lives in one place
+- **Date:** 2026-10-20
+- **Decision:**
+  - The assessment report (Security Full Assessment, or Rules of Engagement when the linked ticket is RoE) is built in the browser, because only the browser has the issues. It opens as a print-ready page, and the user picks "Save as PDF". No PDF library: the design-system fonts are woff2 only and jsPDF can't embed them.
+  - The report can be downloaded only once all 12 App testing checklist items are ticked. The "Report" deliverable can't be the gate, because it is the report itself.
+  - The issue list is the app's **unresolved** issues, the same set the seal counts. An issue is **New** if it was created between the assessment's actual start and end dates (the UberTicket dates, or the planned dates; the end defaults to today), and **Backlog** otherwise.
+  - The seal comes from `sealFromCounts` in `tracker/shared/report.js`, a direct port of the team's spreadsheet formula (A = Low, B = Medium, C = High, D = Critical). `src/utils/securitySeal.ts` uses it too. A test checks that it matches the earlier matrix for every band edge.
+  - The text the team writes per report (Introduction, Dashboard and Scan Results links, notes, and for RoE the testing type, testing time and recommendations) is saved as JSON in `assessments.report_info`. It is validated on the server: whitelisted keys, length limits, and http(s) links only. Every user can edit it, as with other tracker fields (D8).
+  - **Frozen once resolved:** a resolved ticket's report uses a snapshot of the app's issues **as of the resolution date** (`actualEnd`). These are issues created by then that were still open then, including any closed later. The snapshot is stored in `assessments.report_snapshot`, keyed by the ticket. It is written at the first download after resolution (`POST /assessments/:id/report-snapshot`; the server accepts it only for the row's current resolved ticket and never overwrites it), and every later download reuses it. The next assessment is another row and ticket, so it gets its own report. Only admins can unfreeze (`DELETE`, fails closed). Report text and links stay editable.
+  - The snapshot is taken at download, not automatically when the tracker loads. A browser with stale or partial issue data would otherwise freeze wrong reports (target-list apps count as "matched" even with no data). The person downloading sees the counts before they are frozen.
+- **Reason:** The user asked for PDFs that follow the SharePoint Word templates, with grammar-checked seal wording (including a version for when no issues are found).
+- **Impact:** Changing the seal rules means editing `sealFromCounts` only. The report wording lives in `report.js` (seal text, advisory, findings) and `renderReport.js` (fixed template sections).

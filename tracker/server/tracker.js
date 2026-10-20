@@ -5,6 +5,7 @@ import { parseWorkbook, previewOf, importCycles } from './importer.js';
 import { syncTickets } from './sync.js';
 import { readTargets, saveTargets, addTargetsFromRoe } from './targets.js';
 import { TRACKS, SEALS, matchKey } from '../shared/logic.js';
+import { normalizeReportInfo, normalizeSnapshot } from '../shared/report.js';
 
 // Assessment Tracker API, mounted by vite.config.ts at /api/tracker.
 // getTickets() returns { full, roe } normalized UberTicket tickets (from the monitor).
@@ -76,6 +77,11 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
     if (!body.project || !body.period) return res.status(400).json({ error: 'project and period are required' });
     const next = db.prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM assessments WHERE cycle_id = ? AND period = ?').get(req.params.id, body.period).n;
     const data = { ...body, sortOrder: next };
+    try {
+      if (data.reportInfo !== undefined) data.reportInfo = normalizeReportInfo(data.reportInfo);
+    } catch (e) {
+      return res.status(400).json({ error: e.message });
+    }
     const keys = Object.keys(FIELDS).filter((k) => data[k] !== undefined);
     const row = db.prepare(`INSERT INTO assessments (cycle_id, ${keys.map((k) => FIELDS[k]).join(', ')}, seal_source, updated_by)
       VALUES (?, ${keys.map(() => '?').join(', ')}, ?, ?) RETURNING *`).get(req.params.id, ...keys.map((k) => toDb(data[k], k)), data.seal ? 'manual' : null, userOf(req));
@@ -90,6 +96,15 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
     const before = toApi(current);
     const changes = Object.entries(req.body || {}).filter(([k]) => FIELDS[k]);
     if (!changes.length) return res.json(before);
+    // Report text and links: whitelisted keys, length limits, http(s) links only.
+    const reportIdx = changes.findIndex(([k]) => k === 'reportInfo');
+    if (reportIdx >= 0) {
+      try {
+        changes[reportIdx] = ['reportInfo', normalizeReportInfo(changes[reportIdx][1])];
+      } catch (e) {
+        return res.status(400).json({ error: e.message });
+      }
+    }
     if (changes.some(([k]) => k === 'seal')) changes.push(['__sealSource', 'manual']);
 
     const user = userOf(req);
@@ -102,6 +117,9 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
           for (const key of new Set([...Object.keys(before.checks), ...Object.keys(v || {})])) {
             if (!!before.checks[key] !== !!v?.[key]) logChange.run(current.id, `checklist.${key}`, String(!!before.checks[key]), String(!!v?.[key]), user);
           }
+        } else if (k === 'reportInfo') {
+          const [was, now] = [before.reportInfo, v].map((x) => (x == null ? null : JSON.stringify(x)));
+          if (was !== now) logChange.run(current.id, k, was, now, user);
         } else if (String(before[k] ?? '') !== String(v ?? '')) {
           logChange.run(current.id, k, before[k] == null ? null : String(before[k]), v == null ? null : String(v), user);
         }
@@ -144,6 +162,39 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
     db.prepare("UPDATE assessments SET seal = ?, seal_source = 'auto', seal_ticket_key = ?, seal_at = datetime('now'), updated_at = datetime('now'), updated_by = ? WHERE id = ?")
       .run(seal, ticketKey, 'Security Seal (auto)', r.id);
     db.prepare('INSERT INTO history (assessment_id, field, old_value, new_value, changed_by) VALUES (?, ?, ?, ?, ?)').run(r.id, 'seal', r.seal, seal, `Security Seal at ${ticketKey} resolution`);
+    res.json(toApi(db.prepare('SELECT * FROM assessments WHERE id = ?').get(r.id)));
+  });
+
+  // Frozen assessment report, taken by the browser (which has the issues) once the ticket is resolved: the
+  // app's issues as of the resolution date. Written once per ticket and never overwritten, so a report
+  // downloaded later says the same thing. Only admins can clear it (fails closed without isAdmin).
+  router.post('/assessments/:id/report-snapshot', (req, res) => {
+    const r = db.prepare('SELECT * FROM assessments WHERE id = ?').get(req.params.id);
+    if (!r) return res.status(404).json({ error: 'Not found' });
+    let snap;
+    try {
+      snap = normalizeSnapshot(req.body || {});
+    } catch (e) {
+      return res.status(400).json({ error: e.message });
+    }
+    const current = toApi(r).reportSnapshot;
+    if (r.ticket_state !== 'resolved' || r.ticket_key !== snap.ticketKey || current?.ticketKey === snap.ticketKey) return res.json(toApi(r));
+    const value = JSON.stringify({ ...snap, capturedAt: new Date().toISOString(), capturedBy: userOf(req) });
+    db.prepare('UPDATE assessments SET report_snapshot = ? WHERE id = ?').run(value, r.id);
+    db.prepare('INSERT INTO history (assessment_id, field, old_value, new_value, changed_by) VALUES (?, ?, ?, ?, ?)')
+      .run(r.id, 'reportSnapshot', current ? `${current.ticketKey} as of ${current.asOf}` : null, `${snap.ticketKey} as of ${snap.asOf} (${snap.issues.length} issues)`, userOf(req));
+    res.json(toApi(db.prepare('SELECT * FROM assessments WHERE id = ?').get(r.id)));
+  });
+  router.delete('/assessments/:id/report-snapshot', (req, res) => {
+    if (!(isAdmin && isAdmin(req))) return res.status(403).json({ error: 'Only admins can unfreeze a report.' });
+    const r = db.prepare('SELECT * FROM assessments WHERE id = ?').get(req.params.id);
+    if (!r) return res.status(404).json({ error: 'Not found' });
+    const current = toApi(r).reportSnapshot;
+    if (current) {
+      db.prepare('UPDATE assessments SET report_snapshot = NULL WHERE id = ?').run(r.id);
+      db.prepare('INSERT INTO history (assessment_id, field, old_value, new_value, changed_by) VALUES (?, ?, ?, ?, ?)')
+        .run(r.id, 'reportSnapshot', `${current.ticketKey} as of ${current.asOf}`, null, userOf(req));
+    }
     res.json(toApi(db.prepare('SELECT * FROM assessments WHERE id = ?').get(r.id)));
   });
 

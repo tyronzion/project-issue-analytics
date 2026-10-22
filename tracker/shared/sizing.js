@@ -13,6 +13,7 @@ import { MAN_HOURS } from './logic.js';
 //   (OWASP Risk Rating "size of threat agent" / "number of users affected"), so it now counts for 10%.
 // - Functionality, the most subjective answer, drops from 30% to 25%, and Pages from 25% to 20%, to make room for it.
 // - Pages also covers API endpoints, so microservices and APIs (no pages) can be sized.
+// - "How many data is being collected?" means the number of input fields (not the kind or sensitivity of the data).
 
 export const SIZE_FACTORS = [
   {
@@ -31,8 +32,8 @@ export const SIZE_FACTORS = [
   },
   {
     key: 'data',
-    label: 'Types of data collected',
-    help: 'Kinds of personal or sensitive data stored or processed (e.g. name, email, address, bank details, ID numbers, health).',
+    label: 'Input fields',
+    help: 'How many data input fields the app has (form fields, search boxes, upload fields, editable settings). Count the fields, not the kind of data.',
     options: ['None', '1 to 2', '3 to 5', '6 to 10', '11 to 20', '21 or more'],
     weights: { workbook: 0.2, adjusted: 0.2 },
   },

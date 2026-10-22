@@ -1,6 +1,6 @@
 # Project State
 
-_Last updated: 2026-10-20_
+_Last updated: 2026-10-22_
 
 ## Current phase
 The app is in production use and gets features added incrementally. The Assessment Tracker was merged in on 2026-10-13, which brings all three parts (analytics, monitors and tracker) into one app.
@@ -11,6 +11,7 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 - Classic login keeps working throughout.
 
 ## Recently completed
+- **Web Application Size Calculator page** (2026-10-22, D14; pushed to `main`, **not deployed**). New sidebar page Assessment Tracker → Size Calculator (`/assessment-tracker/size-calculator`, everyone). Ports the Strike Team SharePoint workbook. The default is an adjusted matrix (adds the uncounted User base factor); the workbook matrix is one click away. It gives size, man-hours and points, plus a copyable assessment summary of why the app got that size. Nothing is saved. Checked: `test:tracker` (7 new in `sizing.test.js`), lint, build, and a browser check in the demo (desktop and mobile).
 - **List apps get tracker rows** (2026-10-20, D11 amended; pushed to `main`, **not deployed**). Target Project List apps missing from this year's tracker get a Not Started row for the current and later periods. A new Full Assessment ticket for the app links to that row through the sync. The tracker and the list then count the same apps.
 - **Reports count issues cancelled after the resolution date** (2026-10-20, D12; pushed to `main`, **not deployed**). Cancelled issues are now kept in the dataset but hidden from the analytics pages. After deploy, an admin must **re-sync from Jira** once: saved datasets dropped cancelled issues before this change. If the Jira filter/JQL excludes cancelled issues, they can't be counted.
 - **Target Project List as the guide** (2026-10-20; pushed to `main`, **not deployed**). The tracker's Monitoring, Assessment List and Checklist pages have a check panel (`TargetCheck.jsx`). It counts the list by app (platform entries once) and shows list apps in this cycle, on the other track of the same year, decommissioned, or missing, plus cycle apps not on the list. The list buttons show "N entries · M apps". New RoE apps already join the list (D11).
@@ -94,7 +95,7 @@ These are recorded only, not fixed.
 - The `@layer` order at the top of `src/index.css` (design-system layers before Tailwind's) must not change; see D6.
 
 ## Last important decisions
-See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3 UberTicket wins in tracker sync, D4 tracker styling isolation, D5 SQLite fallback, D6 design system through tokens, D7 server-side Microsoft sign-in, D8 admin/user roles, D10 PIA module, D11 shared Target Project List.
+See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3 UberTicket wins in tracker sync, D4 tracker styling isolation, D5 SQLite fallback, D6 design system through tokens, D7 server-side Microsoft sign-in, D8 admin/user roles, D10 PIA module, D11 shared Target Project List, D14 size calculator matrix.
 
 ## Verification (2026-10-14, after Microsoft sign-in)
 | Check | Result |
@@ -102,7 +103,7 @@ See `DECISIONS.md`: D1 single Vite server, D2 encrypted read-only UberTicket, D3
 | `npm run test:auth` | 34/34 pass (both sign-in options side by side, roles, `pia/data` blocked) — rerun 2026-10-15 |
 | `npm run test:monitor` | 33/33 pass (incl. PIA policy client and normalizer) — 2026-10-16 |
 | `npm run test:pia` | 20/20 pass on node:sqlite and sql.js — 2026-10-15 |
-| `npm run test:tracker` | 48/48 pass (node:sqlite and sql.js, incl. shared Target Project List, list-app rows, assessment report, report freeze and decommission) — 2026-10-20 |
+| `npm run test:tracker` | 55/55 pass (node:sqlite and sql.js, incl. shared Target Project List, list-app rows, assessment report, report freeze, decommission and size calculator) — 2026-10-22 |
 | `npm run lint` (tsc) | clean |
 | `vite build` | succeeds; fonts bundled |
 | Browser check (`issue-analytics-demo` preview) | design pages checked. Auth checked live: fails closed (503), data folders 404, dev bypass and sign-out work. Classic login checked live (`issue-analytics-classic` preview, generated test credentials). Roles checked live in both preview configs: admin Users page (add, change role, remove), and as user every admin action returns 403 while admin pages redirect. The real Entra round trip was verified in production on 2026-10-15. |

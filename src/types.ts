@@ -119,7 +119,7 @@ export type ActiveTab = 'dashboard' | 'seal' | 'charts' | 'issues' | 'formulas' 
   // UberTicket monitoring tabs (pages served by the monitor plugin at /monitor/*)
   | 'dpsa' | 'full-assessment' | 'roe'
   // Assessment Tracker (the Security Full Assessment Tracker workbook)
-  | 'tracker' | 'tracker-assessment' | 'tracker-time' | 'tracker-comparison' | 'tracker-checklist' | 'tracker-decommissioned' | 'tracker-sync' | 'tracker-import'
+  | 'tracker' | 'tracker-assessment' | 'tracker-time' | 'tracker-comparison' | 'tracker-checklist' | 'tracker-decommissioned' | 'tracker-size' | 'tracker-sync' | 'tracker-import'
   // Privacy Impact Assessments (yearly reassessment from UberTicket [PIA01] policies)
   | 'pia' | 'pia-matching'
   // Users & roles (admins only)

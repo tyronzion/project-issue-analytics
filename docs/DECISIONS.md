@@ -171,3 +171,13 @@ Add a new entry only for decisions a future developer might otherwise reconsider
   - Delete (per-browser `deletedProjects`) is unchanged.
 - **Reason:** The user wanted "decommissioned" on the Projects page to follow the tracker automatically, and asked for decommissioned apps to be hidden from metrics but restorable.
 - **Impact:** Older cycles keep their own state; only the latest year changes. An app the tracker doesn't know can't be decommissioned from the Projects page (no button).
+
+### D14: Web Application Size Calculator uses an adjusted matrix, with the workbook kept beside it
+- **Date:** 2026-10-22
+- **Decision:**
+  - The SharePoint "CSDATASEC Strike Team - Web Application Size Calculator" workbook is now the **Size Calculator** page (`/assessment-tracker/size-calculator`, everyone, nothing saved). Its size is the tracker's Priority (Low/Medium/High/Critical), with `MAN_HOURS` and `POINTS` from `logic.js`.
+  - The workbook model is reproduced exactly: each factor scores weight × (answer index ÷ last index); bands ≤25% Low, ≤50% Medium, ≤75% High, else Critical (inclusive, rounded to 4 decimals first).
+  - The **default** is an adjusted matrix: the workbook's User base dropdown (cell B7, never counted) now counts 10%, Functionality drops 30→25% and Pages 25→20%. The same options, scale and bands apply, and Pages also covers API endpoints. The page can switch to the workbook matrix and shows when the two differ.
+  - Once answered, the page writes an assessment summary (`sizeSummary`) explaining the size: band, top three drivers, functionality guide text, man-hours, and the workbook result.
+- **Reason:** The user asked to keep the calculator but adjust it to a more standard matrix if it didn't make sense, without moving far from it. User base is a standard sizing/impact factor (OWASP Risk Rating), and the workbook already asked for it without counting it. Across all 41,250 answer sets, the adjusted matrix agrees with the workbook on 86% (92% for 1,001–10,000 users) and is never more than one size apart.
+- **Impact:** Weights live only in `SIZE_FACTORS` in `tracker/shared/sizing.js`. The result isn't saved to the tracker; the Priority is still set in the assessment editor.

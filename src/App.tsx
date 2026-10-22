@@ -64,6 +64,7 @@ import { SettingsLayout, SettingsPanel, DangerZone, isSettingsTab } from './comp
 import { JiraIntegrationPage, JiraCredentials } from './components/JiraIntegrationPage';
 import { MonitorFrame, isMonitorTab } from './components/MonitorFrame';
 import AssessmentTracker from './components/tracker/AssessmentTracker.jsx';
+import SizeCalculator from './components/tracker/SizeCalculator.jsx';
 import PrivacyImpact from './components/pia/PrivacyImpact.jsx';
 import { matchKey } from '../tracker/shared/logic.js';
 import { useSharedTargets, saveSharedTargets, appCount } from './utils/sharedTargets';
@@ -79,10 +80,13 @@ const TRACKER_TABS = [
   { tab: 'tracker-comparison', section: 'comparison', label: 'Period Comparison', Icon: GitCompareArrows },
   { tab: 'tracker-checklist', section: 'checklist', label: 'Checklist', Icon: ListChecks },
   { tab: 'tracker-decommissioned', section: 'decommissioned', label: 'Decommissioned', Icon: Archive },
+  { tab: 'tracker-size', section: 'size', label: 'Size Calculator', Icon: Calculator },
   { tab: 'tracker-sync', section: 'sync', label: 'UberTicket Sync', Icon: RefreshCcw },
   { tab: 'tracker-import', section: 'import', label: 'Import Excel', Icon: FileUp },
 ] as const;
 const trackerSection = (tab: ActiveTab) => TRACKER_TABS.find(t => t.tab === tab)?.section;
+// Tracker pages that read tracker data (the Size Calculator is a stand-alone tool).
+const trackerDataSection = (tab: ActiveTab) => { const s = trackerSection(tab); return s === 'size' ? undefined : s; };
 
 // Privacy Impact Assessment sidebar entries -> section shown by <PrivacyImpact>.
 const PIA_TABS = [
@@ -350,7 +354,7 @@ export default function App() {
   // Everything below the global filter bar reads these project-scoped lists.
   // Assessment Tracker: each app's current Security Seal (all issues, every severity), used to
   // snapshot the seal when its UberTicket resolves. Null while issues load or off the tracker pages.
-  const isTrackerPage = Boolean(trackerSection(activeTab));
+  const isTrackerPage = Boolean(trackerDataSection(activeTab));
   const trackerSummaries = useMemo(() => {
     if (!isTrackerPage || isDataLoading || issues.length === 0) return null;
     // All issues, cancelled ones included: a report counts an issue cancelled after its resolution date.
@@ -1196,8 +1200,10 @@ export default function App() {
 
         {isMonitorTab(activeTab) && <MonitorFrame tab={activeTab} />}
 
-        {trackerSection(activeTab) && !isSettingsTab(activeTab) && (
-          <AssessmentTracker section={trackerSection(activeTab)} sealForProject={sealForProject} reportIssuesFor={reportIssuesFor} isAdmin={isAdmin} />
+        {activeTab === 'tracker-size' && <SizeCalculator />}
+
+        {trackerDataSection(activeTab) && !isSettingsTab(activeTab) && (
+          <AssessmentTracker section={trackerDataSection(activeTab)} sealForProject={sealForProject} reportIssuesFor={reportIssuesFor} isAdmin={isAdmin} />
         )}
 
         {piaSection(activeTab) && (isAdmin || !ADMIN_TABS.includes(activeTab)) && (

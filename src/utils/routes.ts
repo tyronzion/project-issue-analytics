@@ -18,6 +18,7 @@ export const TAB_ROUTES: { tab: ActiveTab; path: string; title: string }[] = [
   { tab: 'tracker-comparison', path: '/assessment-tracker/period-comparison', title: 'Period Comparison' },
   { tab: 'tracker-checklist', path: '/assessment-tracker/checklist', title: 'Assessment Checklist' },
   { tab: 'tracker-decommissioned', path: '/assessment-tracker/decommissioned', title: 'Decommissioned Apps' },
+  { tab: 'tracker-size', path: '/assessment-tracker/size-calculator', title: 'Size Calculator' },
   { tab: 'tracker-sync', path: '/settings/uberticket-sync', title: 'UberTicket Sync' },
   { tab: 'tracker-import', path: '/settings/import-excel', title: 'Import Assessment Excel' },
   { tab: 'pia', path: '/pia', title: 'Privacy Impact Assessments' },
@@ -40,6 +41,7 @@ const PATH_ALIASES: Record<string, ActiveTab> = {
   '/roe': 'roe',
   '/tracker': 'tracker',
   '/assessment-tracker/monitoring': 'tracker',
+  '/size-calculator': 'tracker-size',
   '/privacy-impact-assessments': 'pia',
   // Old paths of pages that moved into Settings.
   '/jira': 'jira',

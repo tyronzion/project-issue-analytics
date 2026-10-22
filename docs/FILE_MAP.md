@@ -49,7 +49,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `src/components/JiraIntegrationPage.tsx` | Jira connection UI. Posts its config to `/api/jira/issues`. | storage (Jira profile) |
 | `src/components/UsersPage.tsx` | Users & Roles page (admins only): list, add by email, change role, remove | `/auth/users` |
 | `src/components/MonitorFrame.tsx` | Embeds the `/monitor/*` pages as tabs | routes |
-| `src/components/tracker/*` | Assessment Tracker UI. `AssessmentTracker.jsx` is the shell; `api.js` is the `/api/tracker` client; `SyncPage.jsx` handles UberTicket links; `TargetCheck.jsx` compares the cycle with the Target Project List by app; `TimeReport.jsx` is the time-spent report (also exports `TimeByPriorityTable` for Monitoring and `PeriodComparison` for its own page); `tracker.css` holds the `at-*` styles. `report/ReportDialog.jsx` (opened by Editor's "Download report": links and text, preview of seal and counts) and `report/renderReport.js` (print-ready HTML of both templates, escaped; seal badges from `public/seals/<seal>.png`, the team's official images) build the assessment PDF. | `tracker/shared/logic.js` |
+| `src/components/tracker/*` | Assessment Tracker UI. `AssessmentTracker.jsx` is the shell; `api.js` is the `/api/tracker` client; `SyncPage.jsx` handles UberTicket links; `TargetCheck.jsx` compares the cycle with the Target Project List by app; `TimeReport.jsx` is the time-spent report (also exports `TimeByPriorityTable` for Monitoring and `PeriodComparison` for its own page); `tracker.css` holds the `at-*` styles. `SizeCalculator.jsx` is the stand-alone Size Calculator page (D14; rendered by App.tsx, not the shell). `report/ReportDialog.jsx` (opened by Editor's "Download report": links and text, preview of seal and counts) and `report/renderReport.js` (print-ready HTML of both templates, escaped; seal badges from `public/seals/<seal>.png`, the team's official images) build the assessment PDF. | `tracker/shared/logic.js` |
 
 ## UberTicket monitor (`monitor/`)
 | File | Purpose | Relationships |
@@ -79,6 +79,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `tracker/server/importer.js`, `cli-import.js` | Workbook import | tracker |
 | `tracker/shared/logic.js` | **Scoring and status rules ported from the Excel formulas.** Shared by the server and the UI. | sync, UI, App.tsx |
 | `tracker/shared/report.js` | **Assessment report rules** (D12): `reportReady` (12 checks), `reportKind` (RoE/Full), `sealFromCounts` (the spreadsheet seal formula, also used by `securitySeal.ts`), `buildReport` (New/Backlog/overdue, counts, seal and advisory wording), `normalizeReportInfo` (server validation), freeze rules `reportAsOf` / `snapshotFor` / `needsSnapshot` / `normalizeSnapshot` | tracker.js, ReportDialog, securitySeal.ts |
+| `tracker/shared/sizing.js` | **Web Application Size Calculator** (D14): `SIZE_FACTORS` (options + workbook/adjusted weights), `calculateSize`, `sizeFromScore`, `sizeSummary` (the assessment summary text) | SizeCalculator.jsx |
 | `tracker/shared/targets.js` | `targetKey` / `targetMatcher`: is an app on the Target Project List (ignores platform and filler words) | targets.js, tracker + PIA UI |
 | `tracker/test/*.test.js` | Tests for logic and sync (in-memory DB) | `npm run test:tracker` |
 

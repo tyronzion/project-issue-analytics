@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SIZE_FACTORS, calculateSize, factorScore, sizeFromScore, sizeSummary } from '../shared/sizing.js';
+import { SIZE_FACTORS, SIZE_BANDS, TEST_DURATION, TEST_TYPES, calculateSize, durationText, factorScore, sizeFromScore, sizeSummary } from '../shared/sizing.js';
 
 const factor = (key) => SIZE_FACTORS.find((f) => f.key === key);
 
@@ -66,9 +66,23 @@ test('summary explains the size, its drivers, effort and the workbook result', (
   const r = calculateSize(answers);
   assert.match(text, new RegExp(`^StaffCentral is sized as ${r.size.toUpperCase()}`));
   assert.match(text, /driven mainly by functionality and features \(High Complexity/);
-  assert.match(text, /man-hours/);
+  assert.match(text, /Test duration for a Large rating.*Black-Box 72–96 hrs \(9–12 days\); Gray-Box 56–80 hrs \(7–10 days\); White-Box 72–104 hrs \(9–13 days\)/);
+  assert.doesNotMatch(text, /man-hours|points\b.*monitoring/);
   assert.match(text, /Strike Team workbook/);
   assert.match(text, /- User base: 1,001 to 10,000/);
   assert.doesNotMatch(text, /not answered yet/);
   assert.match(sizeSummary({ pages: '1 to 5' }), /^The application is sized as LOW.*5 factor\(s\) not answered yet/s);
+});
+
+test('every size has a test duration for each test type, from the rating table', () => {
+  for (const { size } of SIZE_BANDS) {
+    for (const { key } of TEST_TYPES) {
+      const [lo, hi] = TEST_DURATION[size][key];
+      assert.ok(lo > 0 && hi >= lo, `${size} ${key}`);
+    }
+  }
+  assert.deepEqual(TEST_DURATION.Low.whiteBox, [24, 32]);
+  assert.deepEqual(TEST_DURATION.Critical.whiteBox, [120, 168]);
+  assert.equal(TEST_DURATION.High.rating, 'Large');
+  assert.equal(durationText([32, 48]), '32–48 hrs (4–6 days)');
 });

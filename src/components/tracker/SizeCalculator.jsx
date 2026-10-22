@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Calculator, Copy, Check, RotateCcw, Info } from 'lucide-react';
-import { SIZE_FACTORS, SIZE_MODELS, SIZE_BANDS, COMPLEXITY_GUIDE, calculateSize, sizeSummary } from '../../../tracker/shared/sizing.js';
-import { MAN_HOURS, POINTS } from '../../../tracker/shared/logic.js';
+import { SIZE_FACTORS, SIZE_MODELS, SIZE_BANDS, COMPLEXITY_GUIDE, TEST_TYPES, TEST_DURATION, HOURS_PER_DAY, calculateSize, sizeSummary } from '../../../tracker/shared/sizing.js';
 import { PriorityTag, SEVERITY_ACCENT, cx } from './ui.jsx';
 import './tracker.css';
 
@@ -39,7 +38,7 @@ export default function SizeCalculator() {
       <div className="at-card flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <Calculator className="w-5 h-5" style={{ color: 'var(--cs-primary)' }} aria-hidden />
         <h1 className="text-lg font-bold">Web Application Size Calculator</h1>
-        <span className="text-xs at-muted">Gives the application size (= tracker priority) and the man-hours estimate.</span>
+        <span className="text-xs at-muted">Gives the application size (= tracker priority) and the test duration.</span>
         <div className="ml-auto flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Scoring matrix">
           {Object.entries(SIZE_MODELS).map(([key, label]) => (
             <button
@@ -125,7 +124,7 @@ export default function SizeCalculator() {
             </div>
             <span className="at-big" style={{ color: accent }}>{result.size}</span>
             <div className="text-sm">
-              Score <b>{pctText(result.total)}</b> · {MAN_HOURS[result.size]} man-hours · {POINTS[result.size]} monitoring points
+              Score <b>{pctText(result.total)}</b> · {TEST_DURATION[result.size].rating} rating
             </div>
             <div className="at-strip" aria-hidden>
               {SIZE_BANDS.map((b, i) => (
@@ -142,6 +141,23 @@ export default function SizeCalculator() {
                 <span key={b.size}>{b.size}</span>
               ))}
             </div>
+            <table className="w-full mt-3 text-sm" aria-label="Test duration">
+              <caption className="text-left text-xs font-bold at-muted pb-1">
+                Test duration · incl. documentation, {HOURS_PER_DAY}-hour working day
+              </caption>
+              <tbody>
+                {TEST_TYPES.map((t) => {
+                  const [lo, hi] = TEST_DURATION[result.size][t.key];
+                  return (
+                    <tr key={t.key} style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
+                      <td className="py-1.5">{t.label}</td>
+                      <td className="py-1.5 text-right font-bold tabular-nums">{lo}–{hi} hrs</td>
+                      <td className="py-1.5 pl-3 text-right text-xs at-muted tabular-nums">{lo / HOURS_PER_DAY}–{hi / HOURS_PER_DAY} days</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
             {result.answered > 0 && other.size !== result.size && (
               <div className="at-alert at-alert--info mt-3 text-xs">
                 <Info className="w-4 h-4 shrink-0" aria-hidden />

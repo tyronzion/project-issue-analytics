@@ -79,7 +79,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `tracker/server/importer.js`, `cli-import.js` | Workbook import | tracker |
 | `tracker/shared/logic.js` | **Scoring and status rules ported from the Excel formulas.** Shared by the server and the UI. | sync, UI, App.tsx |
 | `tracker/shared/report.js` | **Assessment report rules** (D12): `reportReady` (12 checks), `reportKind` (RoE/Full), `sealFromCounts` (the spreadsheet seal formula, also used by `securitySeal.ts`), `buildReport` (New/Backlog/overdue, counts, seal and advisory wording), `normalizeReportInfo` (server validation), freeze rules `reportAsOf` / `snapshotFor` / `needsSnapshot` / `normalizeSnapshot` | tracker.js, ReportDialog, securitySeal.ts |
-| `tracker/shared/sizing.js` | **Web Application Size Calculator** (D14): `SIZE_FACTORS` (options + workbook/adjusted weights), `calculateSize`, `sizeFromScore`, `sizeSummary` (the assessment summary text) | SizeCalculator.jsx |
+| `tracker/shared/sizing.js` | **Web Application Size Calculator** (D14): `SIZE_FACTORS` (options + workbook/adjusted weights), `TEST_DURATION` (rating table hours per test type), `calculateSize`, `sizeFromScore`, `sizeSummary` (the assessment summary text) | SizeCalculator.jsx |
 | `tracker/shared/targets.js` | `targetKey` / `targetMatcher`: is an app on the Target Project List (ignores platform and filler words) | targets.js, tracker + PIA UI |
 | `tracker/test/*.test.js` | Tests for logic and sync (in-memory DB) | `npm run test:tracker` |
 

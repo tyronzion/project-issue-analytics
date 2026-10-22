@@ -1,8 +1,7 @@
-import { MAN_HOURS } from './logic.js';
-
 // Web Application Size Calculator.
 // Ported from the "CSDATASEC Strike Team - Web Application Size Calculator" workbook (SharePoint, Calculator sheet).
-// The size is the tracker's Priority (Critical / High / Medium / Low), which drives MAN_HOURS and POINTS in logic.js.
+// The size is the tracker's Priority (Critical / High / Medium / Low). Its test duration comes from the team's
+// "Rating and test duration" table (TEST_DURATION), where Low = Small and High = Large.
 //
 // The workbook model: each factor scores weight x (option index / last index). Its nested IFs are exactly that
 // (e.g. Pages 0.025 per step up to 0.25). The total out of 1.0 gives the size: <=25% Low, <=50% Medium, <=75% High,
@@ -72,6 +71,27 @@ export const SIZE_BANDS = [
   { size: 'High', max: 0.75 },
   { size: 'Critical', max: 1 },
 ];
+
+// "Rating and test duration" table: hours per test type, incl. documentation, 8-hour working day.
+// The table's ratings are Small / Medium / Large / Critical; the tracker's priorities are Low / Medium / High / Critical.
+export const TEST_TYPES = [
+  { key: 'blackBox', label: 'Black-Box' },
+  { key: 'grayBox', label: 'Gray-Box' },
+  { key: 'whiteBox', label: 'White-Box' },
+];
+export const TEST_DURATION = {
+  Low: { rating: 'Small', blackBox: [16, 24], grayBox: [16, 24], whiteBox: [24, 32] },
+  Medium: { rating: 'Medium', blackBox: [32, 48], grayBox: [24, 40], whiteBox: [32, 64] },
+  High: { rating: 'Large', blackBox: [72, 96], grayBox: [56, 80], whiteBox: [72, 104] },
+  Critical: { rating: 'Critical', blackBox: [104, 152], grayBox: [88, 128], whiteBox: [120, 168] },
+};
+export const HOURS_PER_DAY = 8;
+
+// [low, high] hours -> "32–48 hrs (4–6 days)".
+export function durationText([lo, hi]) {
+  const d = (h) => Math.round((h / HOURS_PER_DAY) * 10) / 10;
+  return `${lo}–${hi} hrs (${d(lo)}–${d(hi)} days)`;
+}
 
 // Functionality guide, from the workbook's note on the Functionality cell.
 export const COMPLEXITY_GUIDE = {
@@ -145,7 +165,11 @@ export function sizeSummary(answers = {}, { appName = '', model = 'adjusted' } =
   const func = answers.functionality;
   if (COMPLEXITY_GUIDE[func]) lines.push(`Functionality was rated ${func} (${lowerFirst(COMPLEXITY_GUIDE[func]).replace(/\.$/, '')}).`);
 
-  if (MAN_HOURS[r.size]) lines.push(`Estimated assessment effort for a ${r.size} app: ${MAN_HOURS[r.size]} man-hours.`);
+  const dur = TEST_DURATION[r.size];
+  if (dur) {
+    const types = TEST_TYPES.map((t) => `${t.label} ${durationText(dur[t.key])}`).join('; ');
+    lines.push(`Test duration for a ${dur.rating} rating, incl. documentation (8-hour day): ${types}.`);
+  }
   if (!r.complete) lines.push(`Note: ${r.breakdown.length - r.answered} factor(s) not answered yet; they count as zero.`);
 
   if (model === 'adjusted') {

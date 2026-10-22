@@ -21,7 +21,9 @@ export default function SizeCalculator() {
   const other = useMemo(() => calculateSize(answers, model === 'adjusted' ? 'workbook' : 'adjusted'), [answers, model]);
   const summary = useMemo(() => sizeSummary(answers, { appName, model }), [answers, appName, model]);
   const factors = SIZE_FACTORS.filter((f) => f.weights[model] > 0);
-  const accent = SEVERITY_ACCENT[result.priority];
+  // No size until something is answered: an empty form would otherwise score 0% = Small.
+  const sized = result.answered > 0;
+  const accent = sized ? SEVERITY_ACCENT[result.priority] : 'var(--cs-soft)';
 
   async function copySummary() {
     try {
@@ -122,43 +124,51 @@ export default function SizeCalculator() {
               <span className="text-xs font-bold at-muted uppercase tracking-wider">Application size</span>
               <span className="text-xs at-muted">{result.answered}/{result.breakdown.length} answered</span>
             </div>
-            <span className="at-big" style={{ color: accent }}>{result.size}</span>
+            <span className="at-big" style={{ color: accent }}>{sized ? result.size : '—'}</span>
             <div className="text-sm">
-              Score <b>{pctText(result.total)}</b> · tracker priority {result.priority}
+              {sized ? (
+                <>
+                  Score <b>{pctText(result.total)}</b> · tracker priority {result.priority}
+                </>
+              ) : (
+                <span className="at-muted">Answer the questions on the left to size the application.</span>
+              )}
             </div>
             <div className="at-strip" aria-hidden>
               {SIZE_BANDS.map((b, i) => (
                 <div
                   key={b.size}
                   className="at-strip-est"
-                  style={{ left: `${(i ? SIZE_BANDS[i - 1].max : 0) * 100}%`, width: `${(b.max - (i ? SIZE_BANDS[i - 1].max : 0)) * 100}%`, borderColor: b.size === result.size ? accent : undefined }}
+                  style={{ left: `${(i ? SIZE_BANDS[i - 1].max : 0) * 100}%`, width: `${(b.max - (i ? SIZE_BANDS[i - 1].max : 0)) * 100}%`, borderColor: sized && b.size === result.size ? accent : undefined }}
                 />
               ))}
-              <div className="at-strip-avg" style={{ left: `${Math.min(result.total, 1) * 100}%` }} />
+              {sized && <div className="at-strip-avg" style={{ left: `${Math.min(result.total, 1) * 100}%` }} />}
             </div>
             <div className="at-strip-axis">
               {SIZE_BANDS.map((b) => (
                 <span key={b.size}>{b.size}</span>
               ))}
             </div>
-            <table className="w-full mt-3 text-sm" aria-label="Test duration">
-              <caption className="text-left text-xs font-bold at-muted pb-1">
-                Test duration · incl. documentation, {HOURS_PER_DAY}-hour working day
-              </caption>
-              <tbody>
-                {TEST_TYPES.map((t) => {
-                  const [lo, hi] = TEST_DURATION[result.size][t.key];
-                  return (
-                    <tr key={t.key} style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
-                      <td className="py-1.5">{t.label}</td>
-                      <td className="py-1.5 text-right font-bold tabular-nums">{lo}–{hi} hrs</td>
-                      <td className="py-1.5 pl-3 text-right text-xs at-muted tabular-nums">{lo / HOURS_PER_DAY}–{hi / HOURS_PER_DAY} days</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {result.answered > 0 && other.size !== result.size && (
+            {sized && (
+              <table className="w-full mt-3 text-sm" aria-label="Test duration">
+                <caption className="text-left text-xs font-bold at-muted pb-1">
+                  Test duration · incl. documentation, {HOURS_PER_DAY}-hour working day
+                </caption>
+                <tbody>
+                  {TEST_TYPES.map((t) => {
+                    const [lo, hi] = TEST_DURATION[result.size][t.key];
+                    return (
+                      <tr key={t.key} style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
+                        <td className="py-1.5">{t.label}</td>
+                        <td className="py-1.5 text-right font-bold tabular-nums">{lo}–{hi} hrs</td>
+                        <td className="py-1.5 pl-3 text-right text-xs at-muted tabular-nums">{lo / HOURS_PER_DAY}–{hi / HOURS_PER_DAY} days</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+            {sized && other.size !== result.size && (
               <div className="at-alert at-alert--info mt-3 text-xs">
                 <Info className="w-4 h-4 shrink-0" aria-hidden />
                 <span>

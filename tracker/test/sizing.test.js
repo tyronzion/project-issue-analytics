@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SIZE_FACTORS, SIZE_BANDS, TEST_DURATION, TEST_TYPES, calculateSize, durationText, factorScore, sizeFromScore, sizeSummary } from '../shared/sizing.js';
+import { SIZE_FACTORS, SIZE_BANDS, priorityForSize, TEST_DURATION, TEST_TYPES, calculateSize, durationText, factorScore, sizeFromScore, sizeSummary } from '../shared/sizing.js';
 
 const factor = (key) => SIZE_FACTORS.find((f) => f.key === key);
 
@@ -33,16 +33,17 @@ test('weights add up to 100% in both models', () => {
     assert.ok(Math.abs(max - 1) < 1e-9, model);
     const top = Object.fromEntries(SIZE_FACTORS.map((f) => [f.key, f.options.at(-1)]));
     assert.equal(calculateSize(top, model).size, 'Critical');
-    assert.equal(calculateSize({}, model).size, 'Low');
+    assert.equal(calculateSize({}, model).size, 'Small');
+    assert.equal(calculateSize({}, model).priority, 'Low');
   }
 });
 
-test('band edges are inclusive, as in the workbook (<=25% Low, <=50% Medium, <=75% High)', () => {
-  assert.equal(sizeFromScore(0.25), 'Low');
-  assert.equal(sizeFromScore(0.25000000000000006), 'Low');
+test('band edges are inclusive, as in the workbook (<=25% Small, <=50% Medium, <=75% Large)', () => {
+  assert.equal(sizeFromScore(0.25), 'Small');
+  assert.equal(sizeFromScore(0.25000000000000006), 'Small');
   assert.equal(sizeFromScore(0.2501), 'Medium');
   assert.equal(sizeFromScore(0.5), 'Medium');
-  assert.equal(sizeFromScore(0.75), 'High');
+  assert.equal(sizeFromScore(0.75), 'Large');
   assert.equal(sizeFromScore(0.7501), 'Critical');
 });
 
@@ -66,12 +67,12 @@ test('summary explains the size, its drivers, effort and the workbook result', (
   const r = calculateSize(answers);
   assert.match(text, new RegExp(`^StaffCentral is sized as ${r.size.toUpperCase()}`));
   assert.match(text, /driven mainly by functionality and features \(High Complexity/);
-  assert.match(text, /Test duration for a Large rating.*Black-Box 72–96 hrs \(9–12 days\); Gray-Box 56–80 hrs \(7–10 days\); White-Box 72–104 hrs \(9–13 days\)/);
+  assert.match(text, /Test duration for a Large app.*Black-Box 72–96 hrs \(9–12 days\); Gray-Box 56–80 hrs \(7–10 days\); White-Box 72–104 hrs \(9–13 days\)/);
   assert.doesNotMatch(text, /man-hours|points\b.*monitoring/);
   assert.match(text, /Strike Team workbook/);
   assert.match(text, /- User base: 1,001 to 10,000/);
   assert.doesNotMatch(text, /not answered yet/);
-  assert.match(sizeSummary({ pages: '1 to 5' }), /^The application is sized as LOW.*5 factor\(s\) not answered yet/s);
+  assert.match(sizeSummary({ pages: '1 to 5' }), /^The application is sized as SMALL.*5 factor\(s\) not answered yet/s);
 });
 
 test('every size has a test duration for each test type, from the rating table', () => {
@@ -81,8 +82,9 @@ test('every size has a test duration for each test type, from the rating table',
       assert.ok(lo > 0 && hi >= lo, `${size} ${key}`);
     }
   }
-  assert.deepEqual(TEST_DURATION.Low.whiteBox, [24, 32]);
+  assert.deepEqual(TEST_DURATION.Small.whiteBox, [24, 32]);
   assert.deepEqual(TEST_DURATION.Critical.whiteBox, [120, 168]);
-  assert.equal(TEST_DURATION.High.rating, 'Large');
+  assert.deepEqual(TEST_DURATION.Large.blackBox, [72, 96]);
+  assert.deepEqual(SIZE_BANDS.map((b) => priorityForSize(b.size)), ['Low', 'Medium', 'High', 'Critical']);
   assert.equal(durationText([32, 48]), '32–48 hrs (4–6 days)');
 });

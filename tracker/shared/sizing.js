@@ -1,10 +1,10 @@
 // Web Application Size Calculator.
 // Ported from the "CSDATASEC Strike Team - Web Application Size Calculator" workbook (SharePoint, Calculator sheet).
-// The size is the tracker's Priority (Critical / High / Medium / Low). Its test duration comes from the team's
-// "Rating and test duration" table (TEST_DURATION), where Low = Small and High = Large.
+// Sizes are Small / Medium / Large / Critical, as in the team's "Rating and test duration" table (TEST_DURATION).
+// Each maps to the tracker's Priority (SIZE_BANDS priority): Small = Low, Large = High.
 //
 // The workbook model: each factor scores weight x (option index / last index). Its nested IFs are exactly that
-// (e.g. Pages 0.025 per step up to 0.25). The total out of 1.0 gives the size: <=25% Low, <=50% Medium, <=75% High,
+// (e.g. Pages 0.025 per step up to 0.25). The total out of 1.0 gives the size: <=25% Small, <=50% Medium, <=75% Large,
 // otherwise Critical.
 //
 // The adjusted model (the default here, see DECISIONS D14) keeps the same options, scale and bands, and fixes three things:
@@ -64,26 +64,28 @@ export const SIZE_MODELS = {
   workbook: 'Strike Team workbook',
 };
 
-// Upper bound (inclusive) of each size's band, as a share of the 1.0 total.
+// Upper bound (inclusive) of each size's band, as a share of the 1.0 total, and the matching tracker Priority.
 export const SIZE_BANDS = [
-  { size: 'Low', max: 0.25 },
-  { size: 'Medium', max: 0.5 },
-  { size: 'High', max: 0.75 },
-  { size: 'Critical', max: 1 },
+  { size: 'Small', priority: 'Low', max: 0.25 },
+  { size: 'Medium', priority: 'Medium', max: 0.5 },
+  { size: 'Large', priority: 'High', max: 0.75 },
+  { size: 'Critical', priority: 'Critical', max: 1 },
 ];
 
+// Size -> tracker Priority (Small -> Low, Large -> High).
+export const priorityForSize = (size) => SIZE_BANDS.find((b) => b.size === size)?.priority ?? '';
+
 // "Rating and test duration" table: hours per test type, incl. documentation, 8-hour working day.
-// The table's ratings are Small / Medium / Large / Critical; the tracker's priorities are Low / Medium / High / Critical.
 export const TEST_TYPES = [
   { key: 'blackBox', label: 'Black-Box' },
   { key: 'grayBox', label: 'Gray-Box' },
   { key: 'whiteBox', label: 'White-Box' },
 ];
 export const TEST_DURATION = {
-  Low: { rating: 'Small', blackBox: [16, 24], grayBox: [16, 24], whiteBox: [24, 32] },
-  Medium: { rating: 'Medium', blackBox: [32, 48], grayBox: [24, 40], whiteBox: [32, 64] },
-  High: { rating: 'Large', blackBox: [72, 96], grayBox: [56, 80], whiteBox: [72, 104] },
-  Critical: { rating: 'Critical', blackBox: [104, 152], grayBox: [88, 128], whiteBox: [120, 168] },
+  Small: { blackBox: [16, 24], grayBox: [16, 24], whiteBox: [24, 32] },
+  Medium: { blackBox: [32, 48], grayBox: [24, 40], whiteBox: [32, 64] },
+  Large: { blackBox: [72, 96], grayBox: [56, 80], whiteBox: [72, 104] },
+  Critical: { blackBox: [104, 152], grayBox: [88, 128], whiteBox: [120, 168] },
 };
 export const HOURS_PER_DAY = 8;
 
@@ -116,7 +118,7 @@ export function sizeFromScore(total) {
 
 /**
  * answers: { functionality: 'Low Complexity', pages: '11 to 20', ... }
- * Returns { model, total, size, complete, answered, breakdown: [{ key, label, value, score, max }] }.
+ * Returns { model, total, size (Small..Critical), priority (tracker Low..Critical), complete, answered, breakdown: [{ key, label, value, score, max }] }.
  * `complete` is false while a counted factor is unanswered; the size is still computed (unanswered = 0).
  */
 export function calculateSize(answers = {}, model = 'adjusted') {
@@ -130,7 +132,8 @@ export function calculateSize(answers = {}, model = 'adjusted') {
   }));
   const total = breakdown.reduce((s, b) => s + b.score, 0);
   const answered = breakdown.filter((b) => b.value).length;
-  return { model, total, size: sizeFromScore(total), complete: answered === counted.length, answered, breakdown };
+  const size = sizeFromScore(total);
+  return { model, total, size, priority: priorityForSize(size), complete: answered === counted.length, answered, breakdown };
 }
 
 const pctText = (x) => `${Math.round(x * 1000) / 10}%`;
@@ -168,7 +171,7 @@ export function sizeSummary(answers = {}, { appName = '', model = 'adjusted' } =
   const dur = TEST_DURATION[r.size];
   if (dur) {
     const types = TEST_TYPES.map((t) => `${t.label} ${durationText(dur[t.key])}`).join('; ');
-    lines.push(`Test duration for a ${dur.rating} rating, incl. documentation (8-hour day): ${types}.`);
+    lines.push(`Test duration for a ${r.size} app, incl. documentation (8-hour day): ${types}.`);
   }
   if (!r.complete) lines.push(`Note: ${r.breakdown.length - r.answered} factor(s) not answered yet; they count as zero.`);
 

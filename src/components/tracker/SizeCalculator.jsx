@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Calculator, Copy, Check, RotateCcw, Info } from 'lucide-react';
 import { SIZE_FACTORS, SIZE_MODELS, SIZE_BANDS, COMPLEXITY_GUIDE, TEST_TYPES, TEST_DURATION, HOURS_PER_DAY, calculateSize, sizeSummary } from '../../../tracker/shared/sizing.js';
-import { PriorityTag, SEVERITY_ACCENT, cx } from './ui.jsx';
+import { SEVERITY_ACCENT, cx } from './ui.jsx';
 import './tracker.css';
 
 const pctText = (x) => `${Math.round(x * 1000) / 10}%`;
@@ -21,7 +21,7 @@ export default function SizeCalculator() {
   const other = useMemo(() => calculateSize(answers, model === 'adjusted' ? 'workbook' : 'adjusted'), [answers, model]);
   const summary = useMemo(() => sizeSummary(answers, { appName, model }), [answers, appName, model]);
   const factors = SIZE_FACTORS.filter((f) => f.weights[model] > 0);
-  const accent = SEVERITY_ACCENT[result.size];
+  const accent = SEVERITY_ACCENT[result.priority];
 
   async function copySummary() {
     try {
@@ -38,7 +38,7 @@ export default function SizeCalculator() {
       <div className="at-card flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <Calculator className="w-5 h-5" style={{ color: 'var(--cs-primary)' }} aria-hidden />
         <h1 className="text-lg font-bold">Web Application Size Calculator</h1>
-        <span className="text-xs at-muted">Gives the application size (= tracker priority) and the test duration.</span>
+        <span className="text-xs at-muted">Gives the application size (Small, Medium, Large or Critical) and the test duration.</span>
         <div className="ml-auto flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Scoring matrix">
           {Object.entries(SIZE_MODELS).map(([key, label]) => (
             <button
@@ -124,7 +124,7 @@ export default function SizeCalculator() {
             </div>
             <span className="at-big" style={{ color: accent }}>{result.size}</span>
             <div className="text-sm">
-              Score <b>{pctText(result.total)}</b> · {TEST_DURATION[result.size].rating} rating
+              Score <b>{pctText(result.total)}</b> · tracker priority {result.priority}
             </div>
             <div className="at-strip" aria-hidden>
               {SIZE_BANDS.map((b, i) => (
@@ -162,7 +162,7 @@ export default function SizeCalculator() {
               <div className="at-alert at-alert--info mt-3 text-xs">
                 <Info className="w-4 h-4 shrink-0" aria-hidden />
                 <span>
-                  The {other.model === 'workbook' ? 'Strike Team workbook' : 'adjusted matrix'} gives <PriorityTag value={other.size} /> ({pctText(other.total)})
+                  The {other.model === 'workbook' ? 'Strike Team workbook' : 'adjusted matrix'} gives <b style={{ color: SEVERITY_ACCENT[other.priority] }}>{other.size}</b> ({pctText(other.total)})
                   {model === 'adjusted' ? ', because it does not count user base and weighs functionality and pages more.' : '.'}
                 </span>
               </div>
@@ -191,7 +191,7 @@ export default function SizeCalculator() {
             <summary className="cursor-pointer font-bold">How is this calculated?</summary>
             <p className="mt-2">
               Each factor scores its weight × (answer position ÷ last answer), as in the Strike Team workbook. The total out of 100 gives the size: up to 25%
-              Low, up to 50% Medium, up to 75% High, above 75% Critical.
+              Small, up to 50% Medium, up to 75% Large, above 75% Critical. In the tracker, Small is priority Low and Large is High.
             </p>
             <table className="cs-data-table mt-2">
               <thead>

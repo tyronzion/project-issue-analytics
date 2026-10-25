@@ -93,7 +93,7 @@ function createAppsFromRoe(db, unmatched) {
         (cycle_id, period, sort_order, project, quarter, is_active, classification, testing_url, priority, security_tester, created_from_ticket, updated_by)
         VALUES (?, ?, ?, ?, ?, 'Active', 'New', ?, ?, ?, ?, ?) RETURNING id`)
       .get(cycleId, period, order, String(t.product).trim(), `Q${quarter}`, t.targetLink || null,
-        normalizePriority(t.priority) || 'Medium', t.assignee && t.assignee !== 'Unassigned' ? t.assignee : null, t.key, SYNC_USER);
+        normalizePriority('rawPriority' in t ? t.rawPriority : t.priority) || 'Medium', t.assignee && t.assignee !== 'Unassigned' ? t.assignee : null, t.key, SYNC_USER);
     db.prepare('INSERT INTO history (assessment_id, field, new_value, changed_by) VALUES (?, ?, ?, ?)')
       .run(row.id, 'created', `${t.product} (from Rules of Engagement ${t.key})`, SYNC_USER);
     created.push({ id: row.id, project: t.product, year, period, ticket: t.key });
@@ -147,6 +147,10 @@ export function syncTickets(db, tickets, { offsetHours = 8, createApps = true } 
         if (t.assignee && t.assignee !== 'Unassigned') next.security_tester = t.assignee;
         next.tester_frozen = resolved ? 1 : 0;
       }
+      // Priority follows the ticket's UberTicket priority ("Normal" = Medium). The monitor defaults a ticket
+      // without one to medium, so only the raw value counts; no priority on the ticket keeps the tracker's.
+      const priority = normalizePriority('rawPriority' in t ? t.rawPriority : t.priority);
+      if (priority) next.priority = priority;
       const minutes = minutesOf(t);
       // Time Spent (MM) from either ticket type; an empty field never clears a recorded time.
       if (minutes > 0) next.time_spent = Math.round(minutes);

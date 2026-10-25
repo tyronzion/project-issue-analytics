@@ -214,9 +214,12 @@ export function monitoringSummary(rows) {
   };
 }
 
+// UberTicket priority names that differ from the tracker's ("Normal" is Medium, as in the monitor's SLA map).
+const PRIORITY_ALIASES = { normal: 'Medium', urgent: 'Critical' };
+
 export function normalizePriority(v) {
   const s = String(v || '').trim().toLowerCase();
-  return PRIORITIES.find((p) => p.toLowerCase() === s) || '';
+  return PRIORITIES.find((p) => p.toLowerCase() === s) || PRIORITY_ALIASES[s] || '';
 }
 
 export function normalizeSeal(v) {

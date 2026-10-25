@@ -186,3 +186,17 @@ test('unlinking a rejected ticket keeps a time spent entered by hand', async () 
   syncTickets(db, { full: [ticket({ product: 'MyStaff', timeSpent: '500', state: 'rejected' })], roe: [] });
   assert.equal(row(db, 'MyStaff', '2nd Half').time_spent, 720);
 });
+
+test('priority follows the UberTicket priority; "Normal" is Medium; no priority keeps the tracker value', async () => {
+  const db = await setup();
+  syncTickets(db, { full: [ticket({ product: 'MyStaff', priority: 'medium', rawPriority: 'Normal' })], roe: [] });
+  assert.equal(row(db, 'MyStaff', '2nd Half').priority, 'Medium');
+  // The monitor defaults a missing priority to medium; that must not overwrite the tracker's value.
+  syncTickets(db, { full: [ticket({ key: 'UB-2', product: 'Buzz', quarter: 'Q1', priority: 'medium', rawPriority: null })], roe: [] });
+  assert.equal(row(db, 'Buzz', '1st Half').ticket_key, 'UB-2');
+  assert.equal(row(db, 'Buzz', '1st Half').priority, 'Low');
+  syncTickets(db, { full: [ticket({ key: 'UB-3', product: 'Pact-X', priority: 'critical', rawPriority: 'Urgent' })], roe: [] });
+  assert.equal(row(db, 'Pact-X', '2nd Half').priority, 'Critical');
+  const hist = db.prepare("SELECT old_value, new_value FROM history WHERE field = 'priority'").all();
+  assert.ok(hist.some((h) => h.old_value === 'High' && h.new_value === 'Medium'));
+});

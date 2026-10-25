@@ -171,7 +171,7 @@ function roeReport(r, jiraBase) {
 
 function appendices() {
   const qa = (rows) => `<table class="grid qa"><thead><tr><th>Questions</th><th>Answers</th></tr></thead><tbody>${rows.map(([q, a]) => `<tr><th>${esc(q)}</th><td>${a}</td></tr>`).join('')}</tbody></table>`;
-  return `<h2 class="page-break">Appendices</h2>
+  return `<h2>Appendices</h2>
     <p>This section includes frequently asked questions about the SLA and the Security Seal.</p>
     <h3>Appendix A – SLA</h3>
     <p>The list below covers frequently asked questions about the SLA.</p>
@@ -240,6 +240,8 @@ const STYLES = `
      the report to page 2 to avoid splitting it. */
   .grid tr, .guide tr { break-inside: avoid; }
   .frame > tbody > tr, .frame > tbody > tr > td { break-inside: auto; }
+  /* Long Q&A answers may split across pages, so a tall row doesn't leave a blank gap at the page bottom. */
+  .qa tr { break-inside: auto; }
   .grid th, .grid td { border: 1px solid var(--color-border-primary); padding: 5px 7px; vertical-align: middle; }
   .grid thead th { background: var(--color-surface-secondary); font-weight: 700; }
   .grid th.band { background: var(--color-brand-primary-soft); }
@@ -260,7 +262,6 @@ const STYLES = `
   .phases { display: flex; gap: 10px; margin: 8px 0 12px; }
   .phases span { flex: 1; text-align: center; padding: 6px 4px; border-radius: var(--radius-sm, 6px); background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); font-weight: 700; font-size: 9.5pt; }
   .recs li { margin-bottom: 6px; }
-  .page-break { break-before: page; }
   .frame { width: 100%; border-collapse: collapse; margin: 0; }
   .frame > thead > tr > td, .frame > tfoot > tr > td, .frame > tbody > tr > td { padding: 0; border: 0; }
   .frame-space { height: 0; }
@@ -388,7 +389,6 @@ const WORD_STYLES = `
   .note { font-size: 9.5pt; }
   .cover td { border: 0; padding: 0; vertical-align: middle; }
   .phases td { background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); font-weight: bold; font-size: 9.5pt; text-align: center; padding: 5pt; border: 3pt solid var(--color-surface-canvas); }
-  .page-break { page-break-before: always; }
   .footer { font-family: var(--font-family-heading); font-size: 8pt; color: var(--color-text-base-muted); margin-top: 24pt; }
 `;
 

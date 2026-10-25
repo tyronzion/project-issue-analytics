@@ -16,11 +16,38 @@ export const REPORT_INFO_FIELDS = {
   dashboardUrl: { max: 1000, url: true },
   scanResultsUrl: { max: 1000, url: true },
   notes: { max: 4000 },
-  testingType: { max: 60 },       // RoE: "Blackbox"
+  testingType: { max: 60 },       // RoE: "Blackbox" | "Graybox" | "Whitebox" (TESTING_TYPES)
+  testingScope: { max: 2000 },    // RoE: Scope and Limitations wording; empty = the type's default (TESTING_SCOPE)
   testingTime: { max: 120 },      // RoE: "6:00 am to 5:00 pm / Weekdays"
   recommendations: { max: 4000 }, // RoE: one per line, "Title: description"
 };
 export const REPORT_DEFAULTS = { testingType: 'Blackbox', testingTime: '6:00 am to 5:00 pm / Weekdays' };
+
+// RoE type of testing (dialog dropdown) and the default Scope and Limitations wording for each.
+// The team can edit the wording per report (reportInfo.testingScope).
+export const TESTING_TYPES = ['Blackbox', 'Graybox', 'Whitebox'];
+export const TESTING_SCOPE = {
+  Blackbox: 'Without access to source code, system configurations, or internal architecture, testing was conducted from an external perspective to identify vulnerabilities through the application’s functionality, exposed interfaces, APIs, authentication, authorization, and observable behavior.',
+  Graybox: 'With partial knowledge of the application, such as user accounts, roles, and architecture or API documentation, testing combined an external attacker’s perspective with authenticated access to identify vulnerabilities in the application’s functionality, access controls, business logic, APIs, and data handling.',
+  Whitebox: 'With full access to source code, system configurations, and internal architecture, testing combined code review, static and dynamic analysis, and manual verification to identify vulnerabilities such as insecure coding practices, logic flaws, improper access controls, and misconfigurations.',
+};
+
+// Maps saved or typed values ("Black-box", "grey box", "WHITEBOX") to one of TESTING_TYPES; unknown → null.
+export function testingTypeOf(value) {
+  const s = String(value || '').toLowerCase();
+  if (/black/.test(s)) return 'Blackbox';
+  if (/gr[ae]y/.test(s)) return 'Graybox';
+  if (/white/.test(s)) return 'Whitebox';
+  return null;
+}
+
+// The Scope and Limitations wording the report uses: the team's text, else the type's default.
+export function testingScopeText(info = {}) {
+  const custom = String(info.testingScope || '').trim();
+  if (custom) return custom;
+  const type = testingTypeOf(info.testingType || REPORT_DEFAULTS.testingType);
+  return type ? TESTING_SCOPE[type] : '';
+}
 
 // Validates and trims report info. Throws Error with a message fit for the user.
 export function normalizeReportInfo(value) {

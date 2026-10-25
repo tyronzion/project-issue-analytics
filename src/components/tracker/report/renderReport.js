@@ -1,6 +1,7 @@
-// Assessment report as a print-ready HTML page (the browser's "Save as PDF" makes the PDF).
+// Assessment report as a print-ready HTML page (the browser's "Save as PDF" makes the PDF), or as a Word
+// document (downloadWordReport: the same content as a single-file web page Word opens and edits, .doc).
 // Layout follows the team's Word templates. Every value is escaped; links are written only when http(s).
-import { SEVERITY_LABEL, SLA_DAYS, DEFAULT_RECOMMENDATIONS, parseRecommendations, isWebUrl } from '../../../../tracker/shared/report.js';
+import { SEVERITY_LABEL, SLA_DAYS, DEFAULT_RECOMMENDATIONS, parseRecommendations, isWebUrl, testingScopeText } from '../../../../tracker/shared/report.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -106,7 +107,7 @@ function fullReport(r, jiraBase) {
 
 function roeReport(r, jiraBase) {
   const type = r.info.testingType || 'Blackbox';
-  const blackbox = /black/i.test(type);
+  const scope = testingScopeText(r.info);
   const recs = parseRecommendations(r.info.recommendations);
   const recommendations = recs.length ? recs : DEFAULT_RECOMMENDATIONS;
   const targetUrl = String(r.testingUrl || '').split(/\s+/).filter(Boolean).join('\n');
@@ -129,7 +130,7 @@ function roeReport(r, jiraBase) {
       <tr><th>Time of Testing</th><td>${esc(r.info.testingTime || '—')}</td></tr>
     </table>
     <h2>Scope and Limitations</h2>
-    <p>The security assessment was limited to the ${esc(r.project)} application and was conducted using ${esc(type.toLowerCase())} testing techniques.${blackbox ? ' Without access to source code, system configurations, or internal architecture, testing was conducted from an external perspective to identify vulnerabilities through the application’s functionality, exposed interfaces, APIs, authentication, authorization, and observable behavior.' : ''}</p>
+    <p>The security assessment was limited to the ${esc(r.project)} application and was conducted using ${esc(type.toLowerCase())} testing techniques.${scope ? ` ${esc(scope)}` : ''}</p>
     <p>The following activities were explicitly excluded from the scope:</p>
     <ul>
       <li>Internal network-based penetration testing</li>
@@ -196,6 +197,7 @@ function appendices() {
     <p>This section describes the security terms mentioned in this document:</p>
     <table class="grid qa"><thead><tr><th>Terms</th><th>Description</th></tr></thead><tbody>
       <tr><th>Black-box Penetration Testing</th><td>Black-box penetration testing assesses system security without any knowledge of its internal architecture or source code. It simulates an external attacker and focuses on the application's exposed functionality, interfaces, and behavior.</td></tr>
+      <tr><th>Gray-box Penetration Testing</th><td>Gray-box penetration testing assesses system security with partial knowledge of its internal architecture, such as user accounts, roles, and design or API documentation. It combines an external attacker's perspective with authenticated access to uncover flaws in access controls, business logic, and data handling.</td></tr>
       <tr><th>White-box Penetration Testing</th><td>White-box penetration testing assesses system security with full knowledge of its internal architecture and source code. This method simulates insider threats and uncovers deep-seated vulnerabilities such as logic flaws and improper access controls. It requires specialized skills and collaboration with developers for a thorough assessment, using tools such as static and dynamic code analysis and manual review.</td></tr>
       <tr><th>Security Posture</th><td>The overall security strength and preparedness of an organization or system. It encompasses the policies, procedures, technologies, and practices implemented to protect against security threats.</td></tr>
     </tbody></table>`;
@@ -266,8 +268,11 @@ const STYLES = `
   .footer { display: flex; gap: 48px; align-items: center; font-family: var(--font-family-heading); font-size: 8pt; color: var(--color-text-base-muted); max-width: 180mm; margin: 32px auto 0; letter-spacing: 0.02em; }
   .footer a { color: var(--color-brand-primary); font-weight: 400; text-decoration: none; letter-spacing: 0; }
   .toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: 12px; align-items: center; justify-content: center; padding: 10px; background: var(--color-surface-secondary); border-bottom: 1px solid var(--color-border-primary); font-size: 10pt; }
+  main[contenteditable="true"] { outline: 2px dashed var(--color-brand-primary); outline-offset: 8px; }
   .toolbar button { font: inherit; font-weight: 700; padding: 6px 14px; border-radius: var(--radius-sm, 6px); border: 0; background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); cursor: pointer; }
+  .toolbar button.secondary { background: var(--color-surface-canvas); color: var(--color-brand-primary); box-shadow: inset 0 0 0 1px var(--color-brand-primary); }
   @media print {
+    main[contenteditable="true"] { outline: none; }
     html, body { background: none; }
     .toolbar { display: none; }
     main { padding: 0 18mm; max-width: none; }
@@ -283,6 +288,8 @@ const STYLES = `
   }
 `;
 
+const reportBody = (r, jiraBase) => (r.kind === 'roe' ? roeReport(r, jiraBase) : fullReport(r, jiraBase));
+
 // The whole report page. fileName becomes the document title, which the browser uses as the PDF name.
 export function renderReport(r, fileName, { jiraBase = '' } = {}) {
   return `<!doctype html>
@@ -292,12 +299,12 @@ export function renderReport(r, fileName, { jiraBase = '' } = {}) {
 <link rel="stylesheet" href="/design-system/css/tokens.css">
 <style>${STYLES}</style></head>
 <body>
-<div class="toolbar"><span>Choose <b>Save as PDF</b> as the destination in the print dialog.</span><button type="button" id="print-report">Save as PDF</button></div>
+<div class="toolbar"><span id="edit-hint">Preview. Check the report, edit text if needed, then save. In the print dialog choose <b>Save as PDF</b>.</span><button type="button" id="edit-report" class="secondary" aria-pressed="false">Edit text</button><button type="button" id="print-report">Save as PDF</button><button type="button" id="word-report" class="secondary">Download Word</button></div>
 <table class="frame"><thead><tr><td><div class="frame-space top"><div class="page-head">${sealBadge(r.seal)}</div></div></td></tr></thead>
 <tfoot><tr><td><div class="frame-space bottom"></div></td></tr></tfoot>
 <tbody><tr><td>
 <main>
-${r.kind === 'roe' ? roeReport(r, jiraBase) : fullReport(r, jiraBase)}
+${reportBody(r, jiraBase)}
 </main>
 </td></tr></tbody></table>
 <div class="footer"><span>US&nbsp; | &nbsp;UK&nbsp; | &nbsp;AUSTRALIA&nbsp; | &nbsp;PHILIPPINES&nbsp; | &nbsp;INDIA</span><a href="https://www.cloudstaff.com">cloudstaff.com</a></div>
@@ -311,15 +318,178 @@ export function openReportTab() {
   return w;
 }
 
+// Shows the report as a preview. Nothing prints until the user clicks Save as PDF, so they can read it and
+// fix wording first ("Edit text" makes the report editable in this tab only; edits aren't saved to the
+// tracker). "Download Word" exports what the tab shows, including those edits.
 export function showReport(w, r, fileName, options) {
   w.document.open();
   w.document.write(renderReport(r, fileName, options));
   w.document.close();
-  const print = () => w.print();
-  w.document.getElementById('print-report')?.addEventListener('click', print);
-  // Print once the brand fonts and logo have loaded, so the PDF uses them.
-  const ready = () => Promise.all([w.document.fonts?.ready, ...[...w.document.images].map((img) => (img.complete ? null : new Promise((res) => { img.onload = img.onerror = res; })))]);
-  const go = () => ready().then(() => setTimeout(print, 150));
-  if (w.document.readyState === 'complete') go();
-  else w.addEventListener('load', go, { once: true });
+  const doc = w.document;
+  const main = doc.querySelector('main');
+  const editBtn = doc.getElementById('edit-report');
+  const setEditing = (on) => {
+    main.contentEditable = on ? 'true' : 'false';
+    editBtn.textContent = on ? 'Done editing' : 'Edit text';
+    editBtn.setAttribute('aria-pressed', String(on));
+    doc.getElementById('edit-hint').innerHTML = on
+      ? 'Editing: click any text to change it. Changes apply to this download only and are not saved to the tracker.'
+      : 'Preview. Check the report, edit text if needed, then save. In the print dialog choose <b>Save as PDF</b>.';
+  };
+  editBtn?.addEventListener('click', () => setEditing(main.contentEditable !== 'true'));
+  // Print once the brand fonts and images have loaded, so the PDF uses them.
+  const ready = () => Promise.all([doc.fonts?.ready, ...[...doc.images].map((img) => (img.complete ? null : new Promise((res) => { img.onload = img.onerror = res; })))]);
+  doc.getElementById('print-report')?.addEventListener('click', () => {
+    setEditing(false);
+    ready().then(() => w.print());
+  });
+  const wordBtn = doc.getElementById('word-report');
+  wordBtn?.addEventListener('click', async () => {
+    setEditing(false);
+    wordBtn.disabled = true;
+    try {
+      await downloadWordReport(r, fileName, { ...options, bodyHtml: main.innerHTML });
+    } catch (e) {
+      w.alert(`Word download failed: ${e.message}`);
+    } finally {
+      wordBtn.disabled = false;
+    }
+  });
+}
+
+// ---- Word document ---------------------------------------------------------------------------------------
+// Word can't read CSS variables, flexbox or SVG, so the Word copy uses simpler styles with the design-system
+// tokens resolved to their (light theme) values, tables for the cover and phases, and PNG images.
+// It is an MHTML "single file web page": Word opens it as a normal, editable document.
+
+const WORD_STYLES = `
+  @page Section1 { size: 21cm 29.7cm; margin: 2cm 1.8cm 2cm 1.8cm; }
+  div.Section1 { page: Section1; }
+  body { font-family: var(--font-family-body); color: var(--color-text-base-primary); font-size: 10.5pt; line-height: 1.4; }
+  h1 { font-family: var(--font-family-heading); font-size: 24pt; margin: 14pt 0 2pt; }
+  .subtitle { font-family: var(--font-family-heading); color: var(--color-brand-primary); font-size: 17pt; font-weight: bold; margin-bottom: 12pt; }
+  h2 { font-family: var(--font-family-heading); font-size: 15pt; margin: 18pt 0 6pt; page-break-after: avoid; }
+  h3 { font-family: var(--font-family-heading); font-size: 11.5pt; margin: 12pt 0 4pt; page-break-after: avoid; }
+  p { margin: 0 0 8pt; text-align: justify; }
+  a { color: var(--color-text-base-link); font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; }
+  .grid th, .grid td, .guide th, .guide td { border: 1px solid var(--color-border-primary); padding: 4pt 6pt; vertical-align: middle; }
+  .grid thead th { background: var(--color-surface-secondary); font-weight: bold; }
+  .grid th.band { background: var(--color-brand-primary-soft); }
+  .center td, .center th { text-align: center; }
+  .issues td { font-size: 9.5pt; }
+  .issues td.overdue { color: var(--color-feedback-danger, var(--color-text-base-primary)); font-weight: bold; }
+  .details th { text-align: left; width: 40%; background: var(--color-surface-secondary); }
+  .qa tbody th { text-align: left; width: 36%; vertical-align: top; }
+  .qa td { text-align: justify; vertical-align: top; }
+  .guide { width: auto; font-size: 9pt; } .guide td, .guide th { text-align: center; }
+  .muted { color: var(--color-text-base-muted); }
+  p.center, .caption { text-align: center; }
+  .note { font-size: 9.5pt; }
+  .cover td { border: 0; padding: 0; vertical-align: middle; }
+  .phases td { background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); font-weight: bold; font-size: 9.5pt; text-align: center; padding: 5pt; border: 3pt solid var(--color-surface-canvas); }
+  .page-break { page-break-before: always; }
+  .footer { font-family: var(--font-family-heading); font-size: 8pt; color: var(--color-text-base-muted); margin-top: 24pt; }
+`;
+
+// Light-theme token values, read from a hidden frame that loads only the design-system tokens
+// (the app itself may be in dark mode).
+async function tokenReader() {
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden';
+  frame.srcdoc = '<!doctype html><html><head><link rel="stylesheet" href="/design-system/css/tokens.css"></head><body></body></html>';
+  const loaded = new Promise((res) => { frame.onload = res; });
+  document.body.appendChild(frame);
+  await loaded;
+  const link = frame.contentDocument.querySelector('link');
+  if (link && !link.sheet) await new Promise((res) => { link.onload = link.onerror = res; });
+  const style = frame.contentWindow.getComputedStyle(frame.contentDocument.documentElement);
+  return { get: (name) => style.getPropertyValue(name).trim(), done: () => frame.remove() };
+}
+
+// Replaces var(--x, fallback) with values until none are left (innermost first, so fallbacks nest).
+function resolveVars(css, get) {
+  const re = /var\((--[\w-]+)(?:\s*,\s*([^()]*))?\)/g;
+  for (let i = 0; i < 10 && re.test(css); i += 1) {
+    re.lastIndex = 0;
+    css = css.replace(re, (_, name, fallback) => resolveVars(get(name), get) || (fallback ?? '').trim() || 'inherit');
+  }
+  return css;
+}
+
+// Loads an image (PNG or SVG) and returns it as PNG bytes (base64) at a fixed display height in points.
+async function pngPart(src, name, heightPt) {
+  const img = new Image();
+  img.src = src;
+  await img.decode();
+  const ratio = (img.naturalWidth || 300) / (img.naturalHeight || 100);
+  const scale = 3; // sharp when printed
+  const h = Math.round(heightPt * 1.333 * scale);
+  const w = Math.round(h * ratio);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+  const data = canvas.toDataURL('image/png').split(',')[1];
+  return { name, data, width: Math.round(heightPt * ratio), height: heightPt };
+}
+
+const b64Utf8 = (text) => {
+  const bytes = new TextEncoder().encode(text);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+};
+const wrap76 = (b64) => b64.replace(/.{76}/g, '$&\r\n');
+
+// bodyHtml: the report body as shown (and maybe edited) in the preview tab; default is a fresh render.
+export async function downloadWordReport(r, fileName, { jiraBase = '', bodyHtml } = {}) {
+  const tokens = await tokenReader();
+  let css;
+  try {
+    css = resolveVars(WORD_STYLES, tokens.get);
+  } finally {
+    tokens.done();
+  }
+  const sealName = String(r.seal || '').toLowerCase();
+  const [seal, logo] = await Promise.all([
+    SEAL_IMAGES.has(sealName) ? pngPart(`/seals/${sealName}.png`, 'seal.png', 70).catch(() => null) : null,
+    pngPart('/design-system/assets/logos/cloudstaff-logo-landscape.svg', 'logo.png', 32).catch(() => null),
+  ]);
+  const imgTag = (part, alt) => (part ? `<img src="${part.name}" width="${Math.round(part.width * 1.333)}" height="${Math.round(part.height * 1.333)}" alt="${esc(alt)}">` : '');
+
+  const body = (bodyHtml ?? reportBody(r, jiraBase))
+    // Cover: seal left, logo right, as a borderless table.
+    .replace(/<header class="cover">[\s\S]*?<\/header>/, `<table class="cover"><tr><td>${imgTag(seal, `${r.seal} security seal`)}</td><td style="text-align:right">${imgTag(logo, 'Cloudstaff')}</td></tr></table>`)
+    // Phase chips as one row of cells.
+    .replace(/<div class="phases">([\s\S]*?)<\/div>/g, (_, spans) => `<table class="phases"><tr>${spans.replace(/<span>/g, '<td>').replace(/<\/span>/g, '</td>')}</tr></table>`)
+    // Any other seal image (e.g. in the guide) uses the embedded PNG.
+    .replace(/<img class="seal"[^>]*>/g, imgTag(seal, `${r.seal} security seal`));
+
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>${esc(fileName)}</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>${css}</style></head>
+<body><div class="Section1">
+${body}
+<p class="footer">US&nbsp; | &nbsp;UK&nbsp; | &nbsp;AUSTRALIA&nbsp; | &nbsp;PHILIPPINES&nbsp; | &nbsp;INDIA &nbsp;&nbsp;&nbsp; <a href="https://www.cloudstaff.com">cloudstaff.com</a></p>
+</div></body></html>`;
+
+  const boundary = `----=_NextPart_${Date.now().toString(36)}`;
+  const base = 'file:///C:/report/';
+  const parts = [
+    `--${boundary}\r\nContent-Type: text/html; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\nContent-Location: ${base}report.htm\r\n\r\n${wrap76(b64Utf8(html))}`,
+    ...[seal, logo].filter(Boolean).map((p) => `--${boundary}\r\nContent-Type: image/png\r\nContent-Transfer-Encoding: base64\r\nContent-Location: ${base}${p.name}\r\n\r\n${wrap76(p.data)}`),
+  ];
+  const mhtml = `MIME-Version: 1.0\r\nContent-Type: multipart/related; boundary="${boundary}"; type="text/html"\r\n\r\n${parts.join('\r\n\r\n')}\r\n\r\n--${boundary}--\r\n`;
+
+  const url = URL.createObjectURL(new Blob([mhtml], { type: 'application/msword' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${fileName.replace(/[\\/:*?"<>|]+/g, ' ').trim()}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }

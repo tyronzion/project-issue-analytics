@@ -233,3 +233,17 @@ test('report snapshot route: only for the resolved ticket, written once, only ad
     await new Promise((r) => http.close(r));
   }
 });
+
+test('testing type dropdown values and scope wording', async () => {
+  const { TESTING_TYPES, TESTING_SCOPE, testingTypeOf, testingScopeText } = await import('../shared/report.js');
+  assert.deepEqual(TESTING_TYPES, ['Blackbox', 'Graybox', 'Whitebox']);
+  assert.equal(testingTypeOf('Black-box'), 'Blackbox');
+  assert.equal(testingTypeOf('grey box'), 'Graybox');
+  assert.equal(testingTypeOf('WHITEBOX'), 'Whitebox');
+  assert.equal(testingTypeOf('other'), null);
+  for (const t of TESTING_TYPES) assert.equal(testingScopeText({ testingType: t }), TESTING_SCOPE[t]);
+  assert.equal(testingScopeText({}), TESTING_SCOPE.Blackbox);
+  assert.equal(testingScopeText({ testingType: 'Graybox', testingScope: '  Custom text. ' }), 'Custom text.');
+  assert.equal(normalizeReportInfo({ testingType: 'Whitebox', testingScope: ' Custom ' }).testingScope, 'Custom');
+  assert.throws(() => normalizeReportInfo({ testingScope: 'x'.repeat(2001) }), /too long/);
+});

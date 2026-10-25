@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X, FileDown, AlertTriangle, Link2, Lock, Unlock } from 'lucide-react';
-import { buildReport, reportFileName, normalizeReportInfo, isWebUrl, REPORT_DEFAULTS, reportAsOf, snapshotFor, needsSnapshot } from '../../../../tracker/shared/report.js';
+import { buildReport, reportFileName, normalizeReportInfo, isWebUrl, REPORT_DEFAULTS, TESTING_TYPES, TESTING_SCOPE, testingTypeOf, reportAsOf, snapshotFor, needsSnapshot } from '../../../../tracker/shared/report.js';
 import { api } from '../api.js';
 import { SealBadge } from '../ui.jsx';
 import { openReportTab, showReport, longDate } from './renderReport.js';
@@ -19,15 +19,31 @@ function Field({ label, hint, children }) {
 }
 
 // Asks for the report's links and text (saved with the assessment), shows what the report will say,
-// then opens the print-ready report so it can be saved as PDF.
+// then opens the report as a preview tab (edit text, then Save as PDF or Download Word).
 // Resolved ticket: the issues are frozen as of the resolution date (snapshot saved once, reused for every
 // later download). Open ticket: live issues, frozen once the ticket resolves.
 export default function ReportDialog({ row, cycleYear, reportIssuesFor, isAdmin, onClose, onSaved }) {
   const kind = row.ticketSource === 'roe' ? 'roe' : 'full';
-  const [info, setInfo] = useState(() => ({ ...(kind === 'roe' ? REPORT_DEFAULTS : {}), ...(row.reportInfo || {}) }));
+  const [info, setInfo] = useState(() => {
+    const i = { ...(kind === 'roe' ? REPORT_DEFAULTS : {}), ...(row.reportInfo || {}) };
+    // Older reports saved free text ("Black-box"); show it as the matching dropdown option.
+    if (kind === 'roe') i.testingType = testingTypeOf(i.testingType) || REPORT_DEFAULTS.testingType;
+    return i;
+  });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setInfo((i) => ({ ...i, [k]: e.target.value }));
+  // Scope wording: empty means "use the selected type's default", so switching type switches the text.
+  // Text the user edited is kept; "Use default" puts the type's wording back.
+  const scopeDefault = TESTING_SCOPE[info.testingType] || '';
+  const scopeValue = info.testingScope ?? scopeDefault;
+  const scopeCustom = scopeValue.trim() !== scopeDefault;
+  const setScope = (e) => setInfo((i) => ({ ...i, testingScope: e.target.value }));
+  const setType = (e) => setInfo((i) => {
+    const prevDefault = TESTING_SCOPE[i.testingType] || '';
+    const unchanged = i.testingScope == null || i.testingScope.trim() === prevDefault;
+    return { ...i, testingType: e.target.value, ...(unchanged ? { testingScope: undefined } : {}) };
+  });
   // Jira site for issue-key links: the server's JIRA_BASE_URL, else this browser's Jira profile.
   const [jiraBase, setJiraBase] = useState('');
   useEffect(() => {
@@ -80,11 +96,14 @@ export default function ReportDialog({ row, cycleYear, reportIssuesFor, isAdmin,
     setError('');
     let clean;
     try {
-      clean = normalizeReportInfo(info);
+      // Save the scope only when it differs from the type's default, so default wording updates apply.
+      const scope = info.testingScope?.trim();
+      clean = normalizeReportInfo({ ...info, testingScope: kind === 'roe' && scope && scope !== scopeDefault ? scope : undefined });
     } catch (e) {
       return setError(e.message);
     }
     if (missingLinks.length && !window.confirm(`The ${missingLinks.join(' and ')} link${missingLinks.length > 1 ? 's are' : ' is'} empty. The report will say "Not provided". Continue?`)) return;
+    // Open the preview tab now, inside the click, or pop-up blockers stop it.
     const tab = openReportTab();
     if (!tab) return setError('The browser blocked the report tab. Allow pop-ups for this site and try again.');
     setBusy(true);
@@ -188,8 +207,26 @@ export default function ReportDialog({ row, cycleYear, reportIssuesFor, isAdmin,
             {kind === 'roe' && (
               <>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Type of testing"><input value={info.testingType ?? ''} onChange={set('testingType')} className="at-input w-full" /></Field>
+                  <Field label="Type of testing">
+                    <select value={info.testingType} onChange={setType} className="at-input w-full">
+                      {TESTING_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </Field>
                   <Field label="Time of testing"><input value={info.testingTime ?? ''} onChange={set('testingTime')} className="at-input w-full" /></Field>
+                </div>
+                <div className="block">
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="report-testing-scope" className="at-label">{info.testingType} testing description</label>
+                    {scopeCustom && (
+                      <button type="button" onClick={() => setInfo((i) => ({ ...i, testingScope: undefined }))} className="at-btn-ghost ml-auto text-xs" title={`Replace with the default ${info.testingType} wording`}>
+                        Use default
+                      </button>
+                    )}
+                  </div>
+                  <textarea id="report-testing-scope" rows={4} value={scopeValue} onChange={setScope} className="at-input w-full" />
+                  <span className="mt-1 block text-xs at-muted">
+                    Shown in Scope and Limitations after "…conducted using {info.testingType.toLowerCase()} testing techniques." {scopeCustom ? 'Edited for this report.' : 'Default wording; changes with the type.'}
+                  </span>
                 </div>
                 <Field label="Recommendations" hint={'One per line, "Title: description". Left empty, general recommendations are used.'}>
                   <textarea rows={4} value={info.recommendations ?? ''} onChange={set('recommendations')} placeholder="Disable Directory Listing: Prevent directory browsing to restrict unauthorized access to application files." className="at-input w-full" />
@@ -207,7 +244,7 @@ export default function ReportDialog({ row, cycleYear, reportIssuesFor, isAdmin,
           <span className="ml-auto text-xs at-muted">Saved with the assessment for everyone.</span>
           <button type="button" onClick={onClose} className="at-btn-ghost">Cancel</button>
           <button type="button" onClick={download} disabled={busy || !issues} className="at-btn">
-            <FileDown className="w-4 h-4" aria-hidden /> {busy ? 'Preparing…' : 'Save & download PDF'}
+            <FileDown className="w-4 h-4" aria-hidden /> {busy ? 'Preparing…' : 'Save & preview'}
           </button>
         </div>
       </div>

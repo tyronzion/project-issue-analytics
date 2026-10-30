@@ -230,6 +230,36 @@ async function readJsonBody(req: any): Promise<any> {
   });
 }
 
+function isServerJiraConfigured(): boolean {
+  return Boolean(process.env.JIRA_BASE_URL && process.env.JIRA_EMAIL && process.env.JIRA_API_TOKEN
+    && (process.env.JIRA_FILTER_ID || process.env.JIRA_JQL));
+}
+
+// GET /api/jira/issues reads Jira with the server's own credentials, and every signed-in user can trigger it
+// (initial load and the "Sync from Jira" button on Project Metrics). Concurrent requests share one fetch and a
+// result is reused for a short time, so repeated clicks can't hammer Jira with the server's token.
+const SERVER_JIRA_CACHE_MS = 60 * 1000;
+let serverJiraCache: { at: number; rows: Record<string, any>[] } | null = null;
+let serverJiraInFlight: Promise<Record<string, any>[]> | null = null;
+
+async function loadServerJiraRowsShared(): Promise<{ rows: Record<string, any>[]; fetchedAt: number }> {
+  if (serverJiraCache && Date.now() - serverJiraCache.at < SERVER_JIRA_CACHE_MS) {
+    return { rows: serverJiraCache.rows, fetchedAt: serverJiraCache.at };
+  }
+  if (!serverJiraInFlight) {
+    serverJiraInFlight = loadJiraRowsFromApi()
+      .then(rows => {
+        serverJiraCache = { at: Date.now(), rows };
+        return rows;
+      })
+      .finally(() => {
+        serverJiraInFlight = null;
+      });
+  }
+  const rows = await serverJiraInFlight;
+  return { rows, fetchedAt: serverJiraCache?.at ?? Date.now() };
+}
+
 async function loadJiraRowsFromConfig(config: Partial<JiraApiConfig>): Promise<Record<string, any>[]> {
   const normalized = normalizeJiraConfig(config);
   const baseUrl = normalized.baseUrl;
@@ -439,14 +469,20 @@ function jiraDatasourcePlugin() {
           const req = _req;
           const isPost = String(req?.method || 'GET').toUpperCase() === 'POST';
           // Jira Integration (sync with your own Jira credentials) is a data change: admins only. GET only reads
-          // with the server's configured Jira, for the initial load when there is no data yet.
+          // with the server's configured Jira (initial load, and the manual "Sync from Jira" any signed-in user can run).
           if (isPost && !requireAdmin(req, res)) return;
-          const rows = isPost
-            ? await loadJiraRowsFromConfig(await readJsonBody(req))
-            : await loadJiraRowsFromApi();
+          if (isPost) {
+            const rows = await loadJiraRowsFromConfig(await readJsonBody(req));
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ rows, source: 'jira' }));
+            return;
+          }
+          const configured = isServerJiraConfigured();
+          const { rows, fetchedAt } = configured ? await loadServerJiraRowsShared() : { rows: [], fetchedAt: Date.now() };
           res.statusCode = 200;
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ rows, source: 'jira' }));
+          res.end(JSON.stringify({ rows, source: 'jira', configured, fetchedAt: new Date(fetchedAt).toISOString() }));
         } catch (error: any) {
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json');

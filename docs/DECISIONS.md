@@ -46,6 +46,7 @@ Add a new entry only for decisions a future developer might otherwise reconsider
   - **Permanent admins:** `AUTH_ADMIN_EMAILS` are always admins and can't be changed from the app.
   - **Defaults and limits:** new sign-ins become "user". The last admin can't be demoted or removed. If the users file can't be read, everyone except `AUTH_ADMIN_EMAILS` is treated as "user" and changes are refused.
   - **Client:** the UI hides admin actions (`ADMIN_TABS` in `routes.ts`, handlers passed as `undefined`). Users' browsers don't auto-save issues or auto-sync Jira.
+  - **Manual Jira sync (2026-10-30):** any signed-in user can press "Sync from Jira" on Project Metrics. For users it only reads `GET /api/jira/issues` with the server's own Jira credentials (no user-supplied URL or token, cached 60 s so clicks can't hammer Jira) and updates their own browser; the shared dataset is still saved by admins only.
   - **Audit trail:** the tracker records the signed-in user's name, no longer the client `x-user` header.
 - **Reason:**
   - The user asked for in-app user management.

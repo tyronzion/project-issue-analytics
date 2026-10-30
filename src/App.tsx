@@ -152,6 +152,7 @@ export default function App() {
   const [selectedSeverityFilter, setSelectedSeverityFilter] = useState<string>('');
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [isJiraSyncing, setIsJiraSyncing] = useState(false);
+  const [lastJiraSyncAt, setLastJiraSyncAt] = useState<string>(() => loadJiraIntegrationProfile().lastSyncedAt);
   const [isRemoteHydrated, setIsRemoteHydrated] = useState(false);
   const [isRemotePersistenceConfigured, setIsRemotePersistenceConfigured] = useState(false);
   const remoteSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -712,14 +713,16 @@ export default function App() {
       const activeRows = removeCancelledIssues(rows, settings.formulaConfig);
       setIssues(rows);
       savePersistedData(rows);
+      const syncedAt = new Date().toISOString();
       saveJiraIntegrationProfile({
         ...loadJiraIntegrationProfile(),
         ...credentials,
         autoSyncEnabled: credentials.autoSyncEnabled !== undefined
           ? Boolean(credentials.autoSyncEnabled)
           : loadJiraIntegrationProfile().autoSyncEnabled,
-        lastSyncedAt: new Date().toISOString(),
+        lastSyncedAt: syncedAt,
       });
+      setLastJiraSyncAt(syncedAt);
       setSelectedProjectFilter('');
       setDrilldownPlatform('ALL');
       return { loaded: activeRows.length };
@@ -767,6 +770,60 @@ export default function App() {
       if (intervalId) clearInterval(intervalId);
     };
   }, [handleSyncFromJira, isAdmin]);
+
+  // Manual "Sync from Jira" on Project Metrics, for every signed-in user. An admin with a saved Jira profile syncs
+  // with it (as on the Jira settings page). Everyone else reads the server's configured Jira (GET, no credentials
+  // from the browser). A user's result stays in their browser: only admins save the shared dataset (D8).
+  const handleManualJiraSync = useCallback(async (): Promise<{ loaded: number; error?: string }> => {
+    const profile = loadJiraIntegrationProfile();
+    if (isAdmin && profile.baseUrl && profile.email && profile.apiToken && (profile.filterId || profile.jql)) {
+      return handleSyncFromJira({
+        baseUrl: profile.baseUrl,
+        email: profile.email,
+        apiToken: profile.apiToken,
+        filterId: profile.filterId,
+        jql: profile.jql,
+        severityField: profile.severityField,
+        securityDueDateField: profile.securityDueDateField,
+        securityTypeField: profile.securityTypeField,
+        autoSyncEnabled: profile.autoSyncEnabled,
+      });
+    }
+
+    setIsJiraSyncing(true);
+    setIsDataLoading(true);
+    try {
+      const response = await fetch('/api/jira/issues');
+      let payload: any = {};
+      try {
+        payload = await response.json();
+      } catch {
+        return { loaded: 0, error: 'The Jira sync endpoint returned an unexpected response.' };
+      }
+      if (!response.ok) {
+        return { loaded: 0, error: String(payload?.error || `Sync failed with status ${response.status}`) };
+      }
+      if (payload?.configured === false) {
+        return { loaded: 0, error: 'Jira is not configured on the server. Ask an admin to set it up.' };
+      }
+      const jiraRows = Array.isArray(payload?.rows) ? payload.rows : [];
+      if (jiraRows.length === 0) {
+        return { loaded: 0, error: 'No issues returned from Jira for the configured filter/JQL.' };
+      }
+      const { rows } = mapObjectsToIssueRecords(jiraRows, settings.formulaConfig);
+      setIssues(rows);
+      savePersistedData(rows);
+      const syncedAt = String(payload?.fetchedAt || new Date().toISOString());
+      saveJiraIntegrationProfile({ ...loadJiraIntegrationProfile(), lastSyncedAt: syncedAt });
+      setLastJiraSyncAt(syncedAt);
+      return { loaded: removeCancelledIssues(rows, settings.formulaConfig).length };
+    } catch (error: any) {
+      return { loaded: 0, error: String(error?.message || error) };
+    } finally {
+      setIsJiraSyncing(false);
+      setIsDataLoading(false);
+    }
+  }, [isAdmin, handleSyncFromJira, settings.formulaConfig]);
 
   // Handler: Restore Full Backup
   const handleRestoreBackup = (backup: { settings: AppSettings; issues: IssueRecord[] }) => {
@@ -1020,6 +1077,9 @@ export default function App() {
             onOpenProjects={() => setIsProjectsOpen(true)}
             onOpenTargetList={() => setIsTargetListOpen(true)}
                 onOpenImport={isAdmin ? () => setIsImportOpen(true) : undefined}
+            onSyncJira={handleManualJiraSync}
+            isJiraSyncing={isJiraSyncing}
+            lastJiraSyncAt={lastJiraSyncAt}
             onMergeProjects={handleBatchMergeProjects}
             onUnmergeProjects={handleBatchUnmergeProjects}
           />

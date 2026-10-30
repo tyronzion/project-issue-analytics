@@ -30,6 +30,7 @@ import {
   Clock,
   ShieldCheck,
   Info,
+  RefreshCw,
   LucideIcon,
 } from 'lucide-react';
 import { MergeProjectsModal } from './MergeProjectsModal';
@@ -80,6 +81,10 @@ interface MetricsDashboardProps {
   onOpenTargetList?: () => void;
   onOpenClearData?: () => void;
   onOpenImport?: () => void;
+  // Manual Jira sync, available to every signed-in user (see App.tsx handleManualJiraSync).
+  onSyncJira?: () => Promise<{ loaded: number; error?: string }>;
+  isJiraSyncing?: boolean;
+  lastJiraSyncAt?: string;
   onMergeProjects: (sourceProjects: string[], targetName: string) => void;
   onUnmergeProjects: (projectNames: string[]) => void;
 }
@@ -143,6 +148,9 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
   onOpenTargetList,
   onOpenClearData,
   onOpenImport,
+  onSyncJira,
+  isJiraSyncing = false,
+  lastJiraSyncAt = '',
   onMergeProjects,
   onUnmergeProjects,
 }) => {
@@ -166,6 +174,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [isMergeModalOpen, setIsMergeModalOpen] = useState<boolean>(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [jiraSyncError, setJiraSyncError] = useState<string | null>(null);
 
   const showNotification = (msg: string) => {
     setFeedbackMessage(msg);
@@ -402,6 +411,19 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
     showNotification(`Unmerged "${projectName}". Restored separate sources: ${(sources || []).join(', ') || 'Original projects'}.`);
   };
 
+  const handleJiraSync = async () => {
+    if (!onSyncJira || isJiraSyncing) return;
+    setJiraSyncError(null);
+    const result = await onSyncJira();
+    if (result.error) setJiraSyncError(result.error);
+    else showNotification(`Synced ${result.loaded} issue(s) from Jira.`);
+  };
+
+  const lastSyncLabel = (() => {
+    const d = lastJiraSyncAt ? new Date(lastJiraSyncAt) : null;
+    return d && !Number.isNaN(d.getTime()) ? `Last synced ${d.toLocaleString()}` : 'Not synced yet';
+  })();
+
   // Direct Batch Delete
   const handleBatchDelete = () => {
     if (selectedArray.length === 0) return;
@@ -420,6 +442,18 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
             <span>{feedbackMessage}</span>
           </div>
           <button onClick={() => setFeedbackMessage(null)} className="text-emerald-400 hover:text-white p-1">
+            <XCircle className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {jiraSyncError && (
+        <div role="alert" className="bg-red-950/50 border border-red-800/60 text-red-300 px-4 py-3 rounded-xl flex items-center justify-between text-xs">
+          <div className="flex items-center space-x-2">
+            <CircleAlert className="w-4 h-4 text-red-400 shrink-0" aria-hidden />
+            <span>Jira sync failed: {jiraSyncError}</span>
+          </div>
+          <button onClick={() => setJiraSyncError(null)} className="text-red-400 hover:text-white p-1" aria-label="Dismiss">
             <XCircle className="w-4 h-4" />
           </button>
         </div>
@@ -559,6 +593,19 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
           </div>
 
           <div className="flex items-center space-x-2">
+            {onSyncJira && (
+              <button
+                type="button"
+                onClick={handleJiraSync}
+                disabled={isJiraSyncing}
+                aria-busy={isJiraSyncing}
+                className="flex items-center space-x-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition disabled:opacity-60 disabled:cursor-wait"
+                title={`Pull the latest issues from Jira now. ${lastSyncLabel}.`}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-slate-400 ${isJiraSyncing ? 'animate-spin' : ''}`} aria-hidden />
+                <span>{isJiraSyncing ? 'Syncing…' : 'Sync from Jira'}</span>
+              </button>
+            )}
             <div className="relative">
               <button
                 onClick={() => setIsViewMenuOpen(prev => !prev)}

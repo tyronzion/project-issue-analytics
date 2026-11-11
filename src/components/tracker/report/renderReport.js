@@ -1,6 +1,9 @@
 // Assessment report as a print-ready HTML page (the browser's "Save as PDF" makes the PDF), or as a Word
 // document (downloadWordReport: the same content as a single-file web page Word opens and edits, .doc).
-// Layout follows the team's Word templates. Every value is escaped; links are written only when http(s).
+// The content follows the team's Word templates; the layout follows the PIA documents (pia/server/docx.js):
+// Cloudstaff logo top right on the cover, title + project subtitle, a label / value card, "SECTION N" eyebrows
+// over headings with a brand rule, brand-header tables, the emblem on later pages, and the offices /
+// cloudstaff.com / page footer. Every value is escaped; links are written only when http(s).
 import { SEVERITY_LABEL, SLA_DAYS, DEFAULT_RECOMMENDATIONS, parseRecommendations, isWebUrl, testingScopeText } from '../../../../tracker/shared/report.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -25,21 +28,35 @@ export function sealBadge(seal) {
   return `<img class="seal" src="/seals/${name}.png" alt="${esc(seal)} security seal">`;
 }
 
+const LOGO = '/design-system/assets/logos/cloudstaff-logo-landscape.svg';
+const EMBLEM = '/design-system/assets/logos/cloudstaff-logo-emblem.svg';
+
 const paras = (list) => list.filter(Boolean).map((p) => `<p>${esc(p)}</p>`).join('');
 const multiline = (text) => paras(String(text || '').split(/\n{2,}/).map((p) => p.trim()));
 const link = (url, label) => (isWebUrl(url) ? `<a href="${esc(url)}">${esc(label)}</a>` : '<span class="muted">Not provided</span>');
+
+// PIA-style section heading: a small "SECTION I" eyebrow over the heading, with a brand rule under it.
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'];
+function sections() {
+  let n = 0;
+  return (title, eyebrow) => {
+    const label = eyebrow || `Section ${ROMAN[n] || n + 1}`;
+    if (!eyebrow) n += 1;
+    return `<p class="eyebrow">${esc(label)}</p><h2 class="section">${esc(title)}</h2>`;
+  };
+}
 
 function severityTable(r) {
   const cols = ['informational', 'low', 'medium', 'high', 'critical'];
   return `<table class="grid center">
     <thead><tr><th colspan="5" class="band">Issues With Severity</th></tr>
-    <tr>${cols.map((c) => `<th>${SEVERITY_LABEL[c]}</th>`).join('')}</tr></thead>
+    <tr>${cols.map((c) => `<th class="sub">${SEVERITY_LABEL[c]}</th>`).join('')}</tr></thead>
     <tbody><tr>${cols.map((c) => `<td>${r.bySeverity[c]}</td>`).join('')}</tr></tbody></table>`;
 }
 
 function countsTable(r) {
   return `<table class="grid center">
-    <thead><tr><th class="band">New Issues</th><th class="band">Backlog Issues</th><th class="band">Overdue Issues</th><th class="band">Total Unresolved Issues</th></tr></thead>
+    <thead><tr><th>New Issues</th><th>Backlog Issues</th><th>Overdue Issues</th><th>Total Unresolved Issues</th></tr></thead>
     <tbody><tr><td>${r.counts.new}</td><td>${r.counts.backlog}</td><td>${r.counts.overdue}</td><td>${r.counts.unresolved}</td></tr></tbody></table>`;
 }
 
@@ -70,9 +87,9 @@ function issueTable(r, caption, jiraBase) {
     ${r.counts.overdue ? '<p class="note"><b>Note:</b> <i>* Issue keys that are highlighted are past their due dates.</i></p>' : ''}`;
 }
 
-function artifacts(r, scanLabel, dashLabel) {
-  return `<h2>Artifacts</h2>
-    <table class="grid center">
+function artifacts(r, sec, scanLabel, dashLabel) {
+  return `${sec('Artifacts')}
+    <table class="grid">
       <thead><tr><th>Description</th><th>Links</th></tr></thead>
       <tbody>
         <tr><td>${esc(scanLabel)}</td><td>${link(r.info.scanResultsUrl, 'Scan Results')}</td></tr>
@@ -81,55 +98,65 @@ function artifacts(r, scanLabel, dashLabel) {
     </table>`;
 }
 
+// Cover, as the PIA documents: logo top right, title, project subtitle, eyebrow, then a label / value card.
 function header(r) {
-  return `<header class="cover">
-      ${sealBadge(r.seal)}
-      <img class="logo" src="/design-system/assets/logos/cloudstaff-logo-landscape.svg" alt="Cloudstaff">
-    </header>
-    <h1>${esc(r.project)}</h1>
-    <div class="subtitle">${esc(r.title)}</div>`;
+  const dates = r.start ? `${longDate(r.start)} – ${longDate(r.end)}` : longDate(r.end);
+  const seal = r.seal ? `<span class="seal-cell">${sealBadge(r.seal)}<b>${esc(r.seal)}</b></span>` : '—';
+  return `<header class="cover"><img class="logo" src="${LOGO}" alt="Cloudstaff"></header>
+    <h1>${esc(r.title)}</h1>
+    <div class="subtitle">${esc(r.project)}</div>
+    <p class="eyebrow cover-eyebrow">${esc(r.kind === 'roe' ? 'Rules of Engagement — Summary Report' : 'Security Full Assessment — Report')}</p>
+    <table class="grid kv">
+      <tr><th>Project or Product</th><td>${esc(r.project)}</td></tr>
+      ${r.period ? `<tr><th>Assessment period</th><td>${esc(r.period)}</td></tr>` : ''}
+      <tr><th>Assessment dates</th><td>${esc(dates)}</td></tr>
+      <tr><th>Assessed by</th><td>Cloudstaff Data Security Team (CSDATASEC)</td></tr>
+      <tr><th>Security Seal</th><td>${seal}</td></tr>
+    </table>`;
 }
 
 function fullReport(r, jiraBase) {
+  const sec = sections();
   return `${header(r)}
-    ${r.info.intro ? `<h2>Introduction</h2>${multiline(r.info.intro)}` : ''}
-    <h2>Summary of Findings</h2>
+    ${r.info.intro ? `${sec('Introduction')}${multiline(r.info.intro)}` : ''}
+    ${sec('Summary of Findings')}
     ${paras(r.sealText.slice(0, 1))}
     ${countsTable(r)}
     ${severityTable(r)}
     ${issueTable(r, "Detailed information regarding the application's issues can be found in the table below:", jiraBase)}
-    <h2>Security Advisory</h2>
+    ${sec('Security Advisory')}
     ${paras(r.advisory)}
     ${paras(r.sealText.slice(1))}
     ${r.info.notes ? multiline(r.info.notes) : ''}
-    ${artifacts(r, 'Compilation Security Testing Scan Results', 'Security Dashboard')}`;
+    ${artifacts(r, sec, 'Compilation Security Testing Scan Results', 'Security Dashboard')}`;
 }
 
 function roeReport(r, jiraBase) {
+  const sec = sections();
   const type = r.info.testingType || 'Blackbox';
   const scope = testingScopeText(r.info);
   const recs = parseRecommendations(r.info.recommendations);
   const recommendations = recs.length ? recs : DEFAULT_RECOMMENDATIONS;
   const targetUrl = String(r.testingUrl || '').split(/\s+/).filter(Boolean).join('\n');
   return `${header(r)}
-    ${r.info.intro ? `<h3>Introduction</h3>${multiline(r.info.intro)}` : ''}
-    <h2>Summary of Findings</h2>
+    ${r.info.intro ? `${sec('Introduction')}${multiline(r.info.intro)}` : ''}
+    ${sec('Summary of Findings')}
     <p>${esc(r.findings)} ${r.rows.length ? 'We recommend addressing them within their SLA.' : 'We recommend that you maintain the integrity of your product.'} If you have any questions, feel free to contact us.</p>
     ${paras(r.sealText.slice(0, 1))}
     ${severityTable(r)}
     ${issueTable(r, 'Detailed information regarding the current and backlog application issues can be found in the table below:', jiraBase)}
-    <h3>Overview</h3>
+    ${sec('Overview')}
     <p>Cloudstaff Data Security (CSDATASEC) conducted a ${esc(type.toLowerCase())} security assessment of ${esc(r.project)} to evaluate potential security risks. The objective was to identify vulnerabilities and weaknesses that could affect the application, its users, and their data.</p>
     <p>During the engagement, CSDATASEC used configuration analysis and security tools to simulate real-world attack scenarios. The assessment focused on identifying insecure coding practices, logic flaws, misconfigurations, and behavioral anomalies.</p>
     <p>This report outlines the key findings and recommendations from the assessment, presented in a way that is accessible to a non-technical audience while preserving technical accuracy.</p>
-    <table class="grid details">
+    <table class="grid kv">
       <tr><th>Security Start Date</th><td>${esc(usDate(r.start))}</td></tr>
       <tr><th>Security End Date</th><td>${esc(usDate(r.end))}</td></tr>
       <tr><th>Target URL</th><td class="pre">${esc(targetUrl || '—')}</td></tr>
       <tr><th>Type of Testing</th><td>${esc(type)}</td></tr>
       <tr><th>Time of Testing</th><td>${esc(r.info.testingTime || '—')}</td></tr>
     </table>
-    <h2>Scope and Limitations</h2>
+    ${sec('Scope and Limitations')}
     <p>The security assessment was limited to the ${esc(r.project)} application and was conducted using ${esc(type.toLowerCase())} testing techniques.${scope ? ` ${esc(scope)}` : ''}</p>
     <p>The following activities were explicitly excluded from the scope:</p>
     <ul>
@@ -140,7 +167,7 @@ function roeReport(r, jiraBase) {
       <li>Modification of user files or system files</li>
     </ul>
     <p>All testing activities were carefully designed to avoid disrupting the live production environment and to ensure that production stability and data integrity were not compromised.</p>
-    <h2>Assessment Overview</h2>
+    ${sec('Assessment Overview')}
     <div class="phases"><span>Pre-Engagement</span><span>Reconnaissance</span><span>Exploitation</span><span>Reporting</span></div>
     <p>Security testing includes several phases aimed at verifying a system's strength and resilience against potential threats. The following phases were part of the security testing process:</p>
     <ul>
@@ -149,7 +176,7 @@ function roeReport(r, jiraBase) {
       <li><b>Exploitation</b> – the phase of actively exploiting identified vulnerabilities to assess their impact and potential risks.</li>
       <li><b>Reporting</b> – the phase of documenting and communicating the findings, results, and recommendations of the testing to stakeholders.</li>
     </ul>
-    <h2>Areas Assessed</h2>
+    ${sec('Areas Assessed')}
     <p>During the assessment, the following areas were specifically checked for security vulnerabilities:</p>
     <ul>
       <li><b>Network communication security</b> (encryption, protocol enforcement, and secure session handling)</li>
@@ -160,18 +187,18 @@ function roeReport(r, jiraBase) {
       <li><b>Configuration and deployment security</b> (review of security-related application and server configurations)</li>
       <li><b>Error handling and logging mechanisms</b> (ensuring sensitive data is not exposed through logs or error messages)</li>
     </ul>
-    <h2>Best Practices and Recommendations</h2>
+    ${sec('Best Practices and Recommendations')}
     <p>To improve the security of the ${esc(r.project)} application, the following actions are recommended:</p>
     <ul class="recs">${recommendations.map((x) => `<li><b>${esc(x.title)}</b>${x.text ? `<br>${esc(x.text)}` : ''}</li>`).join('')}</ul>
     ${r.info.notes ? multiline(r.info.notes) : ''}
     ${paras(r.sealText.slice(1))}
-    ${artifacts(r, 'Compilation of Rules of Engagement Scan Results', `${r.project} Security Dashboard`)}
-    ${appendices()}`;
+    ${artifacts(r, sec, 'Compilation of Rules of Engagement Scan Results', `${r.project} Security Dashboard`)}
+    ${appendices(sec)}`;
 }
 
-function appendices() {
+function appendices(sec) {
   const qa = (rows) => `<table class="grid qa"><thead><tr><th>Questions</th><th>Answers</th></tr></thead><tbody>${rows.map(([q, a]) => `<tr><th>${esc(q)}</th><td>${a}</td></tr>`).join('')}</tbody></table>`;
-  return `<h2>Appendices</h2>
+  return `${sec('Appendices', 'Appendix')}
     <p>This section includes frequently asked questions about the SLA and the Security Seal.</p>
     <h3>Appendix A – SLA</h3>
     <p>The list below covers frequently asked questions about the SLA.</p>
@@ -217,57 +244,76 @@ function sealGuide() {
     .join('')}</tbody></table>`;
 }
 
+// Footer text, as the PIA documents (offices · cloudstaff.com · page).
+const OFFICES = 'US  |  UK  |  AUSTRALIA  |  PHILIPPINES  |  INDIA';
+
 const STYLES = `
-  /* Zero page margins: Chrome then prints no header/footer of its own (title, URL, date). The page margins
-     come from the frame below: its thead/tfoot spacers repeat on every printed page. */
-  @page { size: A4; margin: 0; }
+  /* The footer (offices, cloudstaff.com, Page N of M) is drawn in the bottom page margin by @page margin boxes.
+     Defining them also stops Chrome printing its own header/footer (title, URL, date). The top margin is 0:
+     the frame's thead spacer below repeats on every printed page and holds the emblem. */
+  @page {
+    size: A4; margin: 0 18mm 16mm;
+    @bottom-left { content: "${OFFICES}"; white-space: pre; font-family: var(--font-family-body); font-size: 7.5pt; color: var(--color-text-base-muted); vertical-align: top; padding-top: 3mm; border-top: 0.5pt solid var(--color-border-subtle); }
+    @bottom-center { content: "cloudstaff.com"; font-family: var(--font-family-body); font-size: 7.5pt; font-weight: 700; color: var(--color-brand-primary); text-decoration: underline; vertical-align: top; padding-top: 3mm; border-top: 0.5pt solid var(--color-border-subtle); }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font-family: var(--font-family-body); font-size: 7.5pt; color: var(--color-text-base-muted); vertical-align: top; padding-top: 3mm; border-top: 0.5pt solid var(--color-border-subtle); }
+  }
   * { box-sizing: border-box; }
   html, body { background: var(--color-surface-canvas); }
-  body { margin: 0; font-family: var(--font-family-body); color: var(--color-text-base-primary); font-size: 10.5pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  main { max-width: 180mm; margin: 0 auto; padding: 24px 0 48px; }
-  h1 { font-family: var(--font-family-heading); font-size: 24pt; line-height: 1.15; margin: 18px 0 2px; }
-  .subtitle { font-family: var(--font-family-heading); color: var(--color-brand-primary); font-size: 17pt; font-weight: 600; margin-bottom: 14px; }
-  h2 { font-family: var(--font-family-heading); font-size: 15pt; margin: 22px 0 6px; break-after: avoid; }
-  h3 { font-family: var(--font-family-heading); font-size: 11.5pt; margin: 16px 0 4px; break-after: avoid; }
+  body { margin: 0; font-family: var(--font-family-body); color: var(--color-text-base-primary); font-size: 10pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  main { max-width: 174mm; margin: 0 auto; padding: 24px 0 48px; }
+  h1 { font-family: var(--font-family-heading); font-weight: 700; font-size: 28pt; line-height: 1.15; margin: 10px 0 6px; }
+  .subtitle { font-family: var(--font-family-heading); color: var(--color-brand-primary); font-size: 18pt; font-weight: 300; margin-bottom: 18px; }
+  .eyebrow { font-family: var(--font-family-body); color: var(--color-brand-primary); font-size: 8.5pt; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; margin: 26px 0 2px; text-align: left; break-after: avoid; }
+  .cover-eyebrow { margin: 0 0 8px; letter-spacing: 0.02em; }
+  h2 { font-family: var(--font-family-heading); font-weight: 700; font-size: 15pt; line-height: 1.3; margin: 22px 0 10px; break-after: avoid; }
+  h2.section { margin-top: 0; padding-bottom: 6px; border-bottom: 2px solid var(--color-brand-primary); }
+  h3 { font-family: var(--font-family-heading); font-weight: 700; font-size: 12pt; margin: 18px 0 6px; break-after: avoid; }
   p { margin: 0 0 8px; text-align: justify; }
   ul { margin: 4px 0 10px; padding-left: 22px; } li { margin-bottom: 4px; }
-  a { color: var(--color-text-base-link); font-weight: 700; }
-  .cover { display: flex; align-items: center; justify-content: space-between; }
-  .logo { height: 44px; }
-  .seal { height: 92px; width: auto; }
-  table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; break-inside: auto; }
+  li::marker { color: var(--color-brand-primary); }
+  a { color: var(--color-brand-primary); font-weight: 700; }
+  .cover { display: flex; justify-content: flex-end; }
+  .logo { height: 40px; }
+  .seal { height: 64px; width: auto; }
+  .seal-cell { display: inline-flex; align-items: center; gap: 10px; }
+  .seal-cell .seal { height: 44px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; break-inside: auto; }
   /* Keep data-table rows whole, but never the frame row that holds the whole report: Chrome would push
      the report to page 2 to avoid splitting it. */
   .grid tr, .guide tr { break-inside: avoid; }
   .frame > tbody > tr, .frame > tbody > tr > td { break-inside: auto; }
   /* Long Q&A answers may split across pages, so a tall row doesn't leave a blank gap at the page bottom. */
   .qa tr { break-inside: auto; }
-  .grid th, .grid td { border: 1px solid var(--color-border-primary); padding: 5px 7px; vertical-align: middle; }
-  .grid thead th { background: var(--color-surface-secondary); font-weight: 700; }
-  .grid th.band { background: var(--color-brand-primary-soft); }
+  .grid th, .grid td { border: 1px solid var(--color-border-subtle); padding: 6px 9px; vertical-align: top; text-align: left; font-size: 9.5pt; }
+  /* PIA tables: brand header row with white text. */
+  .grid thead th { background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); font-weight: 700; vertical-align: middle; }
+  .grid thead th.sub { background: var(--color-brand-primary-soft); color: var(--color-text-base-primary); }
   .center td, .center th { text-align: center; }
-  .issues td { font-size: 9.5pt; } .issues td:nth-child(n+3) { text-align: center; }
+  .issues td:nth-child(n+3) { text-align: center; }
   .issues td.overdue { color: var(--color-feedback-danger, var(--color-text-base-primary)); font-weight: 700; }
   .issues td a { color: inherit; font-weight: inherit; text-decoration: underline; text-underline-offset: 2px; }
-  .details th { text-align: left; width: 40%; background: var(--color-surface-secondary); }
-  .qa tbody th { text-align: left; width: 36%; vertical-align: top; }
-  .qa td { text-align: justify; vertical-align: top; }
-  .guide { width: auto; margin: 6px 0 0; font-size: 9pt; } .guide th, .guide td { border: 1px solid var(--color-border-primary); padding: 2px 6px; text-align: center; }
+  /* PIA label / value card: shaded, muted bold labels. */
+  .kv th { width: 32%; background: var(--color-surface-secondary); color: var(--color-text-base-muted); font-weight: 700; }
+  .kv th, .kv td { vertical-align: middle; }
+  .qa tbody th { width: 34%; background: var(--color-surface-secondary); font-weight: 700; }
+  .qa td { text-align: justify; }
+  .guide { width: auto; margin: 6px 0 0; font-size: 9pt; } .guide th, .guide td { border: 1px solid var(--color-border-subtle); padding: 2px 6px; text-align: center; }
+  .guide thead th { background: var(--color-surface-secondary); color: var(--color-text-base-primary); }
   .pre { white-space: pre-line; word-break: break-all; }
   .nowrap { white-space: nowrap; }
   .muted { color: var(--color-text-base-muted); }
   p.center { text-align: center; }
-  .caption { text-align: center; margin-top: 12px; }
-  .note { font-size: 9.5pt; }
-  .phases { display: flex; gap: 10px; margin: 8px 0 12px; }
-  .phases span { flex: 1; text-align: center; padding: 6px 4px; border-radius: var(--radius-sm, 6px); background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); font-weight: 700; font-size: 9.5pt; }
+  .caption { margin-top: 12px; text-align: left; }
+  .note { font-size: 9pt; color: var(--color-text-base-muted); }
+  .phases { display: flex; gap: 8px; margin: 8px 0 12px; }
+  .phases span { flex: 1; text-align: center; padding: 7px 4px; border-radius: var(--radius-sm, 6px); background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); font-weight: 700; font-size: 9pt; }
   .recs li { margin-bottom: 6px; }
   .frame { width: 100%; border-collapse: collapse; margin: 0; }
   .frame > thead > tr > td, .frame > tfoot > tr > td, .frame > tbody > tr > td { padding: 0; border: 0; }
   .frame-space { height: 0; }
   .page-head { display: none; }
-  .footer { display: flex; gap: 48px; align-items: center; font-family: var(--font-family-heading); font-size: 8pt; color: var(--color-text-base-muted); max-width: 180mm; margin: 32px auto 0; letter-spacing: 0.02em; }
-  .footer a { color: var(--color-brand-primary); font-weight: 400; text-decoration: none; letter-spacing: 0; }
+  .screen-footer { display: flex; justify-content: space-between; align-items: center; font-size: 7.5pt; color: var(--color-text-base-muted); max-width: 174mm; margin: 32px auto 24px; padding-top: 8px; border-top: 1px solid var(--color-border-subtle); }
+  .screen-footer a { color: var(--color-brand-primary); }
   .toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: 12px; align-items: center; justify-content: center; padding: 10px; background: var(--color-surface-secondary); border-bottom: 1px solid var(--color-border-primary); font-size: 10pt; }
   main[contenteditable="true"] { outline: 2px dashed var(--color-brand-primary); outline-offset: 8px; }
   .toolbar button { font: inherit; font-weight: 700; padding: 6px 14px; border-radius: var(--radius-sm, 6px); border: 0; background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); cursor: pointer; }
@@ -275,17 +321,14 @@ const STYLES = `
   @media print {
     main[contenteditable="true"] { outline: none; }
     html, body { background: none; }
-    .toolbar { display: none; }
-    main { padding: 0 18mm; max-width: none; }
-    /* Pages 2+: the seal at the top right (the thead repeats on every printed page). On page 1 the cover is
-       pulled up over it, so page 1 keeps its own layout (seal left, logo right). */
-    .frame-space.top { height: 34mm; }
-    .page-head { display: flex; justify-content: flex-end; padding: 10mm 18mm 0; }
-    .page-head .seal { height: 20mm; }
-    .cover { position: relative; z-index: 1; background: var(--color-surface-canvas); margin: -34mm -18mm 0; padding: 14mm 18mm 0; }
-    .frame-space.bottom { height: 20mm; }
-    /* Fixed elements repeat on every printed page; the bottom spacer keeps text clear of it. */
-    .footer { position: fixed; bottom: 8mm; left: 18mm; right: 18mm; margin: 0; max-width: none; }
+    .toolbar, .screen-footer { display: none; }
+    main { padding: 0; max-width: none; }
+    /* Pages 2+: the Cloudstaff emblem at the top left (the thead repeats on every printed page). On page 1
+       the cover is pulled up over it, so page 1 shows the landscape logo top right instead. */
+    .frame-space.top { height: 30mm; }
+    .page-head { display: flex; align-items: flex-end; height: 30mm; padding-bottom: 6mm; }
+    .page-head .emblem { height: 12mm; width: 12mm; }
+    .cover { position: relative; z-index: 1; background: var(--color-surface-canvas); margin: -30mm 0 0; padding: 12mm 0 0; min-height: 34mm; }
   }
 `;
 
@@ -301,14 +344,13 @@ export function renderReport(r, fileName, { jiraBase = '' } = {}) {
 <style>${STYLES}</style></head>
 <body>
 <div class="toolbar"><span id="edit-hint">Preview. Check the report, edit text if needed, then save. In the print dialog choose <b>Save as PDF</b>.</span><button type="button" id="edit-report" class="secondary" aria-pressed="false">Edit text</button><button type="button" id="print-report">Save as PDF</button><button type="button" id="word-report" class="secondary">Download Word</button></div>
-<table class="frame"><thead><tr><td><div class="frame-space top"><div class="page-head">${sealBadge(r.seal)}</div></div></td></tr></thead>
-<tfoot><tr><td><div class="frame-space bottom"></div></td></tr></tfoot>
+<table class="frame"><thead><tr><td><div class="frame-space top"><div class="page-head"><img class="emblem" src="${EMBLEM}" alt="Cloudstaff"></div></div></td></tr></thead>
 <tbody><tr><td>
 <main>
 ${reportBody(r, jiraBase)}
 </main>
 </td></tr></tbody></table>
-<div class="footer"><span>US&nbsp; | &nbsp;UK&nbsp; | &nbsp;AUSTRALIA&nbsp; | &nbsp;PHILIPPINES&nbsp; | &nbsp;INDIA</span><a href="https://www.cloudstaff.com">cloudstaff.com</a></div>
+<div class="screen-footer"><span>${OFFICES.replace(/ /g, '&nbsp;')}</span><a href="https://www.cloudstaff.com">cloudstaff.com</a></div>
 </body></html>`;
 }
 
@@ -360,36 +402,42 @@ export function showReport(w, r, fileName, options) {
 
 // ---- Word document ---------------------------------------------------------------------------------------
 // Word can't read CSS variables, flexbox or SVG, so the Word copy uses simpler styles with the design-system
-// tokens resolved to their (light theme) values, tables for the cover and phases, and PNG images.
+// tokens resolved to their (light theme) values (brand-soft and border-subtle are color-mix values, which Word can't
+// read, so the Word copy uses the secondary surface and the primary border instead), tables for the cover and phases, and PNG images.
 // It is an MHTML "single file web page": Word opens it as a normal, editable document.
 
 const WORD_STYLES = `
-  @page Section1 { size: 21cm 29.7cm; margin: 2cm 1.8cm 2cm 1.8cm; }
+  @page Section1 { size: 21cm 29.7cm; margin: 2.7cm 2cm 2.2cm 2cm; mso-header-margin: 1cm; mso-footer-margin: 0.9cm; mso-header: h1; mso-first-header: fh1; mso-footer: f1; mso-first-footer: f1; mso-title-page: yes; }
   div.Section1 { page: Section1; }
-  body { font-family: var(--font-family-body); color: var(--color-text-base-primary); font-size: 10.5pt; line-height: 1.4; }
-  h1 { font-family: var(--font-family-heading); font-size: 24pt; margin: 14pt 0 2pt; }
-  .subtitle { font-family: var(--font-family-heading); color: var(--color-brand-primary); font-size: 17pt; font-weight: bold; margin-bottom: 12pt; }
-  h2 { font-family: var(--font-family-heading); font-size: 15pt; margin: 18pt 0 6pt; page-break-after: avoid; }
-  h3 { font-family: var(--font-family-heading); font-size: 11.5pt; margin: 12pt 0 4pt; page-break-after: avoid; }
+  body { font-family: var(--font-family-body); color: var(--color-text-base-primary); font-size: 10pt; line-height: 1.4; }
+  h1 { font-family: var(--font-family-heading); font-size: 28pt; margin: 14pt 0 2pt; }
+  .subtitle { font-family: var(--font-family-heading); color: var(--color-brand-primary); font-size: 18pt; margin-bottom: 14pt; }
+  .eyebrow { font-family: var(--font-family-body); color: var(--color-brand-primary); font-size: 8.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1pt; margin: 20pt 0 0; page-break-after: avoid; }
+  .cover-eyebrow { margin: 0 0 6pt; }
+  h2 { font-family: var(--font-family-heading); font-size: 15pt; margin: 18pt 0 8pt; page-break-after: avoid; }
+  h2.section { margin-top: 0; padding-bottom: 4pt; border-bottom: 1.5pt solid var(--color-brand-primary); }
+  h3 { font-family: var(--font-family-heading); font-size: 12pt; margin: 12pt 0 4pt; page-break-after: avoid; }
   p { margin: 0 0 8pt; text-align: justify; }
-  a { color: var(--color-text-base-link); font-weight: bold; }
+  a { color: var(--color-brand-primary); font-weight: bold; }
   table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; }
-  .grid th, .grid td, .guide th, .guide td { border: 1px solid var(--color-border-primary); padding: 4pt 6pt; vertical-align: middle; }
-  .grid thead th { background: var(--color-surface-secondary); font-weight: bold; }
-  .grid th.band { background: var(--color-brand-primary-soft); }
+  .grid th, .grid td, .guide th, .guide td { border: 1px solid var(--color-border-primary); padding: 4pt 7pt; vertical-align: top; text-align: left; font-size: 9.5pt; }
+  .grid thead th { background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); font-weight: bold; vertical-align: middle; }
+  .grid thead th.sub { background: var(--color-surface-secondary); color: var(--color-text-base-primary); }
   .center td, .center th { text-align: center; }
-  .issues td { font-size: 9.5pt; }
   .issues td.overdue { color: var(--color-feedback-danger, var(--color-text-base-primary)); font-weight: bold; }
-  .details th { text-align: left; width: 40%; background: var(--color-surface-secondary); }
-  .qa tbody th { text-align: left; width: 36%; vertical-align: top; }
-  .qa td { text-align: justify; vertical-align: top; }
+  .kv th { width: 32%; background: var(--color-surface-secondary); color: var(--color-text-base-muted); font-weight: bold; }
+  .qa tbody th { width: 34%; background: var(--color-surface-secondary); font-weight: bold; }
+  .qa td { text-align: justify; }
   .guide { width: auto; font-size: 9pt; } .guide td, .guide th { text-align: center; }
+  .guide thead th { background: var(--color-surface-secondary); color: var(--color-text-base-primary); }
   .muted { color: var(--color-text-base-muted); }
-  p.center, .caption { text-align: center; }
-  .note { font-size: 9.5pt; }
+  p.center { text-align: center; }
+  .note { font-size: 9pt; color: var(--color-text-base-muted); }
   .cover td { border: 0; padding: 0; vertical-align: middle; }
-  .phases td { background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); font-weight: bold; font-size: 9.5pt; text-align: center; padding: 5pt; border: 3pt solid var(--color-surface-canvas); }
-  .footer { font-family: var(--font-family-heading); font-size: 8pt; color: var(--color-text-base-muted); margin-top: 24pt; }
+  .phases td { background: var(--color-brand-primary); color: var(--color-brand-primary-contrast); font-weight: bold; font-size: 9pt; text-align: center; padding: 5pt; border: 3pt solid var(--color-surface-canvas); }
+  p.MsoHeader, p.MsoFooter { margin: 0; font-family: var(--font-family-body); font-size: 7.5pt; color: var(--color-text-base-muted); tab-stops: center 8.5cm right 17cm; }
+  p.MsoFooter { border-top: 0.5pt solid var(--color-border-primary); padding-top: 4pt; }
+  p.MsoFooter a { color: var(--color-brand-primary); font-weight: bold; }
 `;
 
 // Light-theme token values, read from a hidden frame that loads only the design-system tokens
@@ -443,6 +491,18 @@ const b64Utf8 = (text) => {
 };
 const wrap76 = (b64) => b64.replace(/.{76}/g, '$&\r\n');
 
+// Word running header and footer, as the PIA documents: no header on the cover (it has the logo), the emblem
+// top left on later pages, and "offices · cloudstaff.com · Page N of M" on every page. Word lifts the
+// mso-element divs into the header/footer (@page Section1 names them); the table holding them sits off the page.
+function wordHeaderFooter(emblemImg) {
+  const field = (code) => `<span style='mso-element:field-begin'></span><span style='mso-spacerun:yes'> </span>${code}<span style='mso-element:field-separator'></span>1<span style='mso-element:field-end'></span>`;
+  return `<table style="margin-left:50in;width:1px"><tr><td>
+<div style="mso-element:header" id="fh1"><p class="MsoHeader">&nbsp;</p></div>
+<div style="mso-element:header" id="h1"><p class="MsoHeader">${emblemImg}</p></div>
+<div style="mso-element:footer" id="f1"><p class="MsoFooter">${OFFICES.replace(/ /g, '&nbsp;')}<span style="mso-tab-count:1"></span><a href="https://www.cloudstaff.com">cloudstaff.com</a><span style="mso-tab-count:1"></span>Page ${field('PAGE')} of ${field('NUMPAGES')}</p></div>
+</td></tr></table>`;
+}
+
 // bodyHtml: the report body as shown (and maybe edited) in the preview tab; default is a fresh render.
 export async function downloadWordReport(r, fileName, { jiraBase = '', bodyHtml } = {}) {
   const tokens = await tokenReader();
@@ -453,15 +513,18 @@ export async function downloadWordReport(r, fileName, { jiraBase = '', bodyHtml 
     tokens.done();
   }
   const sealName = String(r.seal || '').toLowerCase();
-  const [seal, logo] = await Promise.all([
-    SEAL_IMAGES.has(sealName) ? pngPart(`/seals/${sealName}.png`, 'seal.png', 70).catch(() => null) : null,
-    pngPart('/design-system/assets/logos/cloudstaff-logo-landscape.svg', 'logo.png', 32).catch(() => null),
+  const [seal, logo, emblem] = await Promise.all([
+    SEAL_IMAGES.has(sealName) ? pngPart(`/seals/${sealName}.png`, 'seal.png', 36).catch(() => null) : null,
+    pngPart(LOGO, 'logo.png', 30).catch(() => null),
+    pngPart(EMBLEM, 'emblem.png', 32).catch(() => null),
   ]);
   const imgTag = (part, alt) => (part ? `<img src="${part.name}" width="${Math.round(part.width * 1.333)}" height="${Math.round(part.height * 1.333)}" alt="${esc(alt)}">` : '');
 
   const body = (bodyHtml ?? reportBody(r, jiraBase))
-    // Cover: seal left, logo right, as a borderless table.
-    .replace(/<header class="cover">[\s\S]*?<\/header>/, `<table class="cover"><tr><td>${imgTag(seal, `${r.seal} security seal`)}</td><td style="text-align:right">${imgTag(logo, 'Cloudstaff')}</td></tr></table>`)
+    // Cover: the logo top right, as a borderless table.
+    .replace(/<header class="cover">[\s\S]*?<\/header>/, `<table class="cover"><tr><td style="text-align:right">${imgTag(logo, 'Cloudstaff')}</td></tr></table>`)
+    // The seal next to its name in the cover card.
+    .replace(/<span class="seal-cell">([\s\S]*?)<\/span>/g, '$1')
     // Phase chips as one row of cells.
     .replace(/<div class="phases">([\s\S]*?)<\/div>/g, (_, spans) => `<table class="phases"><tr>${spans.replace(/<span>/g, '<td>').replace(/<\/span>/g, '</td>')}</tr></table>`)
     // Any other seal image (e.g. in the guide) uses the embedded PNG.
@@ -473,14 +536,14 @@ export async function downloadWordReport(r, fileName, { jiraBase = '', bodyHtml 
 <style>${css}</style></head>
 <body><div class="Section1">
 ${body}
-<p class="footer">US&nbsp; | &nbsp;UK&nbsp; | &nbsp;AUSTRALIA&nbsp; | &nbsp;PHILIPPINES&nbsp; | &nbsp;INDIA &nbsp;&nbsp;&nbsp; <a href="https://www.cloudstaff.com">cloudstaff.com</a></p>
+${wordHeaderFooter(imgTag(emblem, 'Cloudstaff'))}
 </div></body></html>`;
 
   const boundary = `----=_NextPart_${Date.now().toString(36)}`;
   const base = 'file:///C:/report/';
   const parts = [
     `--${boundary}\r\nContent-Type: text/html; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\nContent-Location: ${base}report.htm\r\n\r\n${wrap76(b64Utf8(html))}`,
-    ...[seal, logo].filter(Boolean).map((p) => `--${boundary}\r\nContent-Type: image/png\r\nContent-Transfer-Encoding: base64\r\nContent-Location: ${base}${p.name}\r\n\r\n${wrap76(p.data)}`),
+    ...[seal, logo, emblem].filter(Boolean).map((p) => `--${boundary}\r\nContent-Type: image/png\r\nContent-Transfer-Encoding: base64\r\nContent-Location: ${base}${p.name}\r\n\r\n${wrap76(p.data)}`),
   ];
   const mhtml = `MIME-Version: 1.0\r\nContent-Type: multipart/related; boundary="${boundary}"; type="text/html"\r\n\r\n${parts.join('\r\n\r\n')}\r\n\r\n--${boundary}--\r\n`;
 

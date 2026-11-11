@@ -110,7 +110,7 @@ function header(r) {
       <tr><th>Project or Product</th><td>${esc(r.project)}</td></tr>
       ${r.period ? `<tr><th>Assessment period</th><td>${esc(r.period)}</td></tr>` : ''}
       <tr><th>Assessment dates</th><td>${esc(dates)}</td></tr>
-      <tr><th>Assessed by</th><td>Cloudstaff Data Security Team (CSDATASEC)</td></tr>
+      <tr><th>Assessed by</th><td>${esc(r.tester || 'Cloudstaff Data Security Team (CSDATASEC)')}</td></tr>
       <tr><th>Security Seal</th><td>${seal}</td></tr>
     </table>`;
 }

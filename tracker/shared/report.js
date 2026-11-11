@@ -138,6 +138,7 @@ export function buildReport({ assessment: a, issues = [], today }) {
     project: a.project,
     period: a.period,
     testingUrl: a.testingUrl || '',
+    tester: a.securityTester || '', // the ticket's assignee (sync sets it; frozen once resolved)
     start,
     end,
     today,

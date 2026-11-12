@@ -184,3 +184,16 @@ Add a new entry only for decisions a future developer might otherwise reconsider
   - Once answered, the page writes an assessment summary (`sizeSummary`) explaining the size: band, top three drivers, functionality guide text, test duration per test type, and the workbook result.
 - **Reason:** The user asked to keep the calculator but adjust it to a more standard matrix if it didn't make sense, without moving far from it. User base is a standard sizing/impact factor (OWASP Risk Rating), and the workbook already asked for it without counting it. Across all 41,250 answer sets, the adjusted matrix agrees with the workbook on 86% (92% for 1,001–10,000 users) and is never more than one size apart.
 - **Impact:** Weights live only in `SIZE_FACTORS` in `tracker/shared/sizing.js`. The result isn't saved to the tracker; the Priority is still set in the assessment editor.
+
+### D16: App Access: test accounts and web / build links per app, passwords encrypted and copy-only
+- **Date:** 2026-11-12
+- **Decision:**
+  - New page **Assessment Tracker → App Access** (`/assessment-tracker/app-access`, requested by MichaelC). Per app: Web or Mobile, the web URL, or for mobile the platform and a **build folder link** (the shared SharePoint / OneDrive / Drive folder holding the IPA / APK), plus any number of **test accounts** (username, password, role, environment, notes).
+  - Apps are keyed by `matchKey` (platform entries such as "Staffcentral IOS" are separate, as on the Target Project List). Only apps on the Target Project List or in the tracker can get details; the name comes from there. Until details are saved, the tracker's latest Testing URL (first http(s) link) and Mobile App flag are shown, marked "from tracker".
+  - **Passwords** are encrypted at rest with AES-256-GCM (`tracker/server/fieldCipher.js`, same scheme as `tokenStore.js`). The key is `access.key` next to the tracker database (0600, `TRACKER_ACCESS_KEY_PATH` overrides), so a copy of `tracker.db` alone reveals nothing. They are **never shown**: list and read routes return `hasPassword` only. The **Copy** button calls `POST /api/tracker/access/apps/:key/accounts/:id/copy` (JSON content type only, signed-in user required, `no-store`, 30 copies per user per 10 minutes) and writes it straight to the clipboard. Every copy and every change is logged in `app_access_history` (never the value).
+  - **Every signed-in user** can view, edit and copy (user decision: test accounts only, and only a few people can sign in to the app). The routes still check `req.user` themselves (fail closed) on top of the app-wide gate.
+  - Links are http(s) only. The UI says "test accounts only".
+  - **No IPA / APK upload** (user decision 2026-11-12): build files stay in a shared folder and the app stores only the folder link, so the server's disk isn't used for builds and the proxy's upload limit doesn't matter.
+- **Reason:** The team needs one place for the accounts and builds used in assessments. Copy-only, logged access keeps passwords off screens and screenshots without making the team's work harder.
+- **Impact:** `tracker/data/access.key` must be backed up with `tracker.db`; without it the saved passwords can't be decrypted. The assessment editor links to the app's App Access drawer. D8 is unchanged (tracker edits stay open to every user).
+

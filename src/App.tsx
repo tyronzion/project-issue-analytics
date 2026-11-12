@@ -6,6 +6,7 @@ import {
   ListFilter,
   FolderKanban,
   Calculator,
+  KeyRound,
   Bot,
   Gauge,
   ScanSearch,
@@ -65,6 +66,7 @@ import { JiraIntegrationPage, JiraCredentials } from './components/JiraIntegrati
 import { MonitorFrame, isMonitorTab } from './components/MonitorFrame';
 import AssessmentTracker from './components/tracker/AssessmentTracker.jsx';
 import SizeCalculator from './components/tracker/SizeCalculator.jsx';
+import AppAccess from './components/tracker/AppAccess.jsx';
 import PrivacyImpact from './components/pia/PrivacyImpact.jsx';
 import { matchKey } from '../tracker/shared/logic.js';
 import { useSharedTargets, saveSharedTargets, appCount } from './utils/sharedTargets';
@@ -81,12 +83,13 @@ const TRACKER_TABS = [
   { tab: 'tracker-checklist', section: 'checklist', label: 'Checklist', Icon: ListChecks },
   { tab: 'tracker-decommissioned', section: 'decommissioned', label: 'Decommissioned', Icon: Archive },
   { tab: 'tracker-size', section: 'size', label: 'Size Calculator', Icon: Calculator },
+  { tab: 'tracker-access', section: 'access', label: 'App Access', Icon: KeyRound },
   { tab: 'tracker-sync', section: 'sync', label: 'UberTicket Sync', Icon: RefreshCcw },
   { tab: 'tracker-import', section: 'import', label: 'Import Excel', Icon: FileUp },
 ] as const;
 const trackerSection = (tab: ActiveTab) => TRACKER_TABS.find(t => t.tab === tab)?.section;
-// Tracker pages that read tracker data (the Size Calculator is a stand-alone tool).
-const trackerDataSection = (tab: ActiveTab) => { const s = trackerSection(tab); return s === 'size' ? undefined : s; };
+// Tracker pages that read tracker cycles (the Size Calculator and App Access are pages of their own).
+const trackerDataSection = (tab: ActiveTab) => { const s = trackerSection(tab); return s === 'size' || s === 'access' ? undefined : s; };
 
 // Privacy Impact Assessment sidebar entries -> section shown by <PrivacyImpact>.
 const PIA_TABS = [
@@ -1261,6 +1264,7 @@ export default function App() {
         {isMonitorTab(activeTab) && <MonitorFrame tab={activeTab} />}
 
         {activeTab === 'tracker-size' && <SizeCalculator />}
+        {activeTab === 'tracker-access' && <AppAccess />}
 
         {trackerDataSection(activeTab) && !isSettingsTab(activeTab) && (
           <AssessmentTracker section={trackerDataSection(activeTab)} sealForProject={sealForProject} reportIssuesFor={reportIssuesFor} isAdmin={isAdmin} />

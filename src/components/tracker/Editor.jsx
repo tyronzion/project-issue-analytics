@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { X, Trash2, History, Archive, ArchiveRestore, Ticket, Lock, AlertTriangle, FileDown } from 'lucide-react';
-import { CHECKS, PRIORITIES, TASK_STATUSES, SEALS, QUARTERS, CLASSIFICATIONS, enrich, isDecommissioned } from '../../../tracker/shared/logic.js';
+import { X, Trash2, History, Archive, ArchiveRestore, Ticket, Lock, AlertTriangle, FileDown, KeyRound } from 'lucide-react';
+import { CHECKS, PRIORITIES, TASK_STATUSES, SEALS, QUARTERS, CLASSIFICATIONS, enrich, isDecommissioned, matchKey } from '../../../tracker/shared/logic.js';
 import { api } from './api.js';
 import { StatusPill, Progress, SealBadge, fmtDate, fmtMinutes, cx } from './ui.jsx';
 import ReportDialog from './report/ReportDialog.jsx';
@@ -10,6 +10,16 @@ const BLANK = {
   baAssigned: '', securityTester: '', coTester: '', checks: {}, mobileApp: false,
   dependabots: 'Not Started', codeReview: 'Not Started', report: 'Not Started',
   actualStart: '', actualEnd: '', timeSpent: '', seal: '', notes: '',
+};
+
+// The App Access page for this app (test accounts, build link). Opened in the same page: App.tsx follows the
+// URL on popstate.
+const appAccessHref = (project) => `/assessment-tracker/app-access?app=${encodeURIComponent(matchKey(project))}`;
+const openAppAccess = (project) => (e) => {
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+  e.preventDefault();
+  window.history.pushState(null, '', appAccessHref(project));
+  window.dispatchEvent(new PopStateEvent('popstate'));
 };
 
 function Field({ label, children, wide, locked }) {
@@ -191,6 +201,15 @@ export default function Editor({ row, periods, testers, onClose, onSaved, onDele
               <Field label="Co-tester"><input list="at-testers" value={draft.coTester ?? ''} onChange={(e) => set('coTester')(e.target.value)} className="at-input w-full" /></Field>
               <Field label="BA assigned"><input value={draft.baAssigned ?? ''} onChange={(e) => set('baAssigned')(e.target.value)} className="at-input w-full" /></Field>
               <Field label="Testing URL(s)" wide><textarea rows={2} value={draft.testingUrl ?? ''} onChange={(e) => set('testingUrl')(e.target.value)} className="at-input w-full" /></Field>
+              {!isNew && draft.project && (
+                <p className="sm:col-span-2 -mt-1 text-xs at-muted">
+                  Test accounts and the mobile build link are on{' '}
+                  <a href={appAccessHref(draft.project)} onClick={openAppAccess(draft.project)} className="at-link inline-flex items-center gap-1 font-bold">
+                    <KeyRound className="w-3 h-3" aria-hidden /> App Access
+                  </a>
+                  .
+                </p>
+              )}
               <Field label="Repositories" wide><textarea rows={3} value={draft.repositories ?? ''} onChange={(e) => set('repositories')(e.target.value)} className="at-input w-full font-mono text-xs" /></Field>
             </div>
           </section>

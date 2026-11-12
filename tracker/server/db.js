@@ -3,6 +3,7 @@ import path from 'node:path';
 import { openSqlite } from './sqlite.js';
 import { matchKey } from '../shared/logic.js';
 import { ensureTargetTables } from './targets.js';
+import { ensureAccessTables } from './access.js';
 
 // Assessment Tracker storage: one SQLite file, via node:sqlite (Node 22.13+) or sql.js on older Node.
 export async function openDb(dbPath, options) {
@@ -107,6 +108,7 @@ export async function openDb(dbPath, options) {
   // Seals recorded before seal_source existed came from the Excel workbook.
   db.exec("UPDATE assessments SET seal_source = 'excel' WHERE seal IS NOT NULL AND seal_source IS NULL");
   ensureTargetTables(db);
+  ensureAccessTables(db);
   return db;
 }
 

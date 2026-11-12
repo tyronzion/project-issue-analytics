@@ -45,3 +45,16 @@ export const api = {
   previewImport: (file) => request('POST', '/import/preview', file, { raw: true }),
   runImport: (file, cycles) => request('POST', `/import?cycles=${encodeURIComponent(JSON.stringify(cycles))}`, file, { raw: true }),
 };
+
+// App Access (access.js): web URL or build link and test accounts per app. Passwords are never in these
+// responses; copyPassword fetches one for the Copy button (logged on the server).
+const appPath = (key) => `/access/apps/${encodeURIComponent(key)}`;
+export const accessApi = {
+  list: () => request('GET', '/access'),
+  app: (key) => request('GET', appPath(key)),
+  saveApp: (key, data) => request('PUT', appPath(key), data),
+  addAccount: (key, data) => request('POST', `${appPath(key)}/accounts`, data),
+  updateAccount: (key, id, data) => request('PATCH', `${appPath(key)}/accounts/${id}`, data),
+  deleteAccount: (key, id) => request('DELETE', `${appPath(key)}/accounts/${id}`),
+  copyPassword: (key, id) => request('POST', `${appPath(key)}/accounts/${id}/copy`, {}),
+};

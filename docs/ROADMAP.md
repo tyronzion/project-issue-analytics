@@ -31,6 +31,7 @@ These candidates come from known issues and need user approval first.
 - Add the 2027 PH holidays to `monitor/server/phHolidays.js` once they are proclaimed.
 
 ## Completed
+- App Access: web URL / build folder link and test accounts per app, encrypted copy-only passwords (2026-11-12)
 - Issue analytics: Jira, Excel and Postgres sources; metrics, formulas, charts and Dependabot issues
 - Security Seal page
 - UberTicket monitors: DPSA MTTR, Full Assessment SLA, Rules of Engagement; encrypted token

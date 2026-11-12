@@ -7,6 +7,8 @@ import { readTargets, saveTargets, addTargetsFromRoe, addRowsForTargets, ignoreT
 import { TRACKS, SEALS, matchKey } from '../shared/logic.js';
 import { normalizeReportInfo, normalizeSnapshot } from '../shared/report.js';
 import { targetKey } from '../shared/targets.js';
+import { mountAccess } from './access.js';
+import { createFieldCipher } from './fieldCipher.js';
 
 // Assessment Tracker API, mounted by vite.config.ts at /api/tracker.
 // getTickets() returns { full, roe } normalized UberTicket tickets (from the monitor).
@@ -15,8 +17,13 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
   const router = express.Router();
   let db = null;
   let unavailable = null;
+  const dbPath = process.env.TRACKER_DB_PATH || path.join(root, 'data', 'tracker.db');
+  // App Access passwords are encrypted with a key kept next to the database (back up both; see access.js).
+  const cipher = createFieldCipher({
+    keyPath: dbPath === ':memory:' ? null : process.env.TRACKER_ACCESS_KEY_PATH || path.join(path.dirname(dbPath), 'access.key'),
+  });
   try {
-    db = await openDb(process.env.TRACKER_DB_PATH || path.join(root, 'data', 'tracker.db'));
+    db = await openDb(dbPath);
     log(`database ready (${db.engine})`);
   } catch (err) {
     unavailable = `Assessment Tracker database could not be opened: ${err.message}`;
@@ -290,6 +297,9 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
     db.prepare('DELETE FROM ticket_links WHERE product_key = ?').run(req.params.productKey);
     res.json(sync());
   });
+
+  // App Access: web URL or build link and test accounts per app (access.js). Every signed-in user.
+  mountAccess(router, { db, cipher, log });
 
   // Excel import: the browser sends the .xlsx bytes as the request body.
   const raw = express.raw({ type: () => true, limit: '50mb' });

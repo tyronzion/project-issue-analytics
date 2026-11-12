@@ -1,6 +1,6 @@
 # Project State
 
-_Last updated: 2026-10-22_
+_Last updated: 2026-11-12_
 
 ## Current phase
 The app is in production use and gets features added incrementally. The Assessment Tracker was merged in on 2026-10-13, which brings all three parts (analytics, monitors and tracker) into one app.
@@ -11,6 +11,7 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 - Classic login keeps working throughout.
 
 ## Recently completed
+- **App Access page** (2026-11-12, D16; pushed to `main`, **not deployed**). Assessment Tracker → App Access: per app Web / Mobile, web URL or build folder link, and test accounts (username, encrypted password, role, environment, notes). Passwords are never shown; the Copy button fetches one at a time (logged, rate-limited). Every signed-in user can edit. The editor links to it. New files: `tracker/server/access.js`, `fieldCipher.js`, `src/components/tracker/AppAccess.jsx`, `tracker/test/access.test.js`. Checked (in the cloud workspace; the Mac shell was unavailable for lack of disk space): `test:tracker` 65/65 on both engines, `test:monitor` 33/33, `test:auth` 34/34, `test:pia` 20/20 (on top of `main` 04f7115), lint, build, and a browser check in the demo on a scratch copy of `dev-copy.db` as user (add accounts, copy password to clipboard, password not on screen, history, phone width, editor link). **After deploy:** add `tracker/data/access.key` to the backup with `tracker.db`. No IPA/APK upload by decision: builds stay in a shared folder and only its link is saved.
 - **RoE and Full Assessment reports use the PIA document style** (2026-11-11, D12; branch `report-pia-style`, **not deployed**). Same content; only `src/components/tracker/report/renderReport.js` changed. Cover: logo top right, title, project subtitle, label / value card (project, period, dates, assessed by = the ticket assignee `securityTester`, falling back to the team name, and seal). Headings get "SECTION N" eyebrows and a brand rule; tables have brand header rows; the emblem is top left on pages 2+ (it replaces the repeating seal). The PDF footer (offices, cloudstaff.com, Page N of M) uses `@page` margin boxes, which also stop Chrome printing its own header/footer (needs Chrome 131+). The Word `.doc` gets a running header (emblem) and footer with PAGE/NUMPAGES fields. Checked: PDFs rendered headless for both kinds. **Not yet checked:** the `.doc` in real Word, `npm run build`.
 - **"Sync from Jira" button on Project Metrics for every signed-in user** (2026-10-30, D8 note; pushed to `main`). In the "Application Metrics by Project" header, with last-synced time in the tooltip and an error banner. Admins with a saved Jira profile sync with it (as on Settings → Jira, which also saves to Postgres). Everyone else uses `GET /api/jira/issues` (server `.env` Jira creds, no credentials from the browser); the result replaces the dataset **in that user's browser only**. The GET now shares one in-flight fetch and caches the result for 60 s, and returns `configured` and `fetchedAt`. Checked: lint (tsc) only. **Not browser-checked**; needs `JIRA_*` set on the server for non-admins.
 - **Priority from UberTicket** (2026-10-26; pushed to `main`, **not deployed**). The tracker sync sets each app's Priority from its linked ticket's UberTicket priority ("Normal" = Medium, "Urgent" = Critical; `normalizePriority` in `logic.js`). A ticket with no priority keeps the tracker's value. Manual edits are overwritten at the next sync while the ticket has a priority.
@@ -62,6 +63,7 @@ The sign-in page offers two options, "Sign in with Microsoft" and the classic te
 
 ## Current issues / known limitations
 These are recorded only, not fixed.
+- **App Access key needs a backup entry.** `tracker/data/access.key` decrypts the saved test-account passwords (D16). Back it up with `tracker.db`; losing it loses the passwords (the accounts stay).
 - **PIA needs a production backup entry.** `pia/data/pia.db` holds admin-recorded reassessments; add it to whatever backs up `tracker/data/tracker.db`. Past reassessments (e.g. NEO, Jan 2026) must be recorded once by an admin after deploy.
 - **PIA policy statuses** were confirmed only for `approved`. Treating `resolved`/`closed` as approved and `rejected`/`removed` as ignored is an assumption (`monitor/server/piaPolicy.js`); check it against real data after deploy.
 - **Production still runs the old build** until a deploy. That build has client-only login, an exposed `/tracker/data/tracker.db`, and probably exposed `monitor/data` key files. Treat the old password (`csdatasec` login) as public: change it anywhere else it is used. Consider rotating the UberTicket token after deploying.

@@ -209,3 +209,10 @@ Add a new entry only for decisions a future developer might otherwise reconsider
   - Severity: end of life 3+ years for a runtime/framework = Critical, otherwise High (databases and minor versions are capped at High); a CVE is "Affected" only with an exact version, otherwise "Possibly affected"; old fixes on major-only versions become an Info patch check.
 - **Reason:** The Data Security Team assesses apps across many repositories; mixing a frontend's and an API's findings hid which repo needed the fix.
 - **Impact:** Built-in data goes stale: refresh `tracker/shared/techRisk.js` (dates, CVEs, `KB_AS_OF`) when lifecycles or advisories change. Reuses the existing `xlsx` dependency for reading and export.
+
+### D18: One feature document, shown in the app
+- **Date:** 2026-11-17
+- **Decision:** `docs/FEATURES.md` is the single description of every feature (pages and paths, who can use them, data sources, rules, data and backups, deploy and server move). The app's **Documentation** page (`/documentation`, everyone, sidebar under Settings) renders that same file; it isn't copied into components. The page supports only the Markdown subset the file uses and outputs React elements (no `innerHTML`).
+- **Reason:** MichaelC asked for in-app documentation so that whoever moves or takes over the app, including an AI agent, has the context. One file serves both readers and can't drift.
+- **Impact:** Any feature change updates `docs/FEATURES.md` in the same commit (CLAUDE.md read order points to it). Keep to headings, paragraphs, lists, tables, code fences, bold, italic, code and links, or extend the parser in `DocumentationPage.tsx`.
+

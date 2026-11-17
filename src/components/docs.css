@@ -1,0 +1,59 @@
+/* Documentation page (/documentation). Scoped to .docs-root; colours from design-system tokens only (D6).
+   Its own classes, not Tailwind colour utilities, because .cloudstaff-theme repaints classes containing "bg-". */
+
+.docs-root { color: var(--cs-text); }
+.docs-muted { color: var(--cs-muted); font-size: 12px; }
+
+.docs-card {
+  border: 1px solid var(--component-card-border);
+  border-radius: var(--component-card-radius);
+  background: var(--component-card-background);
+  box-shadow: var(--component-card-shadow);
+}
+
+.docs-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; }
+.docs-header h1 { font-size: 18px; font-weight: 700; margin: 0; }
+.docs-header code { font-family: var(--font-family-mono, monospace); font-size: 11.5px; }
+
+.docs-search {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: auto; min-width: 240px; flex: 0 1 320px;
+  height: 34px; padding: 0 10px; color: var(--cs-muted);
+  border: 1px solid var(--component-input-border); border-radius: var(--component-input-radius); background: var(--component-input-background);
+}
+.docs-search:focus-within { border-color: var(--component-input-focus-border); }
+.docs-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13px; color: var(--cs-text); }
+.docs-search button { display: inline-flex; color: var(--cs-muted); }
+
+.docs-layout { display: grid; grid-template-columns: minmax(200px, 250px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1023px) { .docs-layout { grid-template-columns: minmax(0, 1fr); } .docs-toc { position: static; max-height: none; } }
+
+.docs-toc { position: sticky; top: 112px; max-height: calc(100vh - 128px); overflow-y: auto; padding: 12px 8px; display: flex; flex-direction: column; gap: 1px; }
+.docs-toc-title { margin: 0 8px 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cs-soft); }
+.docs-toc-link { display: block; padding: 4px 8px; border-radius: var(--radius-sm, 6px); font-size: 12.5px; line-height: 1.35; color: var(--cs-muted); text-decoration: none; }
+.docs-toc-link:hover { color: var(--cs-text); background: var(--cs-surface-0); }
+.docs-toc-l2 { font-weight: 700; color: var(--cs-text); margin-top: 6px; }
+.docs-toc-l3 { padding-left: 18px; }
+.docs-toc-link.is-active { color: var(--cs-primary); background: var(--cs-surface-0); }
+
+.docs-article { padding: 24px clamp(16px, 3vw, 36px) 32px; font-size: 14px; line-height: 1.65; }
+.docs-article > * { max-width: 78ch; }
+.docs-article > .docs-table { max-width: none; }
+.docs-article h2 { margin: 32px 0 8px; padding-top: 16px; border-top: 1px solid var(--color-border-subtle); font-family: var(--font-family-heading); font-size: 20px; font-weight: 700; color: var(--cs-text); scroll-margin-top: 112px; text-wrap: balance; }
+.docs-article h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.docs-article h3 { margin: 22px 0 6px; font-size: 15.5px; font-weight: 700; color: var(--cs-text); scroll-margin-top: 112px; }
+.docs-article h4 { margin: 16px 0 4px; font-size: 14px; font-weight: 700; scroll-margin-top: 112px; }
+.docs-article p { margin: 8px 0; }
+.docs-article ul, .docs-article ol { margin: 8px 0; padding-left: 22px; display: grid; gap: 4px; }
+.docs-article ul { list-style: disc; }
+.docs-article ol { list-style: decimal; }
+.docs-article strong { font-weight: 700; color: var(--cs-text); }
+.docs-article a { color: var(--cs-primary); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.docs-article code { padding: 0 4px; border-radius: 4px; background: var(--cs-surface-0); border: 1px solid var(--color-border-subtle); font-family: var(--font-family-mono, monospace); font-size: 12.5px; overflow-wrap: anywhere; }
+.docs-article pre { margin: 10px 0; padding: 12px 14px; overflow-x: auto; border-radius: var(--radius-lg, 8px); background: var(--cs-surface-0); border: 1px solid var(--color-border-subtle); }
+.docs-article pre code { padding: 0; border: 0; background: transparent; }
+
+.docs-table { margin: 10px 0 14px; overflow-x: auto; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-lg, 8px); }
+.docs-table table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.45; }
+.docs-table th { padding: 8px 12px; text-align: left; font-size: 11.5px; font-weight: 700; white-space: nowrap; color: var(--cs-muted); background: var(--cs-surface-0); border-bottom: 1px solid var(--color-border-subtle); }
+.docs-table td { padding: 8px 12px; vertical-align: top; border-bottom: 1px solid var(--color-border-subtle); }
+.docs-table tr:last-child td { border-bottom: 0; }

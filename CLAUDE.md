@@ -16,6 +16,7 @@ Read these first and stop as soon as you know enough:
 
 1. The current task
 2. `docs/PROJECT_STATE.md`
+   - `docs/FEATURES.md` describes every feature (pages, rules, data, deploy and migration); the app shows it at `/documentation`. Read the relevant section when a task touches a feature, and keep it current.
 3. The active file in `docs/sessions/`, if there is one
 4. The relevant part of `docs/ROADMAP.md`
 5. The relevant entries in `docs/FILE_MAP.md`. It is an index; don't open every file it lists.

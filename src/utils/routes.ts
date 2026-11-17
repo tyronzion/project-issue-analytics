@@ -30,6 +30,7 @@ export const TAB_ROUTES: { tab: ActiveTab; path: string; title: string }[] = [
   { tab: 'settings-targets', path: '/settings/target-projects', title: 'Target Project List' },
   { tab: 'settings-merge', path: '/settings/merge-data', title: 'Merge Data' },
   { tab: 'settings-danger', path: '/settings/danger-zone', title: 'Danger Zone' },
+  { tab: 'docs', path: '/documentation', title: 'Documentation' },
 ];
 
 // Extra paths that should open an existing tab.
@@ -46,6 +47,8 @@ const PATH_ALIASES: Record<string, ActiveTab> = {
   '/size-calculator': 'tracker-size',
   '/app-access': 'tracker-access',
   '/tech-risk': 'tracker-techrisk',
+  '/docs': 'docs',
+  '/help': 'docs',
   '/privacy-impact-assessments': 'pia',
   // Old paths of pages that moved into Settings.
   '/jira': 'jira',

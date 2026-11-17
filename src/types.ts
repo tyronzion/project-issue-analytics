@@ -125,4 +125,6 @@ export type ActiveTab = 'dashboard' | 'seal' | 'charts' | 'issues' | 'formulas' 
   // Users & roles (admins only)
   | 'users'
   // Settings sections that have no page of their own elsewhere
-  | 'settings' | 'settings-targets' | 'settings-merge' | 'settings-danger';
+  | 'settings' | 'settings-targets' | 'settings-merge' | 'settings-danger'
+  // Feature documentation (docs/FEATURES.md)
+  | 'docs';

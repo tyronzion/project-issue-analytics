@@ -1,6 +1,6 @@
 # File Map
 
-This is an index. Open only the entries relevant to the task.
+This is an index. Open only the entries relevant to the task. For what each feature does (rather than which file does it), see `FEATURES.md`.
 
 ## Data flow
 ```
@@ -48,6 +48,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `src/components/FormulaEditorModal.tsx` | User-defined metric formulas | settings |
 | `src/components/JiraIntegrationPage.tsx` | Jira connection UI. Posts its config to `/api/jira/issues`. | storage (Jira profile) |
 | `src/components/UsersPage.tsx` | Users & Roles page (admins only): list, add by email, change role, remove | `/auth/users` |
+| `src/components/DocumentationPage.tsx`, `docs.css` | Documentation page (`/documentation`, everyone, D18): renders `docs/FEATURES.md` (imported `?raw`) with a small built-in Markdown subset parser (React elements, no raw HTML), contents with scroll highlight, and search by section | `docs/FEATURES.md` |
 | `src/components/MonitorFrame.tsx` | Embeds the `/monitor/*` pages as tabs | routes |
 | `src/components/tracker/*` | Assessment Tracker UI. `AssessmentTracker.jsx` is the shell; `api.js` is the `/api/tracker` client; `SyncPage.jsx` handles UberTicket links; `TargetCheck.jsx` compares the cycle with the Target Project List by app; `TimeReport.jsx` is the time-spent report (also exports `TimeByPriorityTable` for Monitoring and `PeriodComparison` for its own page); `tracker.css` holds the `at-*` styles. `SizeCalculator.jsx` is the stand-alone Size Calculator page (D14; rendered by App.tsx, not the shell). `TechRisk.jsx` is the stand-alone Tech Risk Analyzer page (D17; reads the architecture workbook with `xlsx`, one audit per repository, live check and .xlsx export). `AppAccess.jsx` is the stand-alone App Access page (D16; list + drawer, copy-only passwords; `accessApi` in `api.js`); the Editor links to it with `?app=<matchKey>`. `report/ReportDialog.jsx` (opened by Editor's "Download report": links and text, preview of seal and counts) and `report/renderReport.js` (print-ready HTML of both templates, escaped; seal badges from `public/seals/<seal>.png`, the team's official images) build the assessment report: a preview tab where the text can be edited (this download only), then Save as PDF or Download Word (`downloadWordReport`, an MHTML `.doc` with light-theme tokens resolved and PNG images). | `tracker/shared/logic.js` |
 

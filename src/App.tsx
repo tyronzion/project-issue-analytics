@@ -7,6 +7,7 @@ import {
   FolderKanban,
   Calculator,
   ShieldAlert,
+  BookOpen,
   KeyRound,
   Bot,
   Gauge,
@@ -69,6 +70,7 @@ import AssessmentTracker from './components/tracker/AssessmentTracker.jsx';
 import SizeCalculator from './components/tracker/SizeCalculator.jsx';
 import AppAccess from './components/tracker/AppAccess.jsx';
 import TechRisk from './components/tracker/TechRisk.jsx';
+import { DocumentationPage } from './components/DocumentationPage';
 import PrivacyImpact from './components/pia/PrivacyImpact.jsx';
 import { matchKey } from '../tracker/shared/logic.js';
 import { useSharedTargets, saveSharedTargets, appCount } from './utils/sharedTargets';
@@ -1061,6 +1063,18 @@ export default function App() {
                   <SettingsIcon className="w-4 h-4" />
                   <span>Settings</span>
                 </button>
+                <button
+                  id="tab-docs-btn"
+                  onClick={() => setActiveTab('docs')}
+                  className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    activeTab === 'docs'
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-900/20'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/50'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Documentation</span>
+                </button>
               </div>
 
 
@@ -1265,6 +1279,8 @@ export default function App() {
         )}
 
         {isMonitorTab(activeTab) && <MonitorFrame tab={activeTab} />}
+
+        {activeTab === 'docs' && <DocumentationPage />}
 
         {activeTab === 'tracker-size' && <SizeCalculator />}
         {activeTab === 'tracker-techrisk' && <TechRisk />}

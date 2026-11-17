@@ -197,3 +197,15 @@ Add a new entry only for decisions a future developer might otherwise reconsider
 - **Reason:** The team needs one place for the accounts and builds used in assessments. Copy-only, logged access keeps passwords off screens and screenshots without making the team's work harder.
 - **Impact:** `tracker/data/access.key` must be backed up with `tracker.db`; without it the saved passwords can't be decrypted. The assessment editor links to the app's App Access drawer. D8 is unchanged (tracker edits stay open to every user).
 
+
+
+### D17: Tech Risk Analyzer reads the architecture workbook in the browser and audits each repository separately
+- **Date:** 2026-11-17
+- **Decision:**
+  - New page **Assessment Tracker → Tech Risk Analyzer** (`/assessment-tracker/tech-risk`, everyone). Upload the application architecture workbook (.xlsx/.csv); for each app it shows the architecture, technologies out of support and versions with known CVEs, and exports an .xlsx report.
+  - **Every repository is its own audit.** A sheet with a "Used by App(s)" column gives one audit per row; without one, app columns are split by `repo-name: value` lines; if repositories can't be told apart they are audited together and the page says so. An app's risk is the worst of its repositories.
+  - **Client-only, nothing saved or sent to the server** (same as the Size Calculator, D14). Logic and the built-in data (lifecycles from endoflife.date, a curated CVE list from OSV.dev / NVD / vendor advisories, the Google Play target API rule) live in `tracker/shared/techRisk.js`, dated `KB_AS_OF`.
+  - "Check live sources" calls endoflife.date and api.osv.dev **from the browser**; if the network blocks them the built-in data stays in use. No server proxy.
+  - Severity: end of life 3+ years for a runtime/framework = Critical, otherwise High (databases and minor versions are capped at High); a CVE is "Affected" only with an exact version, otherwise "Possibly affected"; old fixes on major-only versions become an Info patch check.
+- **Reason:** The Data Security Team assesses apps across many repositories; mixing a frontend's and an API's findings hid which repo needed the fix.
+- **Impact:** Built-in data goes stale: refresh `tracker/shared/techRisk.js` (dates, CVEs, `KB_AS_OF`) when lifecycles or advisories change. Reuses the existing `xlsx` dependency for reading and export.

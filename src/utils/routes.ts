@@ -64,7 +64,8 @@ function normalizePath(pathname: string): string {
 }
 
 // Pages only admins can open (the server enforces the matching actions as well).
-export const ADMIN_TABS: ActiveTab[] = ['jira', 'tracker-sync', 'tracker-import', 'pia-matching', 'users', 'settings-merge', 'settings-danger'];
+// Jira Integration is open to users too since 2026-11-19 (their own token; D8 amended).
+export const ADMIN_TABS: ActiveTab[] = ['tracker-sync', 'tracker-import', 'pia-matching', 'users', 'settings-merge', 'settings-danger'];
 
 export function getTabFromPath(pathname: string): ActiveTab | undefined {
   const path = normalizePath(pathname);

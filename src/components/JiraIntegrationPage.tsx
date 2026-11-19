@@ -20,9 +20,11 @@ export interface JiraCredentials {
 interface JiraIntegrationPageProps {
   onSync: (credentials: JiraCredentials) => Promise<{ loaded: number; error?: string }>;
   isSyncing: boolean;
+  // Users can sync with their own token too (D8 amended): only the team's Jira, and only their own view changes.
+  isAdmin?: boolean;
 }
 
-export const JiraIntegrationPage: React.FC<JiraIntegrationPageProps> = ({ onSync, isSyncing }) => {
+export const JiraIntegrationPage: React.FC<JiraIntegrationPageProps> = ({ onSync, isSyncing, isAdmin = true }) => {
   const saved = useMemo(() => loadJiraIntegrationProfile(), []);
 
   const [baseUrl, setBaseUrl] = useState(saved.baseUrl);
@@ -121,6 +123,13 @@ export const JiraIntegrationPage: React.FC<JiraIntegrationPageProps> = ({ onSync
         <p className="text-xs text-slate-400 mt-1">
           Connect your Jira account in the frontend, then sync issues directly into this dashboard.
         </p>
+        {!isAdmin && (
+          <p className="text-xs text-slate-400 mt-2 max-w-3xl">
+            Use your own Jira email and <a className="underline" href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer">API token</a>.
+            Your sync updates the issues <b>in your own browser only</b>; the team's shared data is changed by admins. Only the team's Jira site can be used.
+            After this, the "Sync from Jira" button on Project Metrics uses your token.
+          </p>
+        )}
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
@@ -236,7 +245,7 @@ export const JiraIntegrationPage: React.FC<JiraIntegrationPageProps> = ({ onSync
             </button>
           </div>
 
-          <label className="flex items-center gap-2 text-xs text-slate-300">
+          {isAdmin && <label className="flex items-center gap-2 text-xs text-slate-300">
             <input
               type="checkbox"
               checked={autoSyncEnabled}
@@ -244,7 +253,7 @@ export const JiraIntegrationPage: React.FC<JiraIntegrationPageProps> = ({ onSync
               className="h-4 w-4 rounded border-slate-700 bg-slate-950"
             />
             Auto-sync every 15 minutes while the app is open
-          </label>
+          </label>}
 
           {status.message && (
             <div
@@ -259,8 +268,12 @@ export const JiraIntegrationPage: React.FC<JiraIntegrationPageProps> = ({ onSync
           )}
 
           <p className="text-[11px] text-slate-400">
-            Jira profile fields are auto-saved locally, including the token for background auto-sync.
+            Jira profile fields are auto-saved in this browser, including the token{isAdmin ? ' for background auto-sync' : ''}. On a shared computer, remove it when you're done.
           </p>
+          {apiToken && (
+            <button type="button" onClick={() => { setApiToken(''); setStatus({ type: 'success', message: 'Your API token was removed from this browser.' }); }}
+              className="text-xs underline text-slate-300">Remove my saved API token from this browser</button>
+          )}
         </form>
       </div>
     </section>

@@ -6,6 +6,7 @@ import path from 'path';
 import { Pool } from 'pg';
 import {defineConfig, loadEnv} from 'vite';
 import { createAuth, isBlockedPath, requireAdmin } from './auth/auth.js';
+import { allowedJiraHosts, checkUserJiraUrl, createSyncLimiter } from './auth/jiraAccess.js';
 import { createUserStore } from './auth/users.js';
 import { createMonitor } from './monitor/server/monitor.js';
 import { createTracker } from './tracker/server/tracker.js';
@@ -239,6 +240,8 @@ function isServerJiraConfigured(): boolean {
 // (initial load and the "Sync from Jira" button on Project Metrics). Concurrent requests share one fetch and a
 // result is reused for a short time, so repeated clicks can't hammer Jira with the server's token.
 const SERVER_JIRA_CACHE_MS = 60 * 1000;
+// Users' own-credential syncs (POST /api/jira/issues): 6 per person per minute.
+const userJiraLimiter = createSyncLimiter({ perMinute: 6 });
 let serverJiraCache: { at: number; rows: Record<string, any>[] } | null = null;
 let serverJiraInFlight: Promise<Record<string, any>[]> | null = null;
 
@@ -260,7 +263,7 @@ async function loadServerJiraRowsShared(): Promise<{ rows: Record<string, any>[]
   return { rows, fetchedAt: serverJiraCache?.at ?? Date.now() };
 }
 
-async function loadJiraRowsFromConfig(config: Partial<JiraApiConfig>): Promise<Record<string, any>[]> {
+async function loadJiraRowsFromConfig(config: Partial<JiraApiConfig>, { redirect = 'follow' }: { redirect?: 'follow' | 'error' } = {}): Promise<Record<string, any>[]> {
   const normalized = normalizeJiraConfig(config);
   const baseUrl = normalized.baseUrl;
   const email = normalized.email;
@@ -320,6 +323,7 @@ async function loadJiraRowsFromConfig(config: Partial<JiraApiConfig>): Promise<R
     const response = await fetch(searchUrl, {
       method: 'GET',
       headers,
+      redirect,
     });
 
     if (!response.ok) {
@@ -468,11 +472,30 @@ function jiraDatasourcePlugin() {
         try {
           const req = _req;
           const isPost = String(req?.method || 'GET').toUpperCase() === 'POST';
-          // Jira Integration (sync with your own Jira credentials) is a data change: admins only. GET only reads
-          // with the server's configured Jira (initial load, and the manual "Sync from Jira" any signed-in user can run).
-          if (isPost && !requireAdmin(req, res)) return;
+          // Sync with your own Jira credentials (Settings → Jira). Admins: any Jira URL. Users (D8 amended): only the
+          // team's Jira hosts (auth/jiraAccess.js), no redirects, rate limited; their result stays in their own browser
+          // (saving the shared dataset is still admin-only). GET reads with the server's configured Jira.
           if (isPost) {
-            const rows = await loadJiraRowsFromConfig(await readJsonBody(req));
+            if (!req.user) { requireAdmin(req, res); return; }
+            const body = await readJsonBody(req);
+            const isAdminUser = req.user.role === 'admin';
+            if (!isAdminUser) {
+              try {
+                body.baseUrl = checkUserJiraUrl(body?.baseUrl, allowedJiraHosts(process.env));
+              } catch (e: any) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ rows: [], source: 'jira', error: String(e?.message || e) }));
+                return;
+              }
+              if (!userJiraLimiter(String(req.user.email || req.user.name || 'user'))) {
+                res.statusCode = 429;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ rows: [], source: 'jira', error: 'Too many Jira syncs. Wait a minute and try again.' }));
+                return;
+              }
+            }
+            const rows = await loadJiraRowsFromConfig(body, { redirect: isAdminUser ? 'follow' : 'error' });
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ rows, source: 'jira' }));

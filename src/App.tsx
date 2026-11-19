@@ -779,12 +779,12 @@ export default function App() {
     };
   }, [handleSyncFromJira, isAdmin]);
 
-  // Manual "Sync from Jira" on Project Metrics, for every signed-in user. An admin with a saved Jira profile syncs
-  // with it (as on the Jira settings page). Everyone else reads the server's configured Jira (GET, no credentials
-  // from the browser). A user's result stays in their browser: only admins save the shared dataset (D8).
+  // Manual "Sync from Jira" on Project Metrics, for every signed-in user. Anyone with a saved Jira profile (Settings →
+  // Jira; users since 2026-11-19, team Jira only) syncs with it. Everyone else reads the server's configured Jira (GET,
+  // no credentials from the browser). A user's result stays in their browser: only admins save the shared dataset (D8).
   const handleManualJiraSync = useCallback(async (): Promise<{ loaded: number; error?: string }> => {
     const profile = loadJiraIntegrationProfile();
-    if (isAdmin && profile.baseUrl && profile.email && profile.apiToken && (profile.filterId || profile.jql)) {
+    if (profile.baseUrl && profile.email && profile.apiToken && (profile.filterId || profile.jql)) {
       return handleSyncFromJira({
         baseUrl: profile.baseUrl,
         email: profile.email,
@@ -1375,6 +1375,7 @@ export default function App() {
           <JiraIntegrationPage
             onSync={handleSyncFromJira}
             isSyncing={isJiraSyncing}
+            isAdmin={isAdmin}
           />
             )}
             {activeTab === 'settings-merge' && (

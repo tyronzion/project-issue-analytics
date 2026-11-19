@@ -28,7 +28,7 @@ Sessions live in server memory (HttpOnly cookie; 8 h idle, 24 h total), so **a r
 **Roles** (D8), enforced on the server:
 
 - **Admin**: everything, including saving the shared issue dataset, Jira settings, Import / Merge / Delete / Clear data, restoring backups, the UberTicket token, tracker Import Excel and UberTicket Sync, PIA changes, and Users & Roles.
-- **User**: everything else, including editing the tracker and App Access, and "Sync from Jira" (which updates only their own browser).
+- **User**: everything else, including editing the tracker and App Access, Settings → Jira Integration with their own API token (team Jira only), and "Sync from Jira" (both update only their own browser).
 - People in `AUTH_ADMIN_EMAILS` are permanent admins. New sign-ins start as User. The last admin can't be removed.
 
 **Users & Roles** (`/settings/users`, admin): list users, add someone ahead of their first sign-in, change roles, remove.
@@ -43,7 +43,7 @@ The **global filter bar** (date range, project, severity) applies to Project Met
 
 The landing page. Six KPI cards: **Found** (created in the date range), **Resolved** (Done, status changed in the range), **Outstanding** (not Done and not Cancelled), **Overdue** (security due date passed, not Done or Cancelled), **Risk Accepted**, and **Applications**. "How are these counted?" shows each formula. Below is the **Application Metrics by Project** table, with drill-down per project.
 
-**Sync from Jira** (every signed-in user): admins sync with their saved Jira profile and save to Postgres; users read the server's Jira credentials through `GET /api/jira/issues` (cached 60 s) and update only their own browser.
+**Sync from Jira** (every signed-in user): admins sync with their saved Jira profile and save to Postgres; users sync with their own token if they saved one on Settings → Jira (team Jira hosts only, 6 per minute), otherwise with the server's Jira credentials through `GET /api/jira/issues` (cached 60 s); either way only their own browser is updated.
 
 ### Dashboard (`/charts`)
 
@@ -178,7 +178,7 @@ Link PIA products whose names don't match a tracker app, hide apps, add apps, an
 | Application Settings | `/settings` | everyone | Where issue data is saved, date range defaults, settings backup / restore |
 | Formula Rules | `/settings/formulas` | everyone (per browser) | Status and severity rules behind the metrics |
 | Target Project List | `/settings/target-projects` | read: everyone; change: admin | The shared list of apps in scope and the "show only target projects" switch (D11) |
-| Jira Integration | `/settings/jira` | admin | Jira site, credentials, filter / JQL, field mapping |
+| Jira Integration | `/settings/jira` | everyone (users: own token, team Jira only, own view only) | Jira site, credentials, filter / JQL, field mapping |
 | Merge Data | `/settings/merge-data` | admin | Merge an Excel / CSV file into the dataset |
 | Import Excel | `/settings/import-excel` | admin | Tracker workbook import |
 | UberTicket Sync | `/settings/uberticket-sync` | admin | Tracker sync and ticket links |
@@ -201,7 +201,7 @@ This page, in the sidebar under Settings, for everyone. It shows `docs/FEATURES.
 | UberTicket token | `monitor/data/token.enc` + `secret.key` | Yes (or paste the token again) |
 | Settings, secrets | `.env.local` (never committed) | Yes, securely |
 
-Main `.env.local` settings: `AUTH_*` (sign-in), `APP_HOSTNAMES` and `TRUST_PROXY` (reverse proxy, D9), `JIRA_*` (Jira base URL, email, API token, filter or JQL, field ids), `DB_*` (Postgres), and optional monitor settings (`DPSA_TEMPLATES`, `FULL_TEMPLATE`, `ROE_TEMPLATE`, `PIA_TEMPLATE`, `SLA_*_DAYS`, `MTTR_TARGET_DAYS`). `.env.example` lists them with comments.
+Main `.env.local` settings: `AUTH_*` (sign-in), `APP_HOSTNAMES` and `TRUST_PROXY` (reverse proxy, D9), `JIRA_*` (Jira base URL, email, API token, filter or JQL, field ids; `JIRA_ALLOWED_HOSTS` limits which Jira sites users may sync with), `DB_*` (Postgres), and optional monitor settings (`DPSA_TEMPLATES`, `FULL_TEMPLATE`, `ROE_TEMPLATE`, `PIA_TEMPLATE`, `SLA_*_DAYS`, `MTTR_TARGET_DAYS`). `.env.example` lists them with comments.
 
 ## Running, deploying and moving the app
 

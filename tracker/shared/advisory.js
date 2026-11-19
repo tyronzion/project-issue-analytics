@@ -37,7 +37,11 @@ export function inventoryTerms(apps) {
 
 const FIX_BEFORE = /\b(?:before|prior to|earlier than|older than|below|lower than|up to but not including)\s*$|<\s*$/i;
 const FIX_WORDS = /\b(fix|fixed|fixes|patched|patch|upgrade|update|resolved|remediat|addressed|safe version|non-vulnerable|first fixed)/i;
-const NOT_FIX = /\b(from|since|starting|introduced|affected from|first affected|as of|through)\s*$/i;
+const NOT_FIX = /\b(from|since|starting|introduced|affected from|first affected|as of|through|present since)\s*v?$/i;
+// Numbers that are not product versions: protocol and score versions ("TLS 1.3", "CVSS 3.1 8.1"), kernels.
+const NOT_VERSION = /(?:\b(?:TLS|SSL|HTTP|QUIC|IPv|SMB|OAuth|SAML|kernel|Linux)\s*v?|CVSS[^)\n]{0,20})$/i;
+// "1.13.0 and later" names the first affected release, unless a fix word comes right before it.
+const AND_LATER = /^\s*(?:and|or)\s+(?:later|newer|above|higher|onwards)\b/i;
 
 // Versions written after a "before / fixed in" phrase in a line, e.g. "before 1.30.7 or 1.31.9".
 function fixedVersionsIn(line, fixContext) {
@@ -46,7 +50,9 @@ function fixedVersionsIn(line, fixContext) {
   let m;
   while ((m = re.exec(line))) {
     const pre = line.slice(Math.max(0, m.index - 40), m.index);
-    if (NOT_FIX.test(pre)) continue;
+    if (NOT_FIX.test(pre) || NOT_VERSION.test(pre)) continue;
+    const explicitFix = FIX_BEFORE.test(pre) || /\b(fixed|patched|resolved) in\s*$|\b(upgrade|update) to\s*$/i.test(pre);
+    if (!explicitFix && AND_LATER.test(line.slice(m.index + m[0].length))) continue;
     // A version joined to an earlier fixed one ("1.30.7 or 1.31.9", "1.30.7, 1.31.9") is fixed too.
     const joined = out.length && /^\s*(?:,|or|and|\/|or later,?|and later,?)\s*$/i.test(line.slice(out[out.length - 1].end, m.index));
     if (FIX_BEFORE.test(pre) || fixContext || joined || /\b(fixed|patched|resolved) in\s*$/i.test(pre) || /\bupgrade to\s*$|\bupdate to\s*$/i.test(pre)) {

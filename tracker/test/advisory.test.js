@@ -139,3 +139,16 @@ test('fixed-version rules per release branch', () => {
   assert.equal(fixVerdict('1.30', fx).state, 'possible');
   assert.equal(findProduct('image nginx:stable', { match: ['nginx'] }).floating, 'stable');
 });
+
+test('protocol, score, kernel and "and later" versions are not taken as fixes', () => {
+  const text = `Same-release fix: CVE-2026-118899
+The most serious, CVE-2026-118899, is an infinite loop while reading a request body over TLS 1.3 that lets an attacker stall a worker process, in nginx 1.13.0 and later. nginx.org rates it major and F5 rates it High (CVSS 3.1 7.5).
+Xint also reports a use-after-free in the Linux kernel's SCTP send path, present since v4.15, which it chained with CVE-2026-123007 to gain root on the host, including from nginx in a Docker container.
+Fixed versions
+nginx 1.30.7 or 1.31.9. Upgrade to 1.31.9 or later.`;
+  const a = extractAdvisory(text, ['Nginx', 'Docker'], { title: 'nginx2root' });
+  assert.deepEqual(a.products.find((p) => p.name === 'Nginx').fixed, ['1.30.7', '1.31.9']);
+  const docker = a.products.find((p) => p.name === 'Docker');
+  assert.deepEqual(docker.fixed, []);
+  assert.equal(docker.include, false);
+});

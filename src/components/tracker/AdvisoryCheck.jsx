@@ -1,10 +1,33 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link2, Search, Plus, X, Info, ExternalLink } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { Link2, Search, Plus, X, Info, ExternalLink, Download } from 'lucide-react';
 import { api } from './api.js';
 import { inventoryTerms, extractAdvisory, checkApps, ADV_SEVERITIES } from '../../../tracker/shared/advisory.js';
 
 const STATE_LABEL = { affected: 'Affected', possible: 'Possibly affected', patched: 'Not affected (patched)' };
 const splitList = (v) => String(v).split(',').map((x) => x.trim()).filter(Boolean);
+
+// Excel file of the apps that need action: Affected and Possibly affected rows, plus what the check was based on.
+function exportAffected(adv, rows) {
+  const need = rows.filter((r) => r.state !== 'patched');
+  const wb = XLSX.utils.book_new();
+  const list = [['Application', 'Repository', 'Result', 'Severity', 'Product', 'Version found', 'Fix', 'Why', 'Found in the workbook', 'Hosting'],
+    ...need.map((r) => [r.app, r.repo, STATE_LABEL[r.state], r.severity, r.product, r.version, r.fix, r.why, r.snippet, r.hosting])];
+  const ws = XLSX.utils.aoa_to_sheet(list);
+  ws['!cols'] = [26, 28, 20, 10, 16, 12, 18, 22, 60, 36].map((wch) => ({ wch }));
+  ws['!autofilter'] = { ref: `A1:J${list.length}` };
+  XLSX.utils.book_append_sheet(wb, ws, 'Affected apps');
+  const chosen = adv.products.filter((p) => p.include && p.name);
+  const about = [['Advisory', adv.title], ['Link', adv.url || ''], ['Severity', adv.severity], ['Source', adv.source || ''], ['Exported', new Date().toLocaleString()],
+    ['Affected apps', new Set(need.filter((r) => r.state === 'affected').map((r) => r.app)).size], ['Possibly affected apps', new Set(need.filter((r) => r.state === 'possible').map((r) => r.app)).size],
+    [], ['Product checked', 'Names looked for', 'Fixed in'], ...chosen.map((p) => [p.name, p.match.join(', '), p.fixed.join(', ')]),
+    [], ['CVE', 'Where the advisory mentions it'], ...adv.cves.map((c) => [c.id, c.line])];
+  const ws2 = XLSX.utils.aoa_to_sheet(about);
+  ws2['!cols'] = [{ wch: 24 }, { wch: 90 }, { wch: 24 }];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Advisory');
+  const name = String(adv.title || 'Advisory').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+  XLSX.writeFile(wb, `${name} - affected apps.xlsx`);
+}
 
 /**
  * Advisory check (D19): paste the link to one vulnerability write-up; the server reads the page (SSRF-guarded), the
@@ -72,6 +95,10 @@ export default function AdvisoryCheck({ apps, SevTag, onResult }) {
   const using = new Set(rows.map((r) => r.app));
   const chosen = (adv?.products || []).filter((p) => p.include && p.name);
   const safeLink = adv?.url && /^https:\/\//i.test(adv.url) ? adv.url : '';
+  // Products with a fixed version (or ticked) first; other workbook words the advisory happens to use are folded away.
+  const shown = (adv?.products || []).filter((p) => p.include || p.fixed.length || !p.mentions);
+  const others = (adv?.products || []).filter((p) => !shown.includes(p));
+  const needAction = rows.filter((r) => r.state !== 'patched').length;
 
   return (
     <div className="p-3 space-y-3">
@@ -110,7 +137,7 @@ export default function AdvisoryCheck({ apps, SevTag, onResult }) {
               <table className="cs-data-table">
                 <thead><tr><th>Check</th><th>Product</th><th>Names to look for in the workbook</th><th>Fixed in (comma separated)</th><th>Where the advisory says so</th><th /></tr></thead>
                 <tbody>
-                  {adv.products.map((p, i) => (
+                  {shown.map((p) => { const i = adv.products.indexOf(p); return (
                     <tr key={p.id}>
                       <td><input type="checkbox" checked={!!p.include} onChange={(e) => update(i, { include: e.target.checked })} aria-label={`Check ${p.name}`} /></td>
                       <td><input className="at-input w-36" value={p.name} onChange={(e) => update(i, { name: e.target.value, match: p.match.length ? p.match : [e.target.value.toLowerCase()] })} aria-label="Product" /></td>
@@ -119,10 +146,23 @@ export default function AdvisoryCheck({ apps, SevTag, onResult }) {
                       <td className="text-xs at-muted">{p.evidence || (p.mentions ? `Named ${p.mentions}×, no fixed version found` : '—')}</td>
                       <td><button type="button" className="at-btn-ghost" onClick={() => publish({ ...adv, products: adv.products.filter((_, k) => k !== i) })} title="Remove"><X className="w-3.5 h-3.5" aria-hidden /></button></td>
                     </tr>
-                  ))}
+                  ); })}
                 </tbody>
               </table>
             </div>
+            {others.length > 0 && (
+              <details className="text-xs">
+                <summary className="cursor-pointer font-bold at-link">Also named in the advisory, without a fixed version ({others.length})</summary>
+                <p className="mt-1 at-muted">Words from your workbook that the advisory also uses. Usually not the affected product; tick one to check it too.</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {others.map((p) => (
+                    <label key={p.id} className="at-check-option" title={p.evidence || ''}>
+                      <input type="checkbox" className="w-4 h-4" checked={false} onChange={() => update(adv.products.indexOf(p), { include: true })} /> {p.name} <span className="at-soft">({p.mentions}×)</span>
+                    </label>
+                  ))}
+                </div>
+              </details>
+            )}
             <button type="button" className="at-btn-ghost" onClick={() => publish({ ...adv, products: [...adv.products, { name: '', match: [], fixed: [], include: true, mentions: 0, evidence: '' }] })}>
               <Plus className="w-3.5 h-3.5" aria-hidden /> Add product
             </button>
@@ -140,6 +180,12 @@ export default function AdvisoryCheck({ apps, SevTag, onResult }) {
             ))}
           </section>
 
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="at-section-title" style={{ marginBottom: 0 }}>Apps that use it ({using.size})</span>
+            <button type="button" className="at-btn ml-auto" onClick={() => exportAffected(adv, rows)} disabled={!needAction} title={needAction ? 'Affected and possibly affected apps, with the advisory details' : 'No affected or possibly affected apps'}>
+              <Download className="w-3.5 h-3.5" aria-hidden /> Export affected apps (.xlsx)
+            </button>
+          </div>
           <div className="cs-table-shell overflow-x-auto">
             <table className="cs-data-table">
               <thead><tr><th>Application</th><th>Repository</th><th>Result</th><th>Found in the workbook</th><th>Fix</th><th>Hosting</th></tr></thead>

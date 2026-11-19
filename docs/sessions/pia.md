@@ -1,5 +1,7 @@
 # Plan: Privacy Impact Assessment (PIA) module
 
+> **Progress (2026-10-30):** phases 2 and 3 are built and verified locally (not pushed), plus a feature the user added: the **yearly reassessment** checks what changed in the repos since the last assessment and downloads a new Word PIA with the old answers carried over (D15). Differences from this plan: GitHub settings are on PIA Matching (no separate `/pia/settings` page); scans and decisions are in the app drawer; coverage tables are `coverage` / `coverage_history`; "own PIA" wins whenever the app has its own personal-data schema, even for an API (user rule); the answers are read from the policy on demand and never stored. Still open: create the GitHub App, check the first real document's answer matching.
+>
 > **Progress (2026-10-15):** phase 1 (PIA monitor) is built and verified locally; not deployed. Phases 2 (GitHub scan) and 3 (coverage decisions) are not started. As built, phase 1 differs from this plan as follows. It reads `GET /v1/policies/search` only (no versions call; each version is its own policy in the list). Coverage tables were left for phase 3. Admins can hide an app with a reason. App detail is a drawer on the overview, not its own URL.
 
 _Status: **finalised with the user, 2026-10-15**; ready for approval. No code written. §4 updated from the real NEO PIA and the Policies list in UberTicket (template 379488)._

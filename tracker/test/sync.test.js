@@ -187,6 +187,84 @@ test('unlinking a rejected ticket keeps a time spent entered by hand', async () 
   assert.equal(row(db, 'MyStaff', '2nd Half').time_spent, 720);
 });
 
+// Started in the workbook (1/12, deliverables In Progress), like Cloudstaff Mobile iOS in 2026 Q4.
+const startProgress = (db, project, period) => db.prepare(`UPDATE assessments SET checks = '{"testing":true}', dependabots = 'In Progress',
+  code_review = 'In Progress', report = 'In Progress', actual_start = '2026-10-08' WHERE project = ? AND period = ?`).run(project, period);
+const NOW = ms('2026-10-21');
+const q4 = (o) => ticket({ quarter: 'Q4', createdAt: ms('2026-10-08'), ...o });
+
+test("this quarter's rejected ticket and no other ticket -> back to Not Started, once", async () => {
+  const db = await setup();
+  startProgress(db, 'MyStaff', '2nd Half');
+  const res = syncTickets(db, { full: [q4({ key: 'UB-7', product: 'MyStaff', state: 'rejected' })], roe: [] }, { now: NOW });
+  assert.equal(res.reset, 1);
+  let r = row(db, 'MyStaff', '2nd Half');
+  assert.deepEqual([r.checks, r.dependabots, r.code_review, r.report, r.actual_start], ['{}', 'Not Started', 'Not Started', 'Not Started', null]);
+  assert.equal(r.security_tester, 'Old Tester');
+  assert.equal(enrich({ checks: {}, ...r, ticketState: r.ticket_state }).status, 'Not Started');
+  // Work restarted by hand: the same rejected ticket doesn't reset it again.
+  startProgress(db, 'MyStaff', '2nd Half');
+  assert.equal(syncTickets(db, { full: [q4({ key: 'UB-7', product: 'MyStaff', state: 'rejected' })], roe: [] }, { now: NOW }).reset, 0);
+  assert.equal(row(db, 'MyStaff', '2nd Half').dependabots, 'In Progress');
+});
+
+test('a rejected ticket is not a reset when the app has another ticket this period, or the test is finished', async () => {
+  const db = await setup();
+  startProgress(db, 'MyStaff', '2nd Half');
+  syncTickets(db, { full: [q4({ key: 'UB-7', product: 'MyStaff', state: 'rejected' }), q4({ key: 'UB-8', product: 'MyStaff', state: 'resolved', resolvedAt: ms('2026-10-15') })], roe: [] }, { now: NOW });
+  assert.equal(row(db, 'MyStaff', '2nd Half').dependabots, 'In Progress');
+  assert.equal(row(db, 'MyStaff', '2nd Half').ticket_key, 'UB-8');
+  // Finished in the workbook (actual end recorded): kept.
+  startProgress(db, 'Pact-X', '2nd Half');
+  db.prepare("UPDATE assessments SET actual_end = '2026-10-12' WHERE project = 'Pact-X'").run();
+  assert.equal(syncTickets(db, { full: [q4({ key: 'UB-9', product: 'Pact-X', state: 'rejected' })], roe: [] }, { now: NOW }).reset, 0);
+});
+
+test('a rejected ticket from an earlier quarter does not reset', async () => {
+  const db = await setup();
+  startProgress(db, 'MyStaff', '2nd Half');
+  syncTickets(db, { full: [ticket({ key: 'UB-7', product: 'MyStaff', state: 'rejected' })], roe: [] }, { now: NOW });
+  assert.equal(row(db, 'MyStaff', '2nd Half').dependabots, 'In Progress');
+});
+
+test('a linked ticket rejected later this quarter: unlinked and Not Started', async () => {
+  const db = await setup();
+  startProgress(db, 'MyStaff', '2nd Half');
+  syncTickets(db, { full: [q4({ key: 'UB-7', product: 'MyStaff' })], roe: [] }, { now: NOW });
+  assert.equal(row(db, 'MyStaff', '2nd Half').ticket_key, 'UB-7');
+  syncTickets(db, { full: [q4({ key: 'UB-7', product: 'MyStaff', state: 'rejected' })], roe: [] }, { now: NOW });
+  const r = row(db, 'MyStaff', '2nd Half');
+  assert.equal(r.ticket_key, null);
+  assert.equal(r.checks, '{}');
+  assert.equal(r.report, 'Not Started');
+});
+
+test('a linked ticket deleted from UberTicket: unlinked and Not Started, only after a complete fetch', async () => {
+  const db = await setup();
+  startProgress(db, 'MyStaff', '2nd Half');
+  const other = ticket({ key: 'UB-2', product: 'Buzz', quarter: 'Q1', createdAt: ms('2026-02-01') });
+  syncTickets(db, { full: [q4({ key: 'UB-7', product: 'MyStaff' }), other], roe: [] }, { now: NOW, complete: true });
+  // Not fetched yet (e.g. right after start-up): nothing is taken for deleted.
+  syncTickets(db, { full: [], roe: [] }, { now: NOW });
+  syncTickets(db, { full: [other], roe: [] }, { now: NOW });
+  assert.equal(row(db, 'MyStaff', '2nd Half').ticket_key, 'UB-7');
+  const res = syncTickets(db, { full: [other], roe: [] }, { now: NOW, complete: true });
+  const r = row(db, 'MyStaff', '2nd Half');
+  assert.equal(res.reset, 1);
+  assert.equal(r.ticket_key, null);
+  assert.equal(r.ticket_state, null);
+  assert.equal(r.dependabots, 'Not Started');
+  const h = db.prepare("SELECT new_value FROM history WHERE assessment_id = ? AND field IN ('ticket_key', 'progress_reset') ORDER BY id").all(r.id).map((x) => x.new_value);
+  assert.deepEqual(h.slice(-2), ['UB-7 deleted: unlinked', 'Not Started: UB-7 deleted']);
+});
+
+test('a linked ticket older than the fetched range is not taken for deleted', async () => {
+  const db = await setup();
+  syncTickets(db, { full: [ticket({ key: 'UB-7', product: 'MyStaff' })], roe: [] }, { now: NOW });
+  syncTickets(db, { full: [q4({ key: 'UB-8', product: 'Buzz' })], roe: [] }, { now: NOW, complete: true });
+  assert.equal(row(db, 'MyStaff', '2nd Half').ticket_key, 'UB-7');
+});
+
 test('priority follows the UberTicket priority; "Normal" is Medium; no priority keeps the tracker value', async () => {
   const db = await setup();
   syncTickets(db, { full: [ticket({ product: 'MyStaff', priority: 'medium', rawPriority: 'Normal' })], roe: [] });

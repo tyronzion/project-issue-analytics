@@ -1,4 +1,5 @@
-// Read-only client for the UberTicket API (GET /tickets, GET /tickets/{id}/activities and GET /policies/search only).
+// Read-only client for the UberTicket API (GET /tickets, GET /tickets/{id}/activities, GET /policies/search and
+// GET /policies/{uuid} only).
 
 export class AuthError extends Error {}
 
@@ -52,6 +53,13 @@ export async function fetchTemplatePolicies({ api, token, templateIds, maxPages,
     if (rows.length === 0 || rows.length < limit) break;
   }
   return all;
+}
+
+// One policy with its form answers (used on demand by the PIA reassessment; the answers are not stored).
+export async function fetchPolicy({ api, token, id }) {
+  if (!/^[A-Za-z0-9-]{1,64}$/.test(String(id || ''))) throw new Error('Invalid policy id');
+  const body = await getJson(`${api}/policies/${encodeURIComponent(id)}`, token);
+  return body?.data && typeof body.data === 'object' && !Array.isArray(body.data) ? body.data : body;
 }
 
 async function getJson(url, token) {

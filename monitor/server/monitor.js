@@ -3,11 +3,11 @@ import { timingSafeEqual } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { makeCalendar } from './businessTime.js';
-import { fetchTemplateTickets, fetchTemplatePolicies, fetchActivitySummary, mapLimit, AuthError } from './uberticket.js';
+import { fetchTemplateTickets, fetchTemplatePolicies, fetchPolicy, fetchActivitySummary, mapLimit, AuthError } from './uberticket.js';
 import { normalizeTicket } from './metrics.js';
 import { normalizeFull, FULL_FIELDS, ROE_FIELDS } from './fullAssessment.js';
 import { normalizePolicy } from './piaPolicy.js';
-import { demoTickets, demoFullTickets, demoRoeTickets, demoPiaPolicies } from './demoData.js';
+import { demoTickets, demoFullTickets, demoRoeTickets, demoPiaPolicies, demoPiaPolicyDetail } from './demoData.js';
 import { phHolidayList, phHolidayYears } from './phHolidays.js';
 import { makeTokenStore, tokenExpiry } from './tokenStore.js';
 
@@ -377,6 +377,12 @@ export async function createMonitor({ root, env = process.env, envFile = path.jo
     },
     // Normalized PIA policies from the last refresh, and how that fetch went.
     piaPolicies: () => pia.policies,
+    // One [PIA01] policy with its answers, fetched when an admin builds a reassessment document. Not cached or stored.
+    async fetchPiaPolicy(id) {
+      if (config.demo) return demoPiaPolicyDetail(id, config.pia.templateId);
+      if (!token) throw new AuthError('No UberTicket token saved yet. Open Settings and paste one.');
+      return fetchPolicy({ api: config.api, token, id });
+    },
     piaStatus: () => ({ enabled: config.pia.enabled, templateId: config.pia.templateId, fetchedAt: pia.fetchedAt, error: pia.error, loading: state.loading, uberticketError: state.error, errorKind: state.errorKind, demo: config.demo }),
     status: () => ({ fetchedAt: state.fetchedAt, loading: state.loading, error: state.error, errorKind: state.errorKind, demo: config.demo }),
     onRefresh(fn) {

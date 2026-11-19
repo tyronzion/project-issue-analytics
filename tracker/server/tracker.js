@@ -51,8 +51,9 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
     if (!db || !getTickets) return lastSync;
     try {
       const tickets = getTickets();
-      lastSync = syncTickets(db, tickets, { offsetHours });
-      log(`UberTicket sync: ${lastSync.tickets} tickets, ${lastSync.matchedApps} apps matched, ${lastSync.updated} updated, ${lastSync.unmatched.length} unmatched`);
+      // complete: the monitor has a successful fetch, so a linked ticket missing from it was deleted.
+      lastSync = syncTickets(db, tickets, { offsetHours, complete: !!ticketStatus()?.fetchedAt });
+      log(`UberTicket sync: ${lastSync.tickets} tickets, ${lastSync.matchedApps} apps matched, ${lastSync.updated} updated, ${lastSync.reset} reset to Not Started, ${lastSync.unmatched.length} unmatched`);
       // New Rules of Engagement apps join the shared Target Project List.
       try {
         lastSync.targetsAdded = addTargetsFromRoe(db, tickets?.roe || []);

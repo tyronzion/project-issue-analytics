@@ -1,15 +1,18 @@
 // Stores the UberTicket bearer token encrypted at rest (AES-256-GCM).
 //   data/secret.key  32 random bytes, created on first save, readable only by this user (0600)
 //   data/token.enc   { iv, tag, data, savedAt }, also 0600
+// makeTokenStore(dir, { name }) stores a different secret in the same way (data/<name>.enc, same secret.key),
+// e.g. the PIA module's GitHub App private key (pia/data/github.enc).
 // This keeps the token out of plain-text config files, logs and copies of the project folder
 // (without the key). Anyone who can read both files as this user can still decrypt it.
 import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { readFile, writeFile, mkdir, rm, chmod } from 'node:fs/promises';
 import path from 'node:path';
 
-export function makeTokenStore(dir) {
+export function makeTokenStore(dir, { name = 'token' } = {}) {
+  if (!/^[a-z][a-z0-9-]{0,30}$/.test(name)) throw new Error('Invalid secret name');
   const keyFile = path.join(dir, 'secret.key');
-  const tokenFile = path.join(dir, 'token.enc');
+  const tokenFile = path.join(dir, `${name}.enc`);
 
   async function key() {
     try {

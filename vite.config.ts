@@ -590,8 +590,13 @@ function uberticketMonitorPlugin() {
         getPolicies: () => monitor.piaPolicies(),
         getTrackerApps: () => tracker.apps(),
         uberticket: () => monitor.piaStatus(),
+        // The previous PIA's answers, read on demand for the reassessment document (never stored).
+        fetchPolicy: (id: string) => monitor.fetchPiaPolicy(id),
+        tokensCss: path.resolve(__dirname, 'Cloudstaff Design System', 'css', 'tokens.css'),
+        // DEMO=1: synthetic demo-org repositories instead of the GitHub App.
+        demo: process.env.DEMO === '1',
         offsetHours: monitor.config.business.offsetHours,
-        // Every PIA change (reassessments, apps, links, settings) is admin-only.
+        // Every PIA change (reassessments, apps, links, settings, GitHub, scans, coverage) is admin-only.
         isAdmin: (req: any) => req.user?.role === 'admin',
       });
       server.middlewares.use('/api/pia', pia.app);

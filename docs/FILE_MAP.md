@@ -60,7 +60,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `monitor/server/tokenStore.js` | **Security-sensitive.** AES-256-GCM token storage (`data/token.enc` and `secret.key`, mode 0600) | monitor |
 | `monitor/server/businessTime.js`, `phHolidays.js` | Business-hours maths in Manila time, with PH holidays | metrics, fullAssessment |
 | `monitor/server/metrics.js`, `fullAssessment.js` | DPSA MTTR, priority SLA, times tested | monitor |
-| `monitor/server/piaPolicy.js` | `[PIA01]` policy (template 379488) → `{ product, version, state, approvedAt, … }`. Keeps only fields 18890/18891/37936/37937; questionnaire answers are dropped. | monitor (`piaPolicies()`), pia |
+| `monitor/server/piaPolicy.js` | `[PIA01]` policy (template 379488) → `{ product, version, state, approvedAt, … }`. Keeps only fields 18890/18891/37936/37937; questionnaire answers are dropped. (`monitor.fetchPiaPolicy(id)` reads one policy's answers on demand for the reassessment document; not stored.) | monitor (`piaPolicies()`), pia |
 | `monitor/server/server.js` | Standalone mode (`npm run monitor`, 127.0.0.1:3010) | monitor |
 | `monitor/public/*.html`, `common.js` | Monitor pages (`assessment.html` serves both FullAssessment and RoE) | `/monitor/api/*` |
 
@@ -90,9 +90,18 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 ## Privacy Impact Assessments (`pia/`, D10)
 | File | Purpose | Relationships |
 |---|---|---|
-| `pia/server/pia.js` | Express router at `/api/pia`: apps + status, app detail, admin-only reassessments / hide / add app / links / settings / sync. Fails closed without `isAdmin`. Report links must be https. | db, sync, rules; wired in `vite.config.ts` |
+| `pia/server/pia.js` | Express router at `/api/pia`: apps + status, app detail, admin-only reassessments / hide / add app / links / settings / sync, GitHub App settings, repos, scans, coverage decisions, reassessment check and Word document (D15). Fails closed without `isAdmin`. Report links must be https. | db, sync, rules, github, repoScan, recommend, policyAnswers, reassessDoc, docx; wired in `vite.config.ts` |
+| `pia/server/github.js` | **Read-only GitHub client** (GitHub App JWT via node:crypto, installation token in memory, GET only to api.github.com, org allowlist, repo-name checks); `parseRepo`, `reposFromText` | pia.js, repoScan |
+| `pia/server/scanner.js` | **Pure repo scanner**: which files to read, personal/sensitive field dictionary (`RULESET_VERSION`), field extraction per framework, dependencies → services / drivers / controls, UI vs API, DB names and hosts from config | repoScan, recommend |
+| `pia/server/repoScan.js` | Runs the scanner on a repo (`scanRepo`) and on what changed since a date (`changesSince`, `diffScans`); limits | pia.js |
+| `pia/server/recommend.js` | **Own PIA / covered / not required / undecided** rules and related-app detection (hosts, package/repo names, shared DB) | pia.js |
+| `pia/server/policyAnswers.js` | Matches an UberTicket PIA policy's `{label, value}` answers to the template questions (in memory only) | pia.js |
+| `pia/server/reassessDoc.js` + `docx.js` | Reassessment document content (cover with details and result, what changed, reviewer checklist, template sections I–VIII, sign-off) and a dependency-free .docx writer in the Cloudstaff template layout (logo header, offices / cloudstaff.com / page footer), colours resolved from `tokens.css` | pia.js |
+| `pia/assets/*.png` | PNG renders of the design system's Cloudstaff logo and emblem, for the Word document header | docx.js |
+| `pia/server/demoGithub.js` | DEMO=1 synthetic `demo-org/*` repositories | pia.js |
+| `pia/shared/questions.js` | The PIA template questions (I–VI) with the repository evidence that can change each answer; `changedEvidence`, `questionStatus` | server and UI |
 | `pia/server/sync.js` | Tracker apps + PIA policies → app list (matchKey, `pia_links`); rebuilds the policy cache; never touches admin-entered rows | `tracker/shared/logic.js` `matchKey`, tracker `apps()` |
 | `pia/server/db.js` | Schema of `pia/data/pia.db` (reuses `tracker/server/sqlite.js`) and `*ToApi` mappers | pia, sync |
 | `pia/shared/rules.js` | **Reassessment rules** (calendar days, Manila): due = last assessed + 12 months; never / initial / current / due-soon / overdue; in-progress badge | server and UI |
-| `pia/test/*.test.js` | Rules, sync, routes (roles, validation) | `npm run test:pia` |
-| `src/components/pia/*` | UI: `PrivacyImpact.jsx` (shell + overview), `AppDetail.jsx` (drawer, record reassessment), `MatchingPage.jsx`, `badges.jsx`, `api.js`, `pia.css` (status colours from tokens; reuses `tracker.css`) | `/api/pia` |
+| `pia/test/*.test.js` | Rules, sync, routes (roles, validation), scanner + recommendation, GitHub client, scan / coverage / reassessment routes and .docx | `npm run test:pia` |
+| `src/components/pia/*` | UI: `PrivacyImpact.jsx` (shell + overview), `AppDetail.jsx` (drawer, record reassessment), `RepoScanPanel.jsx` (repos, scan, recommendation, decision), `ReassessmentPanel.jsx` (check for changes, confirmations, Word download), `MatchingPage.jsx` + `GithubSettings.jsx`, `badges.jsx`, `api.js`, `pia.css` (status colours from tokens; reuses `tracker.css`) | `/api/pia` |

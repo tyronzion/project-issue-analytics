@@ -3,11 +3,14 @@ import { X, ExternalLink, FileCheck, Trash2, EyeOff, Eye } from 'lucide-react';
 import { dayOf } from '../../../pia/shared/rules.js';
 import { fmtDate } from '../tracker/ui.jsx';
 import { piaApi } from './api.js';
-import { StatusBadge, InProgressBadge, DaysLeft } from './badges.jsx';
+import { StatusBadge, InProgressBadge, DaysLeft, CoverageBadge } from './badges.jsx';
+import RepoScanPanel from './RepoScanPanel.jsx';
+import ReassessmentPanel from './ReassessmentPanel.jsx';
 
 const POLICY_STATE = { approved: 'Approved', open: 'Under review', rejected: 'Rejected / removed (not counted)' };
 
-// One application: its PIA policies, recorded reassessments and change history. Admins record reassessments here.
+// One application: whether it needs a PIA (repository scan + admin decision), the yearly reassessment check and
+// document, its PIA policies, recorded reassessments and change history. Admins record reassessments here.
 export default function AppDetail({ id, isAdmin, onClose, onChanged }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -63,6 +66,7 @@ export default function AppDetail({ id, isAdmin, onClose, onChanged }) {
               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
                 <StatusBadge app={app} />
                 <InProgressBadge app={app} />
+                <CoverageBadge coverage={data.coverage && { ...data.coverage, needsReview: data.coverage.needsReview }} />
                 {app.dueOn && <span className="at-muted">Next due {fmtDate(app.dueOn)} · <DaysLeft app={app} /></span>}
               </div>
             )}
@@ -84,6 +88,10 @@ export default function AppDetail({ id, isAdmin, onClose, onChanged }) {
               <div><span className="at-label">Repositories (from the tracker)</span><span className="whitespace-pre-wrap break-all font-mono text-xs">{app.repositories || '—'}</span></div>
             </section>
           )}
+
+          {app && <RepoScanPanel id={id} data={data} isAdmin={isAdmin} busy={busy} act={act} />}
+
+          {app && <ReassessmentPanel id={id} data={data} isAdmin={isAdmin} busy={busy} act={act} onRecord={() => setForm({ assessedOn: dayOf(Date.now()), reportUrl: '', notes: data.lastCheck ? `Reassessment check #${data.lastCheck.id}: ${data.lastCheck.material ? 'changes found and reviewed' : 'no material change'}.` : '' })} />}
 
           <section>
             <div className="mb-2 flex items-center gap-2">

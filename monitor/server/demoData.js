@@ -190,3 +190,40 @@ export function demoPiaPolicies(templateId, now = Date.now()) {
     };
   });
 }
+
+// One demo PIA policy with synthetic questionnaire answers (the shape GET /v1/policies/{uuid} returns: form values as
+// { id, label, value } under data.public / data.private). Used by the PIA reassessment document in demo mode.
+export function demoPiaPolicyDetail(id, templateId, now = Date.now()) {
+  const base = demoPiaPolicies(templateId, now).find((p) => p.id === id);
+  if (!base) return null;
+  const product = base.data[18890];
+  const answers = [
+    ['What data is to be collected?', `<ul><li>Employee name, work email and mobile number</li><li>Employee ID and job title</li><li>Login activity (IP address, time)</li></ul>`],
+    ['What are the sources of data?', '<p>Directly from staff through the web form, and from the HR system (employee records).</p>'],
+    ['Why is the data being collected?', `<p>To let staff use ${product} and to contact them about their requests.</p>`],
+    ['What technologies will be used to collect data?', '<p>Web application (Laravel) with a MySQL database, hosted on Cloudstaff servers.</p>'],
+    ['Describe the uses of the data.', '<p>Identify the user, show their own records, and send email notifications.</p>'],
+    ['Will the data be shared with any internal or external organizations?', '<p>Internal only: HR and the Data Security Team. Email is sent through SendGrid.</p>'],
+    ['How is the data transmitted or disclosed to the internal or external organization?', '<p>HTTPS only.</p>'],
+    ['Was notice provided to the different individuals prior to the collection of data?', '<p>Yes, through the Cloudstaff employee privacy notice.</p>'],
+    ['Which user group(s) will have access to the system?', '<p>All staff (own records), HR administrators.</p>'],
+    ['How is access to the data by a user determined? Are procedures documented?', '<p>Role-based access; roles are assigned by HR administrators. Documented in the app runbook.</p>'],
+    ['What auditing measures/controls and technical safeguards are in place to prevent misuse (e.g., unauthorized browsing) of data?', '<p>Audit log of record changes; Microsoft sign-in; least-privilege roles.</p>'],
+    ['Describe the privacy training provided to users, either generally or specifically relevant to the program or system?', '<p>Annual Cloudstaff data privacy training.</p>'],
+    ['Can consent be withdrawn?', '<p>Yes, by request to the Data Protection Officer.</p>'],
+    ['Are personal data anonymized or de-identified?', '<p>No.</p>'],
+  ];
+  const pub = {};
+  answers.forEach(([label, value], i) => { pub[`field_${i}`] = { id: 50000 + i, label, type: 'wysiwyg', value }; });
+  pub.field_product = { id: 18890, label: 'Project or Product', type: 'text', value: product };
+  return {
+    ...base,
+    data: {
+      public: pub,
+      private: {
+        field_risk: { id: 37936, label: 'Overall Risk Rating', type: 'number', value: base.data[37936] },
+        field_threat: { id: 60001, label: 'Threat / Vulnerability 1', type: 'text', value: 'Unauthorised access to employee contact details (impact 2, probability 2, rating 4)' },
+      },
+    },
+  };
+}

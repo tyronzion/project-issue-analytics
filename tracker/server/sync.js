@@ -8,6 +8,8 @@ import { matchKey, periodForQuarter, normalizePriority } from '../shared/logic.j
 //   classification  Rules of Engagement ticket = New app, Security Full Assessment ticket = Old app
 // A Rules of Engagement ticket for an app that isn't in the tracker yet creates that app.
 // Seals are captured separately when a ticket resolves (POST /assessments/:id/seal).
+// A rejected or deleted ticket in the current quarter, with no other ticket for the app's period, puts the
+// app back to Not Started (checklist, deliverables and actual dates cleared, once per ticket).
 
 const SYNC_USER = 'UberTicket sync';
 
@@ -32,13 +34,25 @@ function matchTickets(db, tickets) {
   }
 
   const chosen = new Map();
+  const rejected = new Map(); // assessment id -> latest rejected ticket for that app and period
   const unmatched = [];
   let considered = 0;
   for (const source of ['full', 'roe']) {
     for (const t of tickets[source] || []) {
-      if (t.state === 'rejected') continue;
-      considered++;
       const when = quarterOf(t);
+      if (t.state === 'rejected') {
+        if (!when) continue;
+        const key = links.get(matchKey(t.product)) ?? matchKey(t.product);
+        const find = (track) => byKey.get(`${track}|${when.year}|${periodForQuarter(track, when.quarter)}|${key}`) || [];
+        let targets = find('quarterly');
+        if (!targets.length) targets = find('biannual');
+        for (const r of targets) {
+          const cur = rejected.get(r.id);
+          if (!cur || (t.createdAt ?? 0) > (cur.createdAt ?? 0)) rejected.set(r.id, { ...t, when });
+        }
+        continue;
+      }
+      considered++;
       const productKey = matchKey(t.product);
       const key = links.get(productKey) ?? productKey;
       const base = { key: t.key, url: t.url, source, product: t.product, productKey, state: t.state, assignee: t.assignee, quarter: when ? `Q${when.quarter}` : t.quarter, year: when?.year ?? t.year, when, ticket: t };
@@ -61,7 +75,7 @@ function matchTickets(db, tickets) {
       }
     }
   }
-  return { rows, chosen, unmatched, considered };
+  return { rows, chosen, rejected, unmatched, considered };
 }
 
 // New apps: a Rules of Engagement ticket for a product the tracker doesn't have yet adds it to the
@@ -104,8 +118,35 @@ function createAppsFromRoe(db, unmatched) {
 // "Time Spent (MM)" as minutes (0 when empty).
 const minutesOf = (t) => Number(String(t.timeSpent ?? '').replace(/[^\d.]/g, '')) || 0;
 
+// Quarter of a moment in local time: { year, quarter }.
+function quarterAt(ms, offsetHours) {
+  const d = new Date(ms + offsetHours * 3_600_000);
+  return { year: d.getUTCFullYear(), quarter: Math.floor(d.getUTCMonth() / 3) + 1 };
+}
+
+const PROGRESS_RESET = { checks: '{}', dependabots: 'Not Started', code_review: 'Not Started', report: 'Not Started', actual_start: null, actual_end: null };
+
+// Puts an app back to Not Started after its ticket was rejected or deleted. Done once per ticket (a history
+// entry records it), so progress entered by hand afterwards is kept. A recorded finished test is never reset.
+function resetProgress(db, id, ticketKey, why) {
+  const r = db.prepare('SELECT * FROM assessments WHERE id = ?').get(id);
+  if (!r || r.ticket_state || r.actual_end || r.seal_ticket_key) return false;
+  const note = `Not Started: ${ticketKey} ${why}`;
+  if (db.prepare("SELECT 1 FROM history WHERE assessment_id = ? AND field = 'progress_reset' AND new_value = ?").get(id, note)) return false;
+  const changes = Object.entries(PROGRESS_RESET).filter(([col, v]) => String(r[col] ?? '') !== String(v ?? ''));
+  const log = db.prepare('INSERT INTO history (assessment_id, field, old_value, new_value, changed_by) VALUES (?, ?, ?, ?, ?)');
+  if (changes.length) {
+    db.prepare(`UPDATE assessments SET ${changes.map(([c]) => `${c} = ?`).join(', ')}, updated_at = datetime('now'), updated_by = ? WHERE id = ?`)
+      .run(...changes.map(([, v]) => v), SYNC_USER, id);
+    for (const [col, v] of changes) log.run(id, col, r[col] == null ? null : String(r[col]), v, SYNC_USER);
+  }
+  log.run(id, 'progress_reset', null, note, SYNC_USER);
+  return changes.length > 0;
+}
+
 // tickets: { full: [...], roe: [...] } as returned by the monitor's normalizeFull().
-export function syncTickets(db, tickets, { offsetHours = 8, createApps = true } = {}) {
+// complete: the lists are a successful UberTicket fetch, so a linked ticket missing from them was deleted.
+export function syncTickets(db, tickets, { offsetHours = 8, createApps = true, complete = false, now = Date.now() } = {}) {
   let created = [];
   let m = matchTickets(db, tickets);
   if (createApps) {
@@ -119,12 +160,13 @@ export function syncTickets(db, tickets, { offsetHours = 8, createApps = true } 
     }
     if (created.length) m = matchTickets(db, tickets);
   }
-  const { rows, chosen, unmatched, considered } = m;
+  const { rows, chosen, rejected: rejectedFor, unmatched, considered } = m;
 
   const rowById = new Map(rows.map((r) => [r.id, r]));
   const logChange = db.prepare('INSERT INTO history (assessment_id, field, old_value, new_value, changed_by) VALUES (?, ?, ?, ?, ?)');
   const touch = db.prepare("UPDATE assessments SET ticket_synced_at = datetime('now') WHERE id = ?");
   let updated = 0;
+  let reset = 0;
 
   db.exec('BEGIN');
   try {
@@ -171,22 +213,48 @@ export function syncTickets(db, tickets, { offsetHours = 8, createApps = true } 
       touch.run(id);
     }
 
-    // A linked ticket that was rejected later no longer counts: unlink it and clear what came from it
-    // (status, actual dates, and the time spent if it is still the ticket's value).
-    const rejected = new Map([...(tickets.full || []), ...(tickets.roe || [])].filter((t) => t.state === 'rejected').map((t) => [t.key, t]));
+    // A linked ticket that was rejected later, or deleted, no longer counts: unlink it and clear what came from
+    // it (status, actual dates, and the time spent if it is still the ticket's value).
+    const all = [...(tickets.full || []), ...(tickets.roe || [])];
+    const byTicketKey = new Map(all.map((t) => [t.key, t]));
+    const rejected = new Map(all.filter((t) => t.state === 'rejected').map((t) => [t.key, t]));
+    // Deleted = missing from a complete fetch whose oldest ticket is older than the linked one (so a ticket
+    // beyond a lookback or page limit is never taken for deleted).
+    const oldest = {};
+    for (const source of ['full', 'roe']) {
+      const times = (tickets[source] || []).map((t) => t.createdAt).filter((x) => x != null);
+      oldest[source] = times.length ? dayOf(Math.min(...times), offsetHours) : null;
+    }
+    const deleted = (r) => complete && r.ticket_key && !byTicketKey.has(r.ticket_key)
+      && oldest[r.ticket_source] && r.actual_start && r.actual_start >= oldest[r.ticket_source];
+    const gone = []; // [row, ticket key, 'rejected' | 'deleted']
     for (const r of rows) {
-      const t = r.ticket_key && rejected.get(r.ticket_key);
-      if (!t || chosen.has(r.id)) continue;
+      if (chosen.has(r.id) || !r.ticket_key) continue;
+      const isDeleted = !rejected.has(r.ticket_key) && deleted(r);
+      const t = rejected.get(r.ticket_key) || (isDeleted ? { key: r.ticket_key } : null);
+      if (!t) continue;
+      gone.push([r, t.key, isDeleted ? 'deleted' : 'rejected']);
       const clear = { ticket_key: null, ticket_url: null, ticket_source: null, ticket_state: null, actual_start: null, actual_end: null, tester_frozen: 0 };
       if (r.time_spent != null && r.time_spent === Math.round(minutesOf(t))) clear.time_spent = null;
       db.prepare(`UPDATE assessments SET ${Object.keys(clear).map((c) => `${c} = ?`).join(', ')}, updated_at = datetime('now'), updated_by = ? WHERE id = ?`)
         .run(...Object.values(clear), SYNC_USER, r.id);
-      logChange.run(r.id, 'ticket_key', r.ticket_key, `${r.ticket_key} rejected: unlinked`, SYNC_USER);
+      logChange.run(r.id, 'ticket_key', r.ticket_key, `${r.ticket_key} ${isDeleted ? 'deleted' : 'rejected'}: unlinked`, SYNC_USER);
       for (const col of ['actual_start', 'actual_end', 'time_spent']) {
         if (col in clear && r[col] != null) logChange.run(r.id, col, String(r[col]), null, SYNC_USER);
       }
       updated++;
     }
+
+    // This quarter's test was rejected or deleted and the app has no other ticket for the period: Not Started.
+    const cur = quarterAt(now, offsetHours);
+    const thisQuarter = (r) => r.year === cur.year && r.period === periodForQuarter(r.track, cur.quarter);
+    const resets = new Map();
+    for (const [r, key, why] of gone) if (thisQuarter(r)) resets.set(r.id, [key, why]);
+    for (const [id, t] of rejectedFor) {
+      if (chosen.has(id) || resets.has(id)) continue;
+      if (t.when.year === cur.year && t.when.quarter === cur.quarter && thisQuarter(rowById.get(id))) resets.set(id, [t.key, 'rejected']);
+    }
+    for (const [id, [key, why]] of resets) if (resetProgress(db, id, key, why)) reset++;
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');
@@ -198,6 +266,7 @@ export function syncTickets(db, tickets, { offsetHours = 8, createApps = true } 
     tickets: considered,
     matchedApps: chosen.size,
     updated,
+    reset,
     created,
     unmatched: unmatched
       .map(({ when, ticket, ...u }) => u)

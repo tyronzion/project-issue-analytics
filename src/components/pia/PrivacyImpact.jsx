@@ -6,13 +6,15 @@ import { targetMatcher } from '../../../tracker/shared/targets.js';
 import { useSharedTargets, activeTargetNames } from '../../utils/sharedTargets';
 import { fmtDate, cx } from '../tracker/ui.jsx';
 import { piaApi } from './api.js';
-import { StatusBadge, InProgressBadge, DaysLeft } from './badges.jsx';
+import { StatusBadge, InProgressBadge, DaysLeft, CoverageBadge } from './badges.jsx';
 import AppDetail from './AppDetail.jsx';
 import MatchingPage from './MatchingPage.jsx';
 import '../tracker/tracker.css';
 import './pia.css';
 
-const counted = (a) => !a.hidden && !a.decommissioned;
+// Apps decided "covered by a parent" or "no PIA needed" are listed but not counted (their parent's PIA counts).
+const exempt = (a) => a.coverage?.status === 'covered' || a.coverage?.status === 'not_required';
+const counted = (a) => !a.hidden && !a.decommissioned && !exempt(a);
 const KPIS = ['overdue', 'due-soon', 'never', 'initial', 'current'];
 const KPI_NOTE = {
   overdue: 'Past the yearly reassessment date',
@@ -112,7 +114,11 @@ export default function PrivacyImpact({ section, isAdmin }) {
               </button>
             ))}
             <article className="issues-kpi-card">
-              <div><span>Applications</span><small>{targetNames && !allApps ? 'Target projects only' : 'Tracker apps + PIA products'} (hidden and decommissioned not counted)</small></div>
+              <div><span>No own PIA needed</span><small>Covered by a parent app or exempt (decided by an admin)</small></div>
+              <strong>{data ? apps.filter((a) => !a.hidden && !a.decommissioned && exempt(a)).length : '…'}</strong>
+            </article>
+            <article className="issues-kpi-card">
+              <div><span>Applications</span><small>{targetNames && !allApps ? 'Target projects only' : 'Tracker apps + PIA products'} (hidden, decommissioned and covered not counted)</small></div>
               <strong>{data ? apps.filter(counted).length : '…'}</strong>
             </article>
           </section>
@@ -123,7 +129,7 @@ export default function PrivacyImpact({ section, isAdmin }) {
               {filter && <button type="button" className="at-btn-ghost" onClick={() => setFilter('')}>Clear filter</button>}
               <span className="ml-auto"><FilterSearch value={query} onChange={setQuery} placeholder="Search apps…" /></span>
               <label className="flex items-center gap-1.5 text-xs at-muted">
-                <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> Show hidden and decommissioned
+                <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> Show hidden, decommissioned and covered
               </label>
               {targetNames && (
                 <span className="text-xs at-muted">
@@ -148,7 +154,7 @@ export default function PrivacyImpact({ section, isAdmin }) {
                   {rows.map((a) => (
                     <tr key={a.id} className={cx('at-row', !counted(a) && 'at-row--dim')} onClick={() => setOpenId(a.id)}>
                       <td className="font-semibold">{a.name}</td>
-                      <td><div className="flex flex-wrap items-center gap-1"><StatusBadge app={a} /><InProgressBadge app={a} /></div></td>
+                      <td><div className="flex flex-wrap items-center gap-1"><StatusBadge app={a} /><InProgressBadge app={a} /><CoverageBadge coverage={a.coverage} /></div></td>
                       <td>{a.lastAssessed ? <>{fmtDate(a.lastAssessed)} <span className="text-xs at-soft">{a.lastSource === 'reassessment' ? 'reassessment' : 'PIA approved'}</span></> : <span className="at-soft">—</span>}</td>
                       <td>{a.dueOn ? fmtDate(a.dueOn) : <span className="at-soft">—</span>}</td>
                       <td className="text-xs"><DaysLeft app={a} /></td>

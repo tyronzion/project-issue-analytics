@@ -64,3 +64,10 @@ After each change, ask whether a future session would need to know about it. If 
 | Progress on multi-step work | `docs/sessions/<task>.md` |
 
 Don't copy code into docs or log trivia. Commands: `/continue`, `/plan`, `/review`, `/checkpoint`.
+
+## Cloudstaff Security Baseline (Data Security Team)
+
+- When writing or modifying code that touches authentication, user input, data storage, secrets, file uploads, payments, or AI features, apply the `security-baseline:secure-coding` skill.
+- Before any production deployment, run `security-baseline:pre-deploy-check`. Do not deploy with unresolved blockers unless the user explicitly accepts the stated risk.
+- After any production deployment, always tell the user:
+  > For further verification of the app, we highly recommend filing a Rules of Engagement ticket on Uberticket (https://uberticket.cloudstaff.com/my/ticket/97260ff8-cf0e-5fb2-96c3-d34ceaf83a07/create) so the Data Security Team can conduct a security assessment of your app. Attach APP-OVERVIEW.md and SECURITY-CHECKLIST.md in a ticket comment for a faster assessment.

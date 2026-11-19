@@ -53,3 +53,22 @@ test('PIA policies: GET /policies/search for the template, every page, no lookba
     }
   } finally { globalThis.fetch = real; }
 });
+
+test('fetchPolicy: one GET for the policy, id validated', async () => {
+  const { fetchPolicy } = await import('./uberticket.js');
+  const seen = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url, opts = {}) => {
+    seen.push({ url, method: opts.method || 'GET' });
+    return { ok: true, status: 200, json: async () => ({ data: { id: 'abc-1', data: { public: {} } } }) };
+  };
+  try {
+    const p = await fetchPolicy({ api: 'https://api.example/v1', token: 't', id: 'abc-1' });
+    assert.equal(p.id, 'abc-1');
+    assert.deepEqual(seen, [{ url: 'https://api.example/v1/policies/abc-1', method: 'GET' }]);
+    await assert.rejects(fetchPolicy({ api: 'https://api.example/v1', token: 't', id: '../tickets' }), /Invalid policy id/);
+    assert.equal(seen.length, 1);
+  } finally {
+    globalThis.fetch = original;
+  }
+});

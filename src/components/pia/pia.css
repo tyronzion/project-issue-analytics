@@ -41,3 +41,21 @@
 .pia-timeline li { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--color-border-subtle); }
 .pia-timeline li:last-child { border-bottom: 0; }
 .pia-timeline time { width: 96px; flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--cs-muted); }
+
+/* Coverage decision badges and scan / reassessment panels (D15) */
+.pia-badge--covered, .pia-badge--not_required { color: var(--color-feedback-success); background: var(--color-feedback-success-soft); }
+.pia-badge--own { color: var(--color-feedback-muted); background: var(--color-feedback-muted-soft); }
+
+.pia-rec { padding: 10px 12px; border: 1px solid; border-radius: 8px; }
+.pia-rec--danger { color: var(--color-feedback-danger); background: var(--color-feedback-danger-soft); border-color: var(--color-border-danger); }
+.pia-rec--success { color: var(--color-feedback-success); background: var(--color-feedback-success-soft); border-color: var(--color-border-success); }
+.pia-rec--warning { color: var(--color-feedback-warning-contrast); background: var(--color-feedback-warning-soft); border-color: var(--color-border-warning); }
+.pia-rec ul { margin: 6px 0 0 18px; list-style: disc; color: var(--cs-text); }
+
+.pia-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 11px; background: var(--color-surface-secondary); color: var(--cs-text); }
+.pia-chip--sensitive { color: var(--color-feedback-danger); background: var(--color-feedback-danger-soft); font-weight: 700; }
+
+.pia-q { padding: 6px 0; border-bottom: 1px solid var(--color-border-subtle); font-size: 13px; }
+.pia-q:last-child { border-bottom: 0; }
+.pia-q--changed { border-left: 3px solid var(--cs-primary); padding-left: 8px; }
+.pia-evidence { margin: 4px 0 0 16px; list-style: disc; font-size: 12px; color: var(--cs-muted); word-break: break-word; }

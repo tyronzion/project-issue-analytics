@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, Link2, Unlink } from 'lucide-react';
 import { piaApi } from './api.js';
+import GithubSettings from './GithubSettings.jsx';
 
-// PIA matching (admins): PIA products that didn't match a tracker app, manual links, and the coming-due window.
+// PIA matching (admins): PIA products that didn't match a tracker app, manual links, the coming-due window and
+// GitHub access for the repository scan.
 export default function MatchingPage({ isAdmin, onChanged }) {
   const [info, setInfo] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -121,6 +123,8 @@ export default function MatchingPage({ isAdmin, onChanged }) {
           <button type="button" disabled={busy || Number(days) === info.dueSoonDays} onClick={() => act(() => piaApi.setDueSoonDays(Number(days)))} className="at-btn">Save</button>
         </section>
       )}
+
+      {isAdmin && <GithubSettings />}
     </div>
   );
 }

@@ -36,3 +36,19 @@ test('expiry comes from the JWT exp claim; non-JWTs have none', () => {
   assert.equal(tokenExpiry(jwt({ exp: 1_800_000_000 })), 1_800_000_000_000);
   assert.equal(tokenExpiry('not-a-jwt'), null);
 });
+
+test('a named store keeps a second secret beside the token (e.g. the PIA GitHub App key)', async () => {
+  const { mkdtemp, readdir, rm } = await import('node:fs/promises');
+  const os = await import('node:os');
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'ts-named-'));
+  try {
+    const gh = makeTokenStore(dir, { name: 'github' });
+    await gh.save('-----BEGIN RSA PRIVATE KEY-----x');
+    assert.equal((await gh.load()).token, '-----BEGIN RSA PRIVATE KEY-----x');
+    assert.equal(await makeTokenStore(dir).load(), null, 'the default token is separate');
+    assert.deepEqual((await readdir(dir)).sort(), ['github.enc', 'secret.key']);
+    assert.throws(() => makeTokenStore(dir, { name: '../x' }), /Invalid secret name/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

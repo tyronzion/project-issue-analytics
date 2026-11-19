@@ -373,15 +373,22 @@ export function matchIssueToTargetList(
 
   // A Summary can include several bracket tags. When more than one is in the
   // target list, the final matching tag identifies the owning application.
+  // The whole bracket text is compared first against the full target name, so
+  // "[Rewards App]" belongs to "Rewards App" and not to "Rewards" (target
+  // parsing strips "App", which would otherwise make both bases "Rewards").
+  const isPlatformCompatible = (candidate: ParsedTargetProject) => {
+    if (candidate.requiredPlatformTag === 'IOS' && issuePlatformTag !== 'IOS') return false;
+    if (candidate.requiredPlatformTag === 'AOS' && issuePlatformTag !== 'AOS') return false;
+    if (candidate.requiredPlatformTag === 'GENERAL' && (issuePlatformTag === 'IOS' || issuePlatformTag === 'AOS')) return false;
+    return true;
+  };
   for (const tag of [...summaryBracketTags].reverse()) {
     const normalizedTag = tag.toLowerCase().trim().replace(/[\s\-_]+/g, '');
-    const target = parsedTargets.find(candidate => {
-      if (candidate.requiredPlatformTag === 'IOS' && issuePlatformTag !== 'IOS') return false;
-      if (candidate.requiredPlatformTag === 'AOS' && issuePlatformTag !== 'AOS') return false;
-      if (candidate.requiredPlatformTag === 'GENERAL' && (issuePlatformTag === 'IOS' || issuePlatformTag === 'AOS')) return false;
-
-      return candidate.baseProject.toLowerCase().trim().replace(/[\s\-_]+/g, '') === normalizedTag;
-    });
+    const condense = (value: string) => value.toLowerCase().trim().replace(/[\s\-_]+/g, '');
+    const compatible = parsedTargets.filter(isPlatformCompatible);
+    const target =
+      compatible.find(candidate => condense(candidate.cleanName) === normalizedTag) ||
+      compatible.find(candidate => condense(candidate.baseProject) === normalizedTag);
 
     if (target) {
       return {
@@ -411,6 +418,9 @@ export function matchIssueToTargetList(
     const leftLen = left.baseProject.trim().length;
     const rightLen = right.baseProject.trim().length;
     if (rightLen !== leftLen) return rightLen - leftLen;
+    const leftFull = left.cleanName.trim().length;
+    const rightFull = right.cleanName.trim().length;
+    if (rightFull !== leftFull) return rightFull - leftFull;
 
     // Stable secondary ordering for deterministic matches.
     return left.cleanName.localeCompare(right.cleanName);

@@ -31,7 +31,7 @@ Security Seal (client) ──▶ POST /api/tracker/assessments/:id/seal (snapsho
 | `src/App.tsx` | Root. Holds issue state and its load/save, signed-in user display and sign-out (POST `/auth/logout`), tab routing and sidebar, and every modal. Large file. | Uses everything below |
 | `src/utils/routes.ts` | Tab ↔ URL path map and aliases (old paths of pages moved into Settings, e.g. `/jira`, stay as aliases), plus `ADMIN_TABS` (pages hidden from users) | `types.ts` `ActiveTab` |
 | `src/utils/metricsEngine.ts` | Per-project summaries, severity normalisation, Dependabot detection | MetricsDashboard and the seal |
-| `src/utils/projectMatcher.ts` | Maps issues to projects using aliases and fuzzy matching | metricsEngine |
+| `src/utils/projectMatcher.ts` | Maps issues to projects using aliases and fuzzy matching. The whole Summary bracket tag is matched to the full target name before the base name (so `[Rewards App]` goes to "Rewards App", not "Rewards") | metricsEngine |
 | `src/utils/securitySeal.ts` | Seal (Secure → Compromised) from outstanding severities, via `sealFromCounts` in `tracker/shared/report.js` | SecuritySealDashboard and the tracker seal snapshot |
 | `src/utils/storage.ts` | localStorage for issues, settings, formulas and the Jira profile. `normalizeSettings` / `normalizeJiraProfile` validate stored and imported settings. | App, SettingsModal (settings-only export/import) |
 | `src/utils/trackerApps.ts` | Shared copy of `/api/tracker/apps` (`useTrackerApps`), `decommissionedMatcher` (hides decommissioned apps from the analytics pages, D13), `setAppDecommissioned` (Projects page) | App.tsx, AssessmentTracker (refresh) |

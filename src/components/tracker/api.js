@@ -28,6 +28,8 @@ async function request(method, url, body, { raw = false } = {}) {
 }
 
 export const api = {
+  // Tech Risk Analyzer: read one public advisory page (server-side, SSRF-guarded; D19).
+  readAdvisory: (url) => request('POST', '/tech-risk/advisory', { url }),
   cycles: () => request('GET', '/cycles'),
   createCycle: (track, year) => request('POST', '/cycles', { track, year }),
   assessments: (cycleId) => request('GET', `/cycles/${cycleId}/assessments`),

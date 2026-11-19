@@ -222,6 +222,16 @@ Add a new entry only for decisions a future developer might otherwise reconsider
 - **Reason:** The Data Security Team assesses apps across many repositories; mixing a frontend's and an API's findings hid which repo needed the fix.
 - **Impact:** Built-in data goes stale: refresh `tracker/shared/techRisk.js` (dates, CVEs, `KB_AS_OF`) when lifecycles or advisories change. Reuses the existing `xlsx` dependency for reading and export.
 
+### D19: Tech Risk Analyzer advisory check reads one public page on the server
+- **Date:** 2026-11-19
+- **Decision:**
+  - The Tech Risk Analyzer's **Advisory check** tab takes the link to one vulnerability write-up. `POST /api/tracker/tech-risk/advisory` (any signed-in user) reads that page **on the server** and returns its text; the browser can't, because of CORS. This is the one exception to D17's "no server call": the workbook still never leaves the browser, and nothing is stored.
+  - **SSRF guard** (`tracker/server/advisoryFetch.js`): https and port 443 only, no credentials in the URL, every resolved address must be public (private, loopback, link-local, CGNAT, ULA, multicast, metadata and NAT64/6to4 ranges refused), the socket is pinned to the checked address (no DNS rebinding), at most 3 redirects each checked again, 10 s timeout, 2 MB, text/html/plain/JSON/XML only, no cookies or auth headers sent. 6 reads per user per minute, 2 at a time.
+  - **Rule-based, no AI**: `tracker/shared/advisory.js` proposes the products that are named both in the advisory and in the workbook, and the fixed versions written after "before / prior to / fixed in / upgrade to" or under a "Fixed" heading ("from / since / affected from" versions are ignored; "NGINX Plus" is not "NGINX"). The user reviews and edits the proposal; the check re-runs on every edit.
+  - Rating per app and repository: **Affected** = version below the fix on its major.minor branch (or below the next fixed release); **Possibly affected** = product named without a version or with a floating tag (one severity lower); **Not affected** = patched. If the page can't be read (JavaScript-only pages, blocked sites), the user pastes its text.
+- **Reason:** The team wanted to paste a new vulnerability's link and see which apps are affected, without retyping the advisory.
+- **Impact:** The server needs outbound https to the advisory sites (no proxy support). Conditions in an advisory (a feature that must be enabled) are not checked automatically; the page says so.
+
 ### D18: One feature document, shown in the app
 - **Date:** 2026-11-17
 - **Decision:** `docs/FEATURES.md` is the single description of every feature (pages and paths, who can use them, data sources, rules, data and backups, deploy and server move). The app's **Documentation** page (`/documentation`, everyone, sidebar under Settings) renders that same file; it isn't copied into components. The page supports only the Markdown subset the file uses and outputs React elements (no `innerHTML`).

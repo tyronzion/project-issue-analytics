@@ -4,6 +4,7 @@ import { ShieldAlert, Upload, Download, RefreshCcw, Gauge, ExternalLink, Info } 
 import { FilterSearch, FilterSelect } from '../FilterChips';
 import { analyzeWorkbook, analyzeApp, applyEndOfLifeRows, LIFECYCLE, OSV_PACKAGES, KB_AS_OF, SEV_ORDER, sevRank, vparse } from '../../../tracker/shared/techRisk.js';
 import { SEVERITY_ACCENT, fmtDate, cx } from './ui.jsx';
+import AdvisoryCheck from './AdvisoryCheck.jsx';
 import './tracker.css';
 
 // Severity colours: the Severity Scorecard accents, plus design-system tokens for Info and OK.
@@ -190,7 +191,7 @@ function AppRow({ app, open, liveFor }) {
 }
 
 // Workbook rows for the export. One sheet per view, Repository column on every detail row.
-function reportSheets(apps, liveFor) {
+function reportSheets(apps, liveFor, advisory) {
   const R = [...apps].sort((a, b) => sevRank(a.risk) - sevRank(b.risk) || a.name.localeCompare(b.name));
   const summary = [['Application', 'Overall risk (worst repository)', 'Repositories audited', 'Repositories (risk)', 'End-of-life technologies', 'EOL within 90 days', 'Confirmed vulnerable', 'To confirm (patch level)']];
   const repos = [['Application', 'Repository', 'URL', 'Risk', 'End-of-life technologies', 'EOL within 90 days', 'Confirmed vulnerable', 'To confirm (patch level)', 'Outdated technology', 'Vulnerabilities (confirmed)']];
@@ -218,12 +219,16 @@ function reportSheets(apps, liveFor) {
     ['Outdated Technology', techs, [26, 30, 22, 24, 20, 11, 14, 12, 60, 40]],
     ['Vulnerabilities', vulns, [26, 30, 18, 22, 18, 11, 7, 30, 60, 22, 10, 45]],
     ['Architecture', arch, [28, ...labels.map(() => 40)]],
+    ...(advisory?.rows.length ? [['Advisory Check', [['Advisory', 'Link', 'Application', 'Repository', 'Result', 'Severity', 'Product', 'Version found', 'Fix', 'Found in the workbook', 'Hosting', 'Why'],
+      ...advisory.rows.map((r) => [advisory.advisory.title, advisory.advisory.url || '', r.app, r.repo, { affected: 'Affected', possible: 'Possibly affected', patched: 'Not affected (patched)' }[r.state], r.severity, r.product, r.version, r.fix, r.snippet, r.hosting, r.why])],
+      [36, 36, 26, 28, 20, 10, 16, 12, 16, 60, 30, 24]]] : []),
   ];
 }
 
 /**
  * Tech Risk Analyzer (D17). Upload the application architecture workbook; every app is checked per repository for
  * end-of-life technology and versions with known CVEs. Runs in the browser; nothing is saved or sent to the server.
+ * The Advisory check tab (D19) asks the server to read one public advisory page; the workbook still stays in the browser.
  * Logic and the built-in data live in tracker/shared/techRisk.js.
  */
 export default function TechRisk() {
@@ -239,6 +244,7 @@ export default function TechRisk() {
   const [onlyFindings, setOnlyFindings] = useState(true);
   const [live, setLive] = useState({});
   const [liveMsg, setLiveMsg] = useState('');
+  const [advisory, setAdvisory] = useState(null);
 
   const apps = parsed?.apps || [];
   const liveFor = (app, repo) => live[`${app}|${repo}`] || [];
@@ -256,6 +262,7 @@ export default function TechRisk() {
       setFileName(file.name);
       setLive({});
       setLiveMsg('');
+      setAdvisory(null);
     } catch (e) {
       setError(`Couldn't read ${file.name}: ${e.message || e}. Save it as an Excel workbook (.xlsx) or .csv and try again.`);
     } finally {
@@ -320,7 +327,7 @@ export default function TechRisk() {
 
   function exportReport() {
     const wb = XLSX.utils.book_new();
-    for (const [name, rows, widths] of reportSheets(apps, liveFor)) {
+    for (const [name, rows, widths] of reportSheets(apps, liveFor, advisory)) {
       const ws = XLSX.utils.aoa_to_sheet(rows);
       ws['!cols'] = widths.map((wch) => ({ wch }));
       XLSX.utils.book_append_sheet(wb, ws, name);
@@ -420,13 +427,14 @@ export default function TechRisk() {
               <div className="flex gap-2" role="tablist" aria-label="View">
                 <button type="button" role="tab" aria-selected={view === 'apps'} className={view === 'apps' ? 'at-btn' : 'at-btn-ghost'} onClick={() => setView('apps')}>By application</button>
                 <button type="button" role="tab" aria-selected={view === 'tech'} className={view === 'tech' ? 'at-btn' : 'at-btn-ghost'} onClick={() => setView('tech')}>By technology</button>
+                <button type="button" role="tab" aria-selected={view === 'advisory'} className={view === 'advisory' ? 'at-btn' : 'at-btn-ghost'} onClick={() => setView('advisory')}>Advisory check</button>
               </div>
-              <span className="ml-auto flex flex-wrap items-center gap-2">
+              {view !== 'advisory' && <span className="ml-auto flex flex-wrap items-center gap-2">
                 <FilterSearch value={query} onChange={setQuery} placeholder="Search apps, repos, technologies or CVEs…" wide />
                 {view === 'apps' && (
                   <FilterSelect icon={Gauge} label="Risk" value={risk} onChange={setRisk} allLabel="All" options={SEV_ORDER.map((s) => ({ value: s, label: `${RISK_LABEL[s] || s} (${counts[s] || 0})` }))} />
                 )}
-              </span>
+              </span>}
               {view === 'apps' && !risk && (
                 <label className="flex items-center gap-1.5 text-xs at-muted">
                   <input type="checkbox" checked={onlyFindings} onChange={(e) => setOnlyFindings(e.target.checked)} /> Only apps with findings
@@ -434,7 +442,9 @@ export default function TechRisk() {
               )}
             </div>
 
-            {view === 'apps' ? (
+            {view === 'advisory' ? (
+              <AdvisoryCheck apps={apps} SevTag={SevTag} onResult={setAdvisory} />
+            ) : view === 'apps' ? (
               <div className="p-3 space-y-2">
                 <p className="text-xs at-muted">Showing {list.length} of {apps.length} apps, most at risk first. An app's risk is the worst of its repositories.</p>
                 {list.length ? list.map((a, i) => <AppRow key={a.name} app={a} open={i === 0} liveFor={liveFor} />) : <p className="p-6 text-center text-sm at-muted">No apps match these filters.</p>}
@@ -477,6 +487,12 @@ export default function TechRisk() {
             (endoflife.date and vendor policies) and a curated list of CVEs with their fixed versions (OSV.dev, NVD, vendor advisories). "End of life" means no more security
             fixes; "EOL soon" means within 90 days. With only a major version, or a range such as ^21.2.6, a CVE is "Possibly affected" until the installed patch is confirmed.
             Old fixes on floating image tags (for example postgres:16) show as a low-noise patch check.
+          </p>
+          <p>
+            "Advisory check" takes the link to one vulnerability write-up. The server reads that page (public https sites only; nothing is saved) and the page
+            proposes the products it names that also appear in your workbook, with the fixed versions written after "before", "prior to" or under "Fixed".
+            You can correct them. Each app and repository naming a product is then Affected (version below the fix on its branch), Possibly affected (no version
+            written, or a floating tag such as "stable") or Not affected. If a page can't be read, paste its text instead. The result is added to the export.
           </p>
           <p>
             "Check live sources" refreshes lifecycle dates from endoflife.date and asks OSV.dev about exact package versions, from your browser. The built-in list is not a

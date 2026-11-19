@@ -9,6 +9,7 @@ import { normalizeReportInfo, normalizeSnapshot } from '../shared/report.js';
 import { targetKey } from '../shared/targets.js';
 import { mountAccess } from './access.js';
 import { createFieldCipher } from './fieldCipher.js';
+import { advisoryRoute } from './advisoryFetch.js';
 
 // Assessment Tracker API, mounted by vite.config.ts at /api/tracker.
 // getTickets() returns { full, roe } normalized UberTicket tickets (from the monitor).
@@ -301,6 +302,10 @@ export async function createTracker({ root, getTickets = null, ticketStatus = ()
 
   // App Access: web URL or build link and test accounts per app (access.js). Every signed-in user.
   mountAccess(router, { db, cipher, log });
+
+  // Tech Risk Analyzer advisory check (D19): reads one public advisory page for any signed-in user. SSRF-guarded,
+  // rate limited, nothing stored (advisoryFetch.js). The workbook itself never leaves the browser.
+  router.post('/tech-risk/advisory', advisoryRoute({ log }));
 
   // Excel import: the browser sends the .xlsx bytes as the request body.
   const raw = express.raw({ type: () => true, limit: '50mb' });

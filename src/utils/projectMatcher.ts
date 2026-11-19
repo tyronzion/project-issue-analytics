@@ -328,6 +328,30 @@ export function matchIssueToTargetList(
     matchingBases.push(aiStrippedBase);
   }
 
+  // An application with its own Jira project owns every issue in that project
+  // (e.g. all CSREW issues count for "Rewards"), whatever the Summary tags say.
+  // Shared projects such as Infosec are generic wrappers and fall through to
+  // the Summary-tag matching below.
+  if (!GENERIC_WRAPPER_TAGS.has(baseProjectName.toLowerCase())) {
+    const ownProjectCandidates = [normalizedRaw, rawProject]
+      .map(value => (value || '').trim())
+      .filter(Boolean);
+    const ownTarget = parsedTargets.find(target => {
+      if (target.requiredPlatformTag === 'IOS' && issuePlatformTag !== 'IOS') return false;
+      if (target.requiredPlatformTag === 'AOS' && issuePlatformTag !== 'AOS') return false;
+      if (target.requiredPlatformTag === 'GENERAL' && (issuePlatformTag === 'IOS' || issuePlatformTag === 'AOS')) return false;
+      return ownProjectCandidates.some(name => isEquivalentProjectToken(target.cleanName, name));
+    });
+    if (ownTarget) {
+      return {
+        matchedProjectName: ownTarget.cleanName,
+        matchedTarget: ownTarget,
+        matchReason: `Own Jira project "${rawProject}" matches target "${ownTarget.cleanName}"`,
+        platformTag: ownTarget.requiredPlatformTag,
+      };
+    }
+  }
+
   // Explicit AI-prefix remap rule:
   // If issue is "AI <Project>" and no exact "AI <Project>" target exists,
   // map to "<Project>" target (platform-aware first, general fallback).
@@ -418,9 +442,6 @@ export function matchIssueToTargetList(
     const leftLen = left.baseProject.trim().length;
     const rightLen = right.baseProject.trim().length;
     if (rightLen !== leftLen) return rightLen - leftLen;
-    const leftFull = left.cleanName.trim().length;
-    const rightFull = right.cleanName.trim().length;
-    if (rightFull !== leftFull) return rightFull - leftFull;
 
     // Stable secondary ordering for deterministic matches.
     return left.cleanName.localeCompare(right.cleanName);
